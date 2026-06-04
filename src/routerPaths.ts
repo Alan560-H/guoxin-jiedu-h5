@@ -1,6 +1,5 @@
 export class RouterPaths {
   public static readonly home = '/pages/index'
-  public static readonly http = '/pages/http/http'
   public static readonly profileList = '/pages/profile/list'
   public static readonly profileCreate = '/pages/profile/create'
   public static readonly jieduSetup = '/pages/jiedu/setup'

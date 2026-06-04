@@ -72,3 +72,46 @@ src/
 ## 路由
 
 页面清单以 [`pages.config.ts`](pages.config.ts) 为准，勿手改 `src/pages.json`。
+
+## 开发约定
+
+与 Cursor 本地规则（`.cursor/rules/`、`.cursor/skills/`，已加入 `.gitignore`）保持一致，摘要如下：
+
+### 架构原则
+
+- **高内聚**：页面 + store + models + api 按业务模块聚合（如 `guoxinStore` + `pages/jiedu/*`）
+- **低耦合**：通过 `RouterPaths`、类型、store 方法交互，避免魔法字符串
+- **易扩展**：枚举与配置放 `src/constants/guoxin.ts`，V2 API 预留 `src/api/guoxin.ts`
+
+### 命名与目录
+
+| 类型 | 约定 | 示例 |
+|------|------|------|
+| TS / 工具文件 | camelCase | `guoxinStore.ts`、`reportGenerator.ts` |
+| Vue 组件 | PascalCase | `GxButton.vue` |
+| 页面目录 | 小写语义化 | `pages/jiedu/`、`pages/profile/` |
+| 代码风格 | ESLint | `pnpm lint` |
+
+### 常用命令
+
+```bash
+pnpm dev          # H5 开发 http://localhost:9999
+pnpm build:h5     # 生产构建
+pnpm type-check   # 类型检查
+pnpm lint         # ESLint
+```
+
+### Agent 协作口令（在 Cursor 中说）
+
+| 口令 | 行为 |
+|------|------|
+| （任务结束） | 汇报：本次改动、隐患、建议修改范围 |
+| **审查代码** | 按影响面 → 必须修改 → 建议修改 → 可选修改 |
+| **提交代码** | 撰写 commit 说明并 **push** 到远程（勿提交密钥、`.cursor`） |
+
+### 新增页面 checklist
+
+1. `src/pages/<模块>/xxx.vue`
+2. [`pages.config.ts`](pages.config.ts) 注册（国心页 `layout: 'guoxin'`）
+3. [`src/routerPaths.ts`](src/routerPaths.ts) 增加常量
+4. 需要时扩展 `guoxinStore` 或 `src/api/guoxin.ts`

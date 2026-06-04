@@ -17,14 +17,6 @@
       "layout": "guoxin"
     },
     {
-      "path": "pages/http/http",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationBarTitleText": "HTTP 测试"
-      }
-    },
-    {
       "path": "pages/jiedu/complete",
       "type": "page",
       "style": {

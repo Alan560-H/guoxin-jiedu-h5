@@ -23,12 +23,6 @@ export default defineUniPages({
     guoxinPage('pages/jiedu/detail', '专属解读详情'),
     guoxinPage('pages/jiedu/records', '解读记录'),
     guoxinPage('pages/credits/index', '解读权益'),
-    {
-      path: 'pages/http/http',
-      type: 'page',
-      layout: 'default',
-      style: { navigationBarTitleText: 'HTTP 测试' },
-    },
   ],
   globalStyle: {
     backgroundColor: '#FAF6EF',
