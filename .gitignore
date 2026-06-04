@@ -12,7 +12,7 @@ node_modules
 dist
 *.local
 
-# Editor directories and files
+# Cursor 本地配置（rules/skills 不上传）
 .cursor
 .idea
 *.suo

@@ -20,6 +20,10 @@ function goDetail() {
 function goRecords() {
   uni.navigateTo({ url: RouterPaths.jieduRecords })
 }
+
+function goHome() {
+  uni.reLaunch({ url: RouterPaths.home })
+}
 </script>
 
 <template>
@@ -71,5 +75,19 @@ function goRecords() {
       </view>
       <view class="gx-safe-bottom" />
     </scroll-view>
+  </view>
+  <view v-else class="gx-page flex_column">
+    <GxNavBar title="解读已完成" />
+    <view class="gx-empty">
+      <view style="font-size: 64rpx;">
+        📋
+      </view>
+      <view style="margin: 24rpx 0;">
+        未找到本次解读记录
+      </view>
+      <GxButton @click="goHome">
+        返回首页
+      </GxButton>
+    </view>
   </view>
 </template>

@@ -39,13 +39,28 @@ function confirm() {
 function goProfiles() {
   uni.navigateTo({ url: RouterPaths.profileList })
 }
+
+function goCredits() {
+  uni.navigateTo({ url: RouterPaths.credits })
+}
 </script>
 
 <template>
   <view v-if="profile" class="gx-page flex_column">
-    <GxNavBar dark title="心语老师" :right-text="`${store.credits}次`" @right-click="goProfiles" />
+    <GxNavBar dark title="心语老师" right-text="档案" @right-click="goProfiles" />
     <scroll-view scroll-y class="gx-scroll">
-      <view style="margin: 24rpx 32rpx; padding: 24rpx; background: var(--gx-green-light); border-radius: 16rpx; border: 1px solid var(--gx-green);">
+      <view class="gx-setup-meta">
+        <view>
+          剩余解读次数：
+          <text class="gx-setup-credits" @tap.stop="goCredits">{{ store.credits }}</text>
+          次
+        </view>
+        <view class="gx-text-hint">
+          专属顾问：心语老师
+        </view>
+      </view>
+
+      <view style="margin: 0 32rpx 24rpx; padding: 24rpx; background: var(--gx-green-light); border-radius: 16rpx; border: 1px solid var(--gx-green);">
         <view style="font-weight: 700; color: var(--gx-green); font-size: calc(32rpx * var(--gx-font-scale));">
           {{ profile.name }}
         </view>
@@ -123,3 +138,23 @@ function goProfiles() {
     </scroll-view>
   </view>
 </template>
+
+<style scoped lang="scss">
+.gx-setup-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16rpx 32rpx 24rpx;
+  padding: 16rpx 24rpx;
+  background: var(--gx-bg-sand, #f5efe6);
+  border-bottom: 1px solid var(--gx-border);
+  font-size: calc(26rpx * var(--gx-font-scale));
+  color: var(--gx-text-sub);
+}
+
+.gx-setup-credits {
+  color: var(--gx-green);
+  font-weight: 700;
+  text-decoration: underline;
+}
+</style>

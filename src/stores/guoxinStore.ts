@@ -32,8 +32,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         credits.value = 1
       activeProfileId.value = profiles.value[0]?.id ?? ''
     }
-    else if (!activeProfileId.value && profiles.value[0]) {
-      activeProfileId.value = profiles.value[0].id
+    else if (!activeProfileId.value || !profiles.value.some(p => p.id === activeProfileId.value)) {
+      activeProfileId.value = profiles.value[0]?.id ?? ''
     }
     setFontScale(fontScale.value)
   }
@@ -127,7 +127,6 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       return false
     }
     selectedDirections.value = [...directions]
-    credits.value -= 1
     uni.navigateTo({ url: RouterPaths.jieduProcessing })
     return true
   }
@@ -136,7 +135,13 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     const profile = activeProfile.value
     if (!profile || selectedDirections.value.length === 0)
       return null
+    if (credits.value <= 0) {
+      uni.showToast({ title: '解读次数不足', icon: 'none' })
+      uni.redirectTo({ url: RouterPaths.credits })
+      return null
+    }
 
+    credits.value -= 1
     const timeStr = formatNowTime()
     const content = generateDynamicReportContent(profile, selectedDirections.value)
     const newRecord: RecordVo = {
@@ -153,6 +158,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     profile.lastJieduTime = timeStr
     records.value.unshift(newRecord)
     activeRecordId.value = newRecord.id
+    selectedDirections.value = []
     return newRecord
   }
 
@@ -163,18 +169,27 @@ export const useGuoxinStore = defineStore('guoxin', () => {
 
     try {
       await wxChoosePay({ orderId: pkg.id, amount: Math.round(pkg.price * 100), description: pkg.name })
+      credits.value += pkg.amount
+      uni.showToast({ title: '开通成功', icon: 'success' })
+      return true
     }
-    catch {
-      uni.showModal({
-        title: '模拟支付',
-        content: `【演示】已成功购买：${pkg.name}\n解读次数 +${pkg.amount}`,
-        showCancel: false,
-      })
-    }
+    catch (err) {
+      const code = err instanceof Error ? err.message : ''
+      if (code === 'cancel')
+        return false
 
-    credits.value += pkg.amount
-    uni.showToast({ title: '开通成功', icon: 'success' })
-    return true
+      await new Promise<void>((resolve) => {
+        uni.showModal({
+          title: '模拟支付',
+          content: `【演示】已成功购买：${pkg.name}\n解读次数 +${pkg.amount}`,
+          showCancel: false,
+          success: () => resolve(),
+        })
+      })
+      credits.value += pkg.amount
+      uni.showToast({ title: '开通成功', icon: 'success' })
+      return true
+    }
   }
 
   function setFontScale(scale: FontScale) {
@@ -217,6 +232,6 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   persist: {
     key: 'guoxin-store',
     storage: localStorage,
-    pick: ['profiles', 'records', 'credits', 'activeProfileId', 'fontScale'],
+    pick: ['profiles', 'records', 'credits', 'activeProfileId', 'selectedDirections', 'fontScale'],
   },
 })

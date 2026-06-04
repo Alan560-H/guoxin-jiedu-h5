@@ -22,12 +22,14 @@ const steps = [
 function finishAndGoComplete() {
   if (completed.value)
     return
-  completed.value = true
   if (timer) {
     clearInterval(timer)
     timer = null
   }
-  store.completeJiedu()
+  const record = store.completeJiedu()
+  if (!record)
+    return
+  completed.value = true
   uni.redirectTo({ url: RouterPaths.jieduComplete })
 }
 
@@ -54,7 +56,7 @@ onMounted(() => {
 
 onUnload(() => {
   if (!completed.value) {
-    uni.showToast({ title: '整理已中断，次数已消耗', icon: 'none' })
+    uni.showToast({ title: '整理已中断，可重新解读', icon: 'none' })
   }
   if (timer)
     clearInterval(timer)
@@ -80,7 +82,7 @@ function goRecords() {
           心语老师正在深度整理
         </view>
         <view class="gx-text-sub" style="color: rgba(255,255,255,0.75); margin-top: 12rpx;">
-          约 1 分钟，请稍候
+          约 10 秒，请稍候
         </view>
       </view>
 

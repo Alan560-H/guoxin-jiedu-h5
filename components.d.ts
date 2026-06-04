@@ -17,7 +17,6 @@ declare module 'vue' {
     GxNavBar: typeof import('./src/components/guoxin/GxNavBar.vue')['default']
     InputEntry: typeof import('./src/components/InputEntry.vue')['default']
     TestHttp: typeof import('./src/components/TestHttp.vue')['default']
-    UButton: typeof import('uview-pro/components/u-button/u-button.vue')['default']
     UConfigProvider: typeof import('uview-pro/components/u-config-provider/u-config-provider.vue')['default']
     UIcon: typeof import('uview-pro/components/u-icon/u-icon.vue')['default']
     ULink: typeof import('uview-pro/components/u-link/u-link.vue')['default']

@@ -16,7 +16,7 @@ export function redirectToWxOAuth(state = 'STATE'): void {
   window.location.href = buildOAuthUrl(state)
 }
 
-/** 应用启动时处理 OAuth：换 code、未登录时自动跳转授权 */
+/** 应用启动时处理 OAuth：仅静默用 URL 中的 code 换 token，不自动跳转授权页 */
 export async function handleOAuthOnLaunch(): Promise<void> {
   // #ifndef H5
   return

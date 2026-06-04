@@ -33,6 +33,10 @@ const profile = computed(() => {
 function goBack() {
   uni.navigateBack()
 }
+
+function goHome() {
+  uni.reLaunch({ url: RouterPaths.home })
+}
 </script>
 
 <template>
@@ -74,5 +78,19 @@ function goBack() {
       </view>
       <view class="gx-safe-bottom" />
     </scroll-view>
+  </view>
+  <view v-else class="gx-page flex_column">
+    <GxNavBar title="专属解读详情" />
+    <view class="gx-empty">
+      <view style="font-size: 64rpx;">
+        📋
+      </view>
+      <view style="margin: 24rpx 0;">
+        解读记录不存在或已失效
+      </view>
+      <GxButton @click="goHome">
+        返回首页
+      </GxButton>
+    </view>
   </view>
 </template>

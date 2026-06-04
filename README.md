@@ -19,6 +19,30 @@ pnpm build:h5
 - **解读权益**：三档套餐 + 微信支付（失败时 mock 演示）
 - **数据**：Pinia + `localStorage` 持久化（前端闭环，无后端依赖）
 
+## V1 边界说明
+
+### 当前不做
+
+- 真实 AI / 后端档案与解读 API（见 [`src/api/guoxin.ts`](src/api/guoxin.ts) V2 预留）
+- 档案编辑、删除
+- 强制登录门禁（国心业务不依赖 `userInfoStore`，OAuth 仅静默换 token）
+
+### 次数与支付
+
+- **扣次时机**：整理完成（`completeJiedu`）时扣 1 次；整理中途离开**不扣次**
+- **微信支付**：微信内支付成功才加次；用户**取消支付不加次**
+- **演示兜底**：非微信环境或支付接口失败时，弹窗模拟加次（便于本地调试）
+
+### 微信 OAuth
+
+- 启动时**仅**用 URL 中的 `code` 静默换 token，**不会**自动跳转授权页
+- 需主动调用 `redirectToWxOAuth()` 的场景（如后续接入登录门禁）由业务自行触发
+
+### 开发调试
+
+- 清空演示数据：浏览器控制台执行 `localStorage.removeItem('guoxin-store')` 后刷新
+- 原型对照：HTML 原型整理完成后为弹窗；uni-app 实现为独立「解读已完成」页（`pages/jiedu/complete`）
+
 ## 目录结构
 
 ```text
@@ -38,7 +62,7 @@ src/
 
 ## 微信配置
 
-见 [`src/api/env.ts`](src/api/env.ts)。OAuth 启动时**仅静默换 code**，不自动跳授权页。
+见 [`src/api/env.ts`](src/api/env.ts)。OAuth 启动时**仅静默换 code**，不自动跳授权页。国心 V1 业务数据存 `guoxin-store`（localStorage），与登录 token（`apph5Token`）相互独立。
 
 ## 原型参考
 
