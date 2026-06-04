@@ -1,90 +1,117 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { userInfoStore } from '@/stores/userInfoStore'
+import { computed, onMounted } from 'vue'
+import type { FontScale } from '@/constants/guoxin'
+import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
-import { redirectToWxOAuth } from '@/utils/weixin/oauth'
-import { wxChoosePay } from '@/utils/weixin/pay'
-import { isWeChatBrowser } from '@/utils/weixin/env'
+import GxButton from '@/components/guoxin/GxButton.vue'
+import GxCard from '@/components/guoxin/GxCard.vue'
+import GxChip from '@/components/guoxin/GxChip.vue'
 
-defineOptions({
-  layout: 'default',
-  style: {
-    navigationBarTitleText: '国心解读 H5',
-  },
+const store = useGuoxinStore()
+
+onMounted(() => {
+  store.initSeedData()
 })
 
-const store = userInfoStore()
-const inWeChat = computed(() => isWeChatBrowser())
-const loginStatusText = computed(() => {
-  if (store.isLogin)
-    return `已登录：${store.userInfo.nickName || store.userInfo.userName || store.userInfo.userId}`
-  return '未登录'
-})
+const latestRecord = computed(() => store.latestRecord)
 
-function handleWxLogin() {
-  redirectToWxOAuth()
+function goProfiles() {
+  uni.navigateTo({ url: RouterPaths.profileList })
 }
 
-async function handleTestPay() {
-  try {
-    await wxChoosePay({ orderId: 'test' })
-  }
-  catch {
-    /* toast 已在 pay 模块处理 */
-  }
+function goCredits() {
+  uni.navigateTo({ url: RouterPaths.credits })
 }
 
-function goHttpTest() {
-  uni.navigateTo({ url: RouterPaths.http })
+function goLatestDetail() {
+  if (!latestRecord.value)
+    return
+  uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${latestRecord.value.id}` })
+}
+
+function setScale(scale: FontScale) {
+  store.setFontScale(scale)
 }
 </script>
 
 <template>
-  <view p-3 class="flex_column gap_1rem f_center home-page">
-    <view class="home-title u-font-xl">
-      国心解读 H5
+  <view class="gx-page flex_column">
+    <view class="gx-hero">
+      <view class="gx-hero-title">
+        国心解读
+      </view>
+      <view class="gx-hero-sub">
+        东方文化视角下的个人解读服务
+      </view>
+      <view class="gx-quota-badge">
+        剩余解读次数：{{ store.credits }} 次
+        <text class="gx-link" @tap.stop="goCredits"> · 充值</text>
+      </view>
     </view>
-    <view class="home-desc">
-      基础框架 + 微信公众号 JSSDK（OAuth / 支付）
-    </view>
-    <view class="status-card fill_width padding_20rpx">
-      <view>环境：{{ inWeChat ? '微信内置浏览器' : '非微信浏览器' }}</view>
-      <view>登录状态：{{ loginStatusText }}</view>
-    </view>
-    <u-button type="primary" :custom-style="{ width: '100%' }" @click="handleWxLogin">
-      微信授权登录
-    </u-button>
-    <u-button type="warning" :custom-style="{ width: '100%' }" @click="handleTestPay">
-      测试支付
-    </u-button>
-    <u-button plain :custom-style="{ width: '100%' }" @click="goHttpTest">
-      HTTP 测试页
-    </u-button>
+
+    <scroll-view scroll-y class="gx-scroll">
+      <view style="height: 24rpx;" />
+      <view class="gx-btn-group">
+        <GxButton @click="store.startJieduFromHome()">
+          ✨ 开始我的专属解读
+        </GxButton>
+        <GxButton type="secondary" @click="goProfiles">
+          📋 查看心语档案
+        </GxButton>
+      </view>
+
+      <GxCard v-if="latestRecord">
+        <view class="gx-form-label">
+          上次解读
+        </view>
+        <view class="flex_between f_a_center">
+          <view>
+            <view style="font-weight: 600;">
+              {{ latestRecord.profileName }} · {{ latestRecord.directions.join('、') }}
+            </view>
+            <view class="gx-text-hint" style="margin-top: 8rpx;">
+              {{ latestRecord.time }}
+            </view>
+          </view>
+          <GxButton type="outline" size="sm" @click="goLatestDetail">
+            查看
+          </GxButton>
+        </view>
+      </GxCard>
+
+      <GxCard>
+        <view class="gx-form-label">
+          关于国心解读
+        </view>
+        <view class="gx-text-sub" style="line-height: 1.8;">
+          国心解读结合东方文化视角与心理分析方法，为您和家人提供生活参考与情感陪伴，帮助理解性格特点、家庭关系和当前生活状态。
+        </view>
+      </GxCard>
+
+      <GxCard padding="24rpx 32rpx">
+        <view class="gx-form-label">
+          字号调节
+        </view>
+        <view class="flex_row gap_05rem">
+          <GxChip
+            v-for="item in ([['standard', '标准'], ['large', '大字号'], ['xlarge', '特大号']] as const)"
+            :key="item[0]"
+            :label="item[1]"
+            :selected="store.fontScale === item[0]"
+            @toggle="setScale(item[0])"
+          />
+        </view>
+      </GxCard>
+
+      <view class="gx-safe-bottom" />
+    </scroll-view>
   </view>
 </template>
 
-<style lang="scss" scoped>
-.home-page {
-  min-height: 60vh;
-  text-align: center;
-}
-
-.home-title {
-  font-weight: 600;
-  color: #1E3F35;
-}
-
-.home-desc {
-  color: #666;
-  font-size: 28rpx;
-}
-
-.status-card {
-  border: 1px solid #e5e5e5;
-  border-radius: 12rpx;
-  text-align: left;
-  font-size: 28rpx;
-  line-height: 1.8;
-  background: #fafafa;
+<style scoped lang="scss">
+.gx-link {
+  color: #fff;
+  text-decoration: underline;
+  margin-left: 8rpx;
 }
 </style>

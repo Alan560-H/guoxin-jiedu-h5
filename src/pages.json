@@ -3,7 +3,18 @@
     {
       "path": "pages/index",
       "type": "home",
-      "style": {}
+      "style": {
+        "navigationBarTitleText": "国心解读"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/credits/index",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "解读权益"
+      },
+      "layout": "guoxin"
     },
     {
       "path": "pages/http/http",
@@ -12,15 +23,68 @@
       "style": {
         "navigationBarTitleText": "HTTP 测试"
       }
+    },
+    {
+      "path": "pages/jiedu/complete",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "解读已完成"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/jiedu/detail",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "专属解读详情"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/jiedu/processing",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "心语老师正在为您整理"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/jiedu/records",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "解读记录"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/jiedu/setup",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "心语老师"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/profile/create",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "创建心语档案"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/profile/list",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "我的心语档案"
+      },
+      "layout": "guoxin"
     }
   ],
   "globalStyle": {
-    "backgroundColor": "@bgColor",
-    "backgroundColorBottom": "@bgColorBottom",
-    "backgroundColorTop": "@bgColorTop",
-    "backgroundTextStyle": "@bgTxtStyle",
-    "navigationBarBackgroundColor": "#000000",
-    "navigationBarTextStyle": "@navTxtStyle",
+    "backgroundColor": "#FAF6EF",
+    "navigationBarBackgroundColor": "#1E3F35",
+    "navigationBarTextStyle": "white",
     "navigationBarTitleText": "国心解读 H5",
     "navigationStyle": "custom"
   },

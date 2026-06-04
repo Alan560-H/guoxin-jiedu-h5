@@ -5,7 +5,15 @@
 
 type _LocationUrl =
   "/pages/index" |
-  "/pages/http/http";
+  "/pages/credits/index" |
+  "/pages/http/http" |
+  "/pages/jiedu/complete" |
+  "/pages/jiedu/detail" |
+  "/pages/jiedu/processing" |
+  "/pages/jiedu/records" |
+  "/pages/jiedu/setup" |
+  "/pages/profile/create" |
+  "/pages/profile/list";
 
 interface NavigateToOptions {
   url: _LocationUrl;

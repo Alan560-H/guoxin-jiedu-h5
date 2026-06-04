@@ -41,10 +41,6 @@ export async function handleOAuthOnLaunch(): Promise<void> {
     catch {
       clearOAuthParamsFromUrl()
     }
-    return
   }
-
-  if (!store.isLogin)
-    redirectToWxOAuth()
   // #endif
 }

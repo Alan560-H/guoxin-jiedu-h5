@@ -13,6 +13,7 @@ import 'core-js/actual/object/assign'
 import 'core-js/actual/promise/finally'
 import './common/app-webview.css'
 import './common/common.css'
+import './common/guoxin-theme.scss'
 import 'uno.css'
 import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
 
