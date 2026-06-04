@@ -1,0 +1,1237 @@
+/* Google Fonts: Playfair Display for headers, Noto Serif SC for elegant titles, Noto Sans SC for body */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@500;700;900&display=swap');
+
+/* ==========================================================================
+   1. Design Tokens & Root Custom Properties
+   ========================================================================== */
+:root {
+  /* Color Palette - Modern Eastern & Psychological Companion Theme */
+  --color-bg-cream: #FDFBF7;       /* Soft warm cream background */
+  --color-bg-sand: #F5EFE6;        /* Warm sand / accent background */
+  --color-bg-sage: #EAF0EE;        /* Light sage green for elements */
+  
+  --color-primary-green: #1E3F35;  /* Deep stable jade green */
+  --color-secondary-green: #2C4E43;/* Medium jade green */
+  --color-light-green: #3D6659;     /* Light accent jade green */
+  
+  --color-accent-gold: #C5A880;    /* Premium warm gold/bronze */
+  --color-light-gold: #DFD5C6;     /* Muted cream gold */
+  --color-dark-gold: #A58458;      /* Deep gold accent */
+  
+  --color-terracotta: #D97455;     /* Soft warm orange-red for status/accents */
+  
+  --color-text-primary: #262E2A;   /* Soft charcoal green */
+  --color-text-secondary: #5E6E67; /* Muted slate green */
+  --color-text-light: #8E9E97;     /* Light grey green */
+  --color-text-white: #FFFFFF;     
+  
+  /* Layout & Sizing */
+  --phone-width: 390px;
+  --phone-height: 844px;
+  --border-radius-lg: 16px;
+  --border-radius-md: 12px;
+  --border-radius-sm: 8px;
+  --shadow-sm: 0 2px 4px rgba(30, 63, 53, 0.04);
+  --shadow-md: 0 4px 12px rgba(30, 63, 53, 0.08);
+  --shadow-lg: 0 12px 30px rgba(30, 63, 53, 0.12);
+  --shadow-phone: 0 24px 64px rgba(0, 0, 0, 0.15);
+  
+  /* Font Families */
+  --font-serif: "Noto Serif SC", Georgia, serif;
+  --font-sans: "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  
+  /* Base scale (Standard font size is 16px) */
+  --font-scale: 1;
+}
+
+/* ==========================================================================
+   2. Reset & Global Styles
+   ========================================================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #F0EDE6;
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Desktop layout container holding the mobile frame and the admin panel */
+.page-container {
+  display: flex;
+  gap: 40px;
+  align-items: center;
+  justify-content: center;
+  max-width: 1200px;
+  width: 100%;
+  padding: 20px;
+}
+
+/* ==========================================================================
+   3. Mobile Frame Container (Simulator)
+   ========================================================================== */
+.phone-frame {
+  width: var(--phone-width);
+  height: var(--phone-height);
+  background-color: var(--color-bg-cream);
+  border-radius: 40px;
+  border: 12px solid #2A2F2D; /* Elegant metal bezel border */
+  position: relative;
+  box-shadow: var(--shadow-phone);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Speaker notch */
+.phone-frame::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  height: 25px;
+  background-color: #2A2F2D;
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+  z-index: 1000;
+}
+
+/* Home indicator line */
+.phone-frame::after {
+  content: "";
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 5px;
+  background-color: #C0C4C2;
+  border-radius: 3px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* The actual H5 viewport */
+.h5-viewport {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background-color: var(--color-bg-cream);
+  position: relative;
+  overflow: hidden;
+  padding-top: 25px;    /* Leave space for notch */
+  padding-bottom: 20px; /* Leave space for home bar */
+}
+
+/* Base style for scaling font size on H5 application wrapper */
+.h5-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  font-size: calc(16px * var(--font-scale));
+}
+
+/* Elder scale modifiers */
+.h5-app.scale-large {
+  --font-scale: 1.15;
+}
+.h5-app.scale-xlarge {
+  --font-scale: 1.3;
+}
+
+/* Screen state container */
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(15px);
+  z-index: 1;
+  background-color: var(--color-bg-cream);
+}
+
+.screen.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+  z-index: 10;
+}
+
+/* Screen Body Scrollable Area */
+.screen-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.25rem 2.5rem 1.25rem;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE 10+ */
+}
+
+.screen-content::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
+/* Screen Header */
+.screen-header {
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-bg-sand);
+  background-color: var(--color-bg-cream);
+  z-index: 15;
+}
+
+.screen-header-title {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  color: var(--color-primary-green);
+  font-weight: 700;
+  text-align: center;
+  flex: 1;
+}
+
+.header-btn {
+  background: none;
+  border: none;
+  color: var(--color-primary-green);
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--border-radius-sm);
+  z-index: 20;
+}
+
+.header-btn:hover {
+  background-color: var(--color-bg-sage);
+}
+
+/* ==========================================================================
+   4. Core Typographic & UI Layout Heuristics
+   ========================================================================== */
+h1, h2, h3, h4 {
+  font-family: var(--font-serif);
+  color: var(--color-primary-green);
+  line-height: 1.3;
+}
+
+p {
+  color: var(--color-text-secondary);
+}
+
+/* Large and prominent action buttons */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3.25rem; /* Large accessible target */
+  padding: 0.75rem 1.5rem;
+  border-radius: 30px; /* Elegant pill-shaped */
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 1.05rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary {
+  background-color: var(--color-primary-green);
+  color: var(--color-bg-cream);
+}
+
+.btn-primary:active {
+  background-color: var(--color-secondary-green);
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background-color: var(--color-bg-sand);
+  color: var(--color-primary-green);
+  border: 1px solid var(--color-accent-gold);
+}
+
+.btn-secondary:active {
+  background-color: var(--color-light-gold);
+  transform: scale(0.98);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--color-primary-green);
+  border: 2px solid var(--color-primary-green);
+}
+
+.btn-outline:active {
+  background-color: var(--color-bg-sage);
+  transform: scale(0.98);
+}
+
+.btn-disabled {
+  background-color: var(--color-bg-sage) !important;
+  color: var(--color-text-light) !important;
+  border: none !important;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Group container with consistent bottom spacings */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-primary-green);
+  margin-bottom: 0.5rem;
+}
+
+/* Option chips selector */
+.chips-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.chips-group-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.chip-btn {
+  background-color: var(--color-bg-cream);
+  border: 2px solid var(--color-bg-sand);
+  color: var(--color-text-secondary);
+  padding: 0.8rem 0.5rem;
+  border-radius: var(--border-radius-md);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.chip-btn.selected {
+  background-color: var(--color-bg-sage);
+  border-color: var(--color-primary-green);
+  color: var(--color-primary-green);
+  font-weight: 700;
+}
+
+/* Card components */
+.card {
+  background-color: #FFFFFF;
+  border-radius: var(--border-radius-lg);
+  padding: 1.25rem;
+  border: 1px solid var(--color-bg-sand);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-title {
+  font-size: 1.15rem;
+  font-family: var(--font-serif);
+  color: var(--color-primary-green);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-tag {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  background-color: var(--color-bg-sage);
+  color: var(--color-primary-green);
+  font-weight: 700;
+  font-family: var(--font-sans);
+}
+
+/* ==========================================================================
+   5. Individual Page Designs (1 to 9)
+   ========================================================================== */
+
+/* --- 1. Homepage --- */
+.home-banner {
+  text-align: center;
+  padding: 2rem 0 1.5rem 0;
+  background: radial-gradient(circle at top, var(--color-bg-sand) 0%, var(--color-bg-cream) 100%);
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+}
+
+.home-logo {
+  font-family: var(--font-serif);
+  font-size: 2.25rem;
+  font-weight: 900;
+  color: var(--color-primary-green);
+  letter-spacing: 0.15em;
+  margin-bottom: 0.25rem;
+  text-shadow: 1px 1px 0px rgba(197, 174, 128, 0.4);
+}
+
+.home-subtitle {
+  font-size: 0.95rem;
+  letter-spacing: 0.2em;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.teacher-intro-card {
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-bg-sand);
+  border-radius: var(--border-radius-lg);
+  padding: 1.25rem;
+  margin: 1.25rem 0;
+  display: flex;
+  gap: 1rem;
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+
+.teacher-intro-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background-color: var(--color-accent-gold);
+}
+
+.avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  background-color: var(--color-bg-sage);
+  border: 2px solid var(--color-accent-gold);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.teacher-details h3 {
+  font-size: 1.15rem;
+  margin-bottom: 0.25rem;
+}
+
+.teacher-details p {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.credit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--color-bg-sand);
+  border: 1px solid var(--color-accent-gold);
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-primary-green);
+  margin-top: 0.5rem;
+}
+
+.credit-badge span {
+  color: var(--color-terracotta);
+}
+
+.home-disclaimer {
+  font-size: 0.75rem;
+  color: var(--color-text-light);
+  text-align: center;
+  margin-top: 2rem;
+  line-height: 1.5;
+}
+
+/* --- 2. Profile List --- */
+.profile-explain {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 1.25rem;
+  background-color: var(--color-bg-sage);
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius-sm);
+  border-left: 3px solid var(--color-primary-green);
+}
+
+.profile-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  margin: 0.75rem 0;
+  border-top: 1px solid var(--color-bg-sand);
+  padding-top: 0.5rem;
+}
+
+.profile-meta-item {
+  color: var(--color-text-secondary);
+}
+
+.profile-meta-item strong {
+  color: var(--color-text-primary);
+}
+
+.profile-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.profile-actions .btn {
+  min-height: 2.5rem;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--color-text-secondary);
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.3;
+}
+
+/* --- 3. Create Profile --- */
+.custom-input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius-md);
+  border: 2px solid var(--color-bg-sand);
+  background-color: #FFFFFF;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.custom-input:focus {
+  border-color: var(--color-primary-green);
+}
+
+/* Grid wrapper for date fields */
+.date-selector-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.time-selector-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+/* Large select fields */
+.custom-select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--border-radius-md);
+  border: 2px solid var(--color-bg-sand);
+  background-color: #FFFFFF;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231E3F35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+}
+
+.custom-select:focus {
+  border-color: var(--color-primary-green);
+}
+
+/* --- 4. Teacher Chat Screen --- */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  scrollbar-width: none;
+}
+
+.chat-history::-webkit-scrollbar {
+  display: none;
+}
+
+.message-bubble {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 90%;
+}
+
+.message-bubble.teacher {
+  align-self: flex-start;
+}
+
+.message-bubble.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+  max-width: 80%;
+}
+
+.chat-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background-color: var(--color-bg-sage);
+  border: 1px solid var(--color-accent-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.chat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.message-content {
+  background-color: #FFFFFF;
+  border-radius: var(--border-radius-lg);
+  padding: 0.85rem 1rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-bg-sand);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+.message-bubble.teacher .message-content {
+  border-top-left-radius: 4px;
+}
+
+.message-bubble.user .message-content {
+  background-color: var(--color-primary-green);
+  color: var(--color-bg-cream);
+  border-top-right-radius: 4px;
+  border-color: var(--color-primary-green);
+}
+
+.chat-interactive-area {
+  padding: 0.5rem 1rem;
+}
+
+/* Chat Setup Card in Dialog */
+.chat-setup-card {
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-bg-sand);
+  border-radius: var(--border-radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-md);
+  margin-top: 0.5rem;
+}
+
+.chat-setup-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-primary-green);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Direction chips - larger for easy tapping */
+.direction-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.direction-chip {
+  background-color: var(--color-bg-cream);
+  border: 2px solid var(--color-bg-sand);
+  padding: 0.85rem 0.5rem;
+  border-radius: var(--border-radius-md);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.direction-chip .icon {
+  font-size: 1.25rem;
+}
+
+.direction-chip.selected {
+  background-color: var(--color-bg-sage);
+  border-color: var(--color-primary-green);
+  color: var(--color-primary-green);
+}
+
+/* Confirmation dialog inside chat */
+.confirm-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+}
+
+.confirm-summary-table td {
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed var(--color-bg-sand);
+}
+
+.confirm-summary-table td.label {
+  color: var(--color-text-secondary);
+  width: 5.5rem;
+  font-weight: 500;
+}
+
+.confirm-summary-table td.value {
+  color: var(--color-text-primary);
+  font-weight: 700;
+  text-align: right;
+}
+
+/* --- 5. Research Progress --- */
+.research-status-container {
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.research-loading-circle {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  border: 6px solid var(--color-bg-sand);
+  border-top-color: var(--color-primary-green);
+  margin: 0 auto 1.5rem auto;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.research-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.research-desc {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  padding: 0.85rem;
+  background-color: #FFFFFF;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-bg-sand);
+}
+
+/* Steps checklist indicator */
+.progress-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: left;
+  margin: 1.5rem 0;
+  padding-left: 0.75rem;
+}
+
+.timeline-step {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  position: relative;
+}
+
+.timeline-step::before {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  top: 1.75rem;
+  bottom: -1.25rem;
+  width: 2px;
+  background-color: var(--color-bg-sand);
+  z-index: 1;
+}
+
+.timeline-step:last-child::before {
+  display: none;
+}
+
+.timeline-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background-color: var(--color-bg-sand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  z-index: 5;
+  color: var(--color-text-light);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.timeline-step.completed .timeline-icon {
+  background-color: var(--color-primary-green);
+  color: var(--color-bg-cream);
+}
+
+.timeline-step.active .timeline-icon {
+  background-color: var(--color-accent-gold);
+  color: var(--color-text-primary);
+  animation: pulse-ring 1.5s infinite;
+}
+
+.timeline-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-light);
+}
+
+.timeline-step.completed .timeline-text {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.timeline-step.active .timeline-text {
+  color: var(--color-primary-green);
+  font-weight: 700;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(197, 174, 128, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(197, 174, 128, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(197, 174, 128, 0); }
+}
+
+/* --- 6. Completion Modal --- */
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(38, 46, 42, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  background-color: var(--color-bg-cream);
+  border-radius: 24px;
+  width: 90%;
+  max-height: 80%;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-accent-gold);
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.9);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow-y: auto;
+}
+
+.modal-overlay.active .modal-card {
+  transform: scale(1);
+}
+
+.success-mark {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background-color: var(--color-bg-sage);
+  color: var(--color-primary-green);
+  font-size: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem auto;
+  border: 2px solid var(--color-accent-gold);
+}
+
+/* --- 7. Interpretation Detail (Scrollable layout) --- */
+.report-frame {
+  background-color: #FAF6EE; /* Traditional parchment paper color */
+  border: 1px solid #E4DCCF;
+  border-radius: var(--border-radius-md);
+  padding: 1.5rem;
+  position: relative;
+  box-shadow: inset 0 0 40px rgba(165, 132, 88, 0.05);
+}
+
+/* Elegant traditional borders */
+.report-frame::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  border: 1px solid #E8DFD0;
+  pointer-events: none;
+}
+
+.report-header {
+  text-align: center;
+  border-bottom: 2px double #D8CDBC;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.report-title-main {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--color-primary-green);
+  letter-spacing: 0.1em;
+}
+
+.report-meta-text {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.report-section {
+  margin-bottom: 1.5rem;
+}
+
+.report-section-title {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-primary-green);
+  border-left: 3px solid var(--color-accent-gold);
+  padding-left: 0.5rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+}
+
+.report-body-text {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--color-text-primary);
+  text-align: justify;
+}
+
+.report-disclaimer-card {
+  background-color: var(--color-bg-sage);
+  border-radius: var(--border-radius-sm);
+  padding: 0.85rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-top: 2rem;
+  border: 1px solid var(--color-light-gold);
+}
+
+/* --- 8. Interpretation History Records --- */
+.record-item-card {
+  border-left: 4px solid var(--color-accent-gold);
+}
+
+.record-item-card.completed {
+  border-left-color: var(--color-primary-green);
+}
+
+.record-item-meta {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 0.25rem 0 0.75rem 0;
+  display: flex;
+  gap: 12px;
+}
+
+/* --- 9. Purchase Credits Page (Paywall) --- */
+.paywall-intro {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.paywall-intro-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.paywall-card {
+  border: 2px solid var(--color-bg-sand);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.paywall-card.selected {
+  border-color: var(--color-accent-gold);
+  background-color: #FFFDF9;
+  box-shadow: var(--shadow-md);
+}
+
+.paywall-card.selected::before {
+  content: "推荐";
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: var(--color-accent-gold);
+  color: var(--color-text-white);
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  border-bottom-left-radius: 8px;
+  font-weight: 700;
+}
+
+.paywall-price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+.paywall-price {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-terracotta);
+}
+
+.paywall-original-price {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  text-decoration: line-through;
+  margin-left: 6px;
+}
+
+.paywall-duration {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+/* ==========================================================================
+   6. Desktop Developer Control Panel
+   ========================================================================== */
+.dev-panel {
+  width: 280px;
+  background-color: #2F3633;
+  color: #E2E8E5;
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-lg);
+  font-size: 0.85rem;
+  border: 1px solid #3E4643;
+}
+
+.dev-panel-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  color: #FFFFFF;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #4E5653;
+  padding-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dev-group {
+  margin-bottom: 1.25rem;
+}
+
+.dev-label {
+  display: block;
+  font-weight: 700;
+  color: #B2BCB8;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dev-btn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+}
+
+.dev-btn {
+  background-color: #3E4643;
+  color: #E2E8E5;
+  border: 1px solid #4E5653;
+  padding: 0.45rem 0.25rem;
+  border-radius: var(--border-radius-sm);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.dev-btn:hover {
+  background-color: #4E5653;
+  color: #FFFFFF;
+}
+
+.dev-btn.active {
+  background-color: var(--color-accent-gold);
+  color: var(--color-primary-green);
+  font-weight: 700;
+  border-color: var(--color-accent-gold);
+}
+
+.dev-btn-full {
+  grid-column: span 2;
+}
+
+.dev-info {
+  background-color: #262C29;
+  padding: 0.75rem;
+  border-radius: var(--border-radius-sm);
+  margin-top: 1rem;
+  border: 1px solid #363C39;
+  line-height: 1.5;
+}
+
+.dev-info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.dev-info-row span {
+  font-weight: 700;
+  color: var(--color-accent-gold);
+}
+
+/* ==========================================================================
+   7. Mobile Responsive Overrides
+   ========================================================================== */
+@media (max-width: 768px) {
+  body {
+    background-color: var(--color-bg-cream);
+  }
+  
+  .page-container {
+    padding: 0;
+    flex-direction: column;
+    gap: 0;
+  }
+  
+  .phone-frame {
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  
+  .phone-frame::before,
+  .phone-frame::after {
+    display: none; /* Hide device simulator elements on real mobile viewports */
+  }
+  
+  .h5-viewport {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  
+  .dev-panel {
+    display: none; /* Hide admin controls on native mobile screen sizes */
+  }
+}

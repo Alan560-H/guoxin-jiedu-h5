@@ -1,0 +1,58 @@
+/**
+ * App 原生已提供标题栏时：去掉 H5 侧重复顶栏与安全区占位（避免 WebView 顶部白条/橙条之间空一截）
+ * 依赖 markAppEmbeddedWebView() 在 html/body 上添加 .in-app-webview
+ */
+html.in-app-webview {
+  --status-bar-height: 0px !important;
+  --window-top: 0px !important;
+  --window-bottom: 0px !important;
+}
+
+html.in-app-webview,
+html.in-app-webview body {
+  padding-top: 0 !important;
+}
+
+/* uni-app H5 自定义导航占位 */
+html.in-app-webview uni-page-head,
+html.in-app-webview .uni-page-head,
+html.in-app-webview .uni-page-head-hd,
+html.in-app-webview .uni-page__head {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+}
+
+html.in-app-webview uni-page-wrapper,
+html.in-app-webview .uni-page-wrapper,
+html.in-app-webview uni-page-body,
+html.in-app-webview .uni-page-body {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+html.in-app-webview .uni-app--showlayout uni-page,
+html.in-app-webview uni-page {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+/* default 布局里的 u-navbar */
+html.in-app-webview .u-navbar,
+html.in-app-webview .u-navbar__placeholder,
+html.in-app-webview .u-navbar__content {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+html.in-app-webview .layout-default {
+  padding-top: 0 !important;
+}

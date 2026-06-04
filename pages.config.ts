@@ -1,0 +1,158 @@
+import { defineUniPages } from '@uni-helper/vite-plugin-uni-pages'
+
+export default defineUniPages({
+  pages: [
+    {
+      path: 'pages/index',
+      type: 'home',
+    },
+    {
+      path: 'pages/http/http',
+      type: 'page',
+      layout: 'default',
+      style: {
+        navigationBarTitleText: '测试http',
+      },
+    },
+    {
+      path: 'pages/login/login',
+      type: 'page',
+      layout: 'default',
+      style: {
+        navigationBarTitleText: '登录',
+      },
+    },
+    {
+      path: 'pages/shengPing/shengPing',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '干支排盘',
+      },
+    },
+    {
+      path: 'pages/xingMing/xingMing',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '名称赏析',
+      },
+    },
+    {
+      path: 'pages/xingMing/xingMingDetail',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '名称赏析详情',
+      },
+    },
+    {
+      path: 'pages/xingMing/xingMingLiuGeDetail',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '名称赏析详情',
+      },
+    },
+    {
+      path: 'pages/meiHua/meiHua',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '梅花学',
+      },
+    },
+    {
+      path: 'pages/meiHua/shijian/shijian',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '时间起盘',
+      },
+    },
+    {
+      path: 'pages/meiHua/baoshu/baoshu',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '报数起盘',
+      },
+    },
+    {
+      path: 'pages/meiHua/zhiding/zhiding',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '指定起盘',
+      },
+    },
+    {
+      path: 'pages/meiHua/about/about',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '八宫六十四盘',
+      },
+    },
+    {
+      path: 'pages/meiHua/about/explain/explain',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '卦爻详情',
+      },
+    },
+    {
+      path: 'pages/meiHua/details/details',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '盘象',
+        navigationBarBackgroundColor: '#d3653c',
+        navigationBarTextStyle: 'white',
+      },
+    },
+    {
+      path: 'pages/shengPing/aiDeductionHistory/aiDeductionHistory',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '干支排盘',
+      },
+    },
+    {
+      path: 'pages/shengPing/aiDeductionPage/aiDeductionHistoryPage',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '干支排盘',
+      },
+    },
+    {
+      path: 'pages/shengPing/aiDeductionPage/aiDeductionPage',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '干支排盘',
+      },
+    },
+    {
+      path: 'pages/shengPing/shengPingDetails/shengPingDetails',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '干支排盘',
+      },
+    },
+    {
+      path: 'pages/yangPan/yangPan',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '遁甲学',
+      },
+    },
+    {
+      path: 'pages/yangPan/yangPanDetails/yangPanDetails',
+      type: 'page',
+      style: {
+        navigationBarTitleText: '遁甲学',
+      },
+    },
+  ],
+  globalStyle: {
+    backgroundColor: '@bgColor',
+    backgroundColorBottom: '@bgColorBottom',
+    backgroundColorTop: '@bgColorTop',
+    backgroundTextStyle: '@bgTxtStyle',
+    navigationBarBackgroundColor: '#000000',
+    navigationBarTextStyle: '@navTxtStyle',
+    navigationBarTitleText: '易朴工具箱',
+    navigationStyle: 'custom',
+  },
+  subPackages: [],
+})

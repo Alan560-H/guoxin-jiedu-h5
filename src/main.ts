@@ -1,0 +1,44 @@
+import { createPinia } from 'pinia'
+import { createPersistedState } from 'pinia-plugin-persistedstate'
+import uViewPro, { httpPlugin } from 'uview-pro'
+import { createSSRApp } from 'vue'
+
+import { httpInterceptor, httpRequestConfig } from '@/api/http.interceptor'
+import theme from '@/uview-pro.theme'
+import App from './App.vue'
+
+import 'core-js/actual/array/iterator'
+import 'core-js/actual/promise'
+import 'core-js/actual/object/assign'
+import 'core-js/actual/promise/finally'
+import './common/app-webview.css'
+import './common/common.css'
+import 'uno.css'
+import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
+
+scheduleMarkAppEmbeddedWebView()
+import "./yidun-captcha.js"
+
+export function createApp() {
+  const app = createSSRApp(App)
+  const pinia = createPinia()
+  pinia.use(createPersistedState({
+    storage: sessionStorage,
+  }))
+  app.use(pinia)
+  // 引入uView Pro	
+  app.use(uViewPro, { theme:{
+	  themes:theme,
+	  defaultTheme:'orange',
+	  defaultDarkMode:'light'
+  } })
+  // 引入http插件
+  app.use(httpPlugin, {
+    interceptor: httpInterceptor,
+    requestConfig: httpRequestConfig,
+  })
+  return {
+    app,
+    pinia,
+  }
+}

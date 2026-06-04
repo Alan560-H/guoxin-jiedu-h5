@@ -1,0 +1,155 @@
+.flex_row {
+	display: flex;
+}
+
+.flex_column {
+	display: flex;
+	flex-direction: column;
+}
+.f_warp{
+	flex-wrap: wrap;
+}
+.f_center {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.f_j_center {
+	justify-content: center;
+}
+.f_j_sa{
+	justify-content: space-around;
+}
+.f_j_sb{
+	justify-content: space-between;
+}
+.f_j_end {
+	justify-content: end;
+}
+
+.f_a_center {
+	align-items: center;
+}
+
+.gap_05rem {
+	gap: 0.5rem;
+}
+
+.gap_1rem {
+	gap: 1rem;
+}
+
+.gap_2rem {
+	gap: 2rem;
+}
+
+.f_a_end {
+	align-items: end;
+}
+
+.fill_div {
+	width: 100%;
+	height: 100%;
+}
+
+.fill_width {
+	width: 100%;
+}
+
+.fill_height {
+	height: 100%;
+}
+
+.padding_10rpx {
+	padding: 10rpx;
+}
+
+.padding_20rpx {
+	padding: 20rpx;
+}
+
+.flex_shrink {
+	flex-shrink: 1;
+}
+
+.flex_1 {
+	flex: 1;
+}
+
+.hzs_test {
+	border: 1px red solid;
+}
+
+.common_input_border {
+	height: 80rpx;
+	border: 2rpx #333 solid;
+	border-radius: 10rpx;
+	padding: 10rpx 20rpx;
+	box-sizing: border-box;
+}
+
+/* 带 u-input 清除钮 + 右侧装饰图标：预留右侧空间（B 方案） */
+.com_input {
+	position: relative;
+	display: flex;
+	align-items: center;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.com_input--trail {
+	padding-right: 80rpx;
+}
+
+.com_input--trail-arrow {
+	padding-right: 56rpx;
+}
+
+.com_input .com_icon {
+	position: absolute;
+	right: 16rpx;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+}
+
+.com_input--trail :deep(.u-input),
+.com_input--trail :deep(.u-input__content) {
+	flex: 1;
+	min-width: 0;
+	width: 100%;
+}
+
+/* 登录等无右侧图标、仅有清除钮 */
+.com_input.login_input:not(.com_input--trail):not(.com_input--trail-arrow) {
+	padding-right: 52rpx;
+}
+.common_border_all{
+	border:2rpx #333 solid;
+}
+.border_top{
+	border-top: 2rpx #333 solid;
+}
+.border_bottom{
+	border-bottom: 2rpx #333 solid;
+}
+.border_right{
+	border-right: 2rpx #333 solid;
+}
+.border_left{
+	border-left: 2rpx #333 solid;
+}
+.padding_LR_1rem{
+	padding:0 1rem;
+}
+.overflow_all_hidden{
+	overflow: hidden;
+}
+.overflow_all_auto{
+	overflow: auto;
+}
