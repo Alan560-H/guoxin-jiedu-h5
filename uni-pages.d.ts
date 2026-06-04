@@ -5,25 +5,7 @@
 
 type _LocationUrl =
   "/pages/index" |
-  "/pages/http/http" |
-  "/pages/login/login" |
-  "/pages/meiHua/meiHua" |
-  "/pages/shengPing/shengPing" |
-  "/pages/xingMing/xingMing" |
-  "/pages/xingMing/xingMingDetail" |
-  "/pages/xingMing/xingMingLiuGeDetail" |
-  "/pages/yangPan/yangPan" |
-  "/pages/meiHua/about/about" |
-  "/pages/meiHua/baoshu/baoshu" |
-  "/pages/meiHua/details/details" |
-  "/pages/meiHua/shijian/shijian" |
-  "/pages/meiHua/zhiding/zhiding" |
-  "/pages/shengPing/aiDeductionHistory/aiDeductionHistory" |
-  "/pages/shengPing/aiDeductionPage/aiDeductionHistoryPage" |
-  "/pages/shengPing/aiDeductionPage/aiDeductionPage" |
-  "/pages/shengPing/shengPingDetails/shengPingDetails" |
-  "/pages/yangPan/yangPanDetails/yangPanDetails" |
-  "/pages/meiHua/about/explain/explain";
+  "/pages/http/http";
 
 interface NavigateToOptions {
   url: _LocationUrl;

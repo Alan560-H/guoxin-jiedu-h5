@@ -65,13 +65,12 @@
     "@uni-helper/uni-promises": "^0.2.1",
     "@uni-helper/uni-use": "^0.19.15",
     "@vueuse/core": "9.13.0",
-    "echarts": "5.5.0",
-    "lunar-javascript": "^1.7.7",
     "pinia": "2.2.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "uview-pro": "^0.4.13",
     "vue": "3.4.21",
-    "vue-i18n": "9.6.2"
+    "vue-i18n": "9.6.2",
+    "weixin-js-sdk": "^1.6.5"
   },
   "devDependencies": {
     "@dcloudio/types": "^3.4.21",

@@ -17,7 +17,6 @@ import 'uno.css'
 import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
 
 scheduleMarkAppEmbeddedWebView()
-import "./yidun-captcha.js"
 
 export function createApp() {
   const app = createSSRApp(App)
@@ -26,13 +25,11 @@ export function createApp() {
     storage: sessionStorage,
   }))
   app.use(pinia)
-  // 引入uView Pro	
-  app.use(uViewPro, { theme:{
-	  themes:theme,
-	  defaultTheme:'orange',
-	  defaultDarkMode:'light'
+  app.use(uViewPro, { theme: {
+    themes: theme,
+    defaultTheme: 'orange',
+    defaultDarkMode: 'light',
   } })
-  // 引入http插件
   app.use(httpPlugin, {
     interceptor: httpInterceptor,
     requestConfig: httpRequestConfig,

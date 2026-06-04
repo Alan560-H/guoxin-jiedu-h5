@@ -33,9 +33,7 @@ const httpInterceptor : RequestInterceptor = {
 		// eslint-disable-next-line no-console
 		// console.log('请求拦截器', config)
 		const meta : RequestMeta = config.meta || {}
-		if(config.url!='/prod-api/coze/ai/message'){
-			meta.loading && showLoading()
-		}
+		meta.loading && showLoading()
 		
 		let token = uni.getStorageSync('apph5Token')
 		config.header['custom-eader'] = isAppEmbeddedWebView() ? 'app' : 'apph5'
@@ -107,7 +105,11 @@ function showToast(title = '', icon : 'success' | 'error' | 'none' = 'none', opt
 	if (title.length === 0) {
 		return
 	}
-
+	uni.showToast({
+		title,
+		icon,
+		duration: options.duration,
+	})
 }
 
 // 导出
