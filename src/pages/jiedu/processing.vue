@@ -62,8 +62,18 @@ onUnload(() => {
     clearInterval(timer)
 })
 
-function skipNow() {
-  finishAndGoComplete()
+function completeAndGoHome() {
+  if (!completed.value) {
+    const record = store.completeJiedu()
+    if (!record)
+      return
+    completed.value = true
+  }
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+  uni.reLaunch({ url: RouterPaths.home })
 }
 function goRecords() {
   uni.navigateTo({ url: RouterPaths.jieduRecords })
@@ -120,8 +130,8 @@ function goRecords() {
 
       <!-- Action buttons -->
       <view class="gx-btn-group action-buttons">
-        <GxButton type="secondary" @click="skipNow">
-          解读完成，立即查看
+        <GxButton type="secondary" @click="completeAndGoHome">
+          稍后查看
         </GxButton>
         <GxButton type="outline" @click="goRecords">
           查看解读记录
