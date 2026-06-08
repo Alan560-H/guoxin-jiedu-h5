@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
+const { t } = useI18n()
 const store = useGuoxinStore()
 
 onMounted(() => store.initSeedData())
@@ -23,20 +25,18 @@ function goHome() {
 
 <template>
   <view v-if="record" class="gx-page flex_column page-container">
-    <GxNavBar title="解读已完成" />
+    <GxNavBar :title="t('jiedu.complete.title')" />
 
     <scroll-view scroll-y class="gx-scroll">
-      <!-- Complete Banner -->
       <view class="complete-banner">
         <view class="success-mark">✓</view>
-        <view class="banner-title">本次专属解读已整理完成</view>
-        <view class="banner-subtitle">心语老师已根据您的档案信息和关注方向，为您整理了本次专属解读建议。</view>
+        <view class="banner-title">{{ t('jiedu.complete.bannerTitle') }}</view>
+        <view class="banner-subtitle">{{ t('jiedu.complete.bannerSubtitle') }}</view>
       </view>
 
-      <!-- Content Checklist Card -->
       <GxCard class="content-checklist-card">
         <view class="gx-form-label section-label">
-          解读报告包含以下内容：
+          {{ t('jiedu.complete.checklistLabel') }}
         </view>
 
         <view class="checklist-items">
@@ -53,16 +53,15 @@ function goHome() {
         </view>
       </GxCard>
 
-      <!-- Action Buttons -->
       <view class="gx-btn-group action-buttons">
         <GxButton type="primary" @click="goHome">
-          稍后查看
+          {{ t('jiedu.complete.later') }}
         </GxButton>
         <GxButton type="secondary" @click="store.navigateToSetup()">
-          继续和心语老师聊聊
+          {{ t('jiedu.complete.continueChat') }}
         </GxButton>
         <GxButton type="outline" @click="goRecords">
-          查看解读记录
+          {{ t('jiedu.complete.viewRecords') }}
         </GxButton>
       </view>
 
@@ -71,12 +70,12 @@ function goHome() {
   </view>
 
   <view v-else class="gx-page flex_column page-container">
-    <GxNavBar title="解读已完成" />
+    <GxNavBar :title="t('jiedu.complete.title')" />
     <view class="gx-empty-state">
       <view class="empty-icon">📋</view>
-      <view class="empty-text">未找到本次解读记录，您可以返回首页重新发起。</view>
+      <view class="empty-text">{{ t('jiedu.complete.emptyText') }}</view>
       <GxButton type="primary" @click="goHome">
-        返回首页
+        {{ t('jiedu.complete.backHome') }}
       </GxButton>
     </view>
   </view>

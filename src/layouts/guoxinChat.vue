@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /** 对话类全屏页：无底部免责声明，避免与固定输入栏争抢高度 */
 </script>
 

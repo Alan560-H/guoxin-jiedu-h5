@@ -15,6 +15,7 @@ import './common/app-webview.css'
 import './common/common.css'
 import './common/guoxin-theme.scss'
 import 'uno.css'
+import { i18n } from '@/i18n'
 import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
 
 scheduleMarkAppEmbeddedWebView()
@@ -26,6 +27,7 @@ export function createApp() {
     storage: sessionStorage,
   }))
   app.use(pinia)
+  app.use(i18n)
   app.use(uViewPro, { theme: {
     themes: theme,
     defaultTheme: 'orange',

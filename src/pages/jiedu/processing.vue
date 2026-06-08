@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { onUnload } from '@dcloudio/uni-app'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
@@ -7,17 +8,18 @@ import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
+const { t } = useI18n()
 const store = useGuoxinStore()
 const step = ref(1)
 let timer: ReturnType<typeof setInterval> | null = null
 const completed = ref(false)
 
-const steps = [
-  { title: '已确认档案信息', desc: '档案与关注方向已记录' },
-  { title: '正在整理关注方向', desc: '重点方向已归纳' },
-  { title: '正在生成完整解读', desc: '结合性格与阶段状态深度整理中…' },
-  { title: '完成后通知您查看', desc: '' },
-]
+const steps = computed(() => [
+  { title: t('jiedu.processing.steps.s1Title'), desc: t('jiedu.processing.steps.s1Desc') },
+  { title: t('jiedu.processing.steps.s2Title'), desc: t('jiedu.processing.steps.s2Desc') },
+  { title: t('jiedu.processing.steps.s3Title'), desc: t('jiedu.processing.steps.s3Desc') },
+  { title: t('jiedu.processing.steps.s4Title'), desc: t('jiedu.processing.steps.s4Desc') },
+])
 
 function finishAndGoComplete() {
   if (completed.value)
@@ -56,7 +58,7 @@ onMounted(() => {
 
 onUnload(() => {
   if (!completed.value) {
-    uni.showToast({ title: '整理已中断，可重新解读', icon: 'none' })
+    uni.showToast({ title: t('jiedu.processing.interrupted'), icon: 'none' })
   }
   if (timer)
     clearInterval(timer)
@@ -82,23 +84,24 @@ function goRecords() {
 
 <template>
   <view class="gx-page flex_column page-container">
-    <GxNavBar title="正在为您整理" />
+    <GxNavBar :title="t('jiedu.processing.title')" />
 
     <scroll-view scroll-y class="gx-scroll">
       <!-- Loading Banner -->
       <view class="loading-banner">
         <view class="loading-circle"></view>
-        <view class="banner-title">心语老师正在深度整理</view>
-        <view class="banner-desc">我正在调阅东方传统哲学观点，结合心理学模型为您整理更完整的内容。预计需要一些时间，完成后会通知您查看完整解读。</view>
+        <view class="banner-title">{{ t('jiedu.processing.bannerTitle') }}</view>
+        <view class="banner-desc">{{ t('jiedu.processing.bannerDesc') }}</view>
       </view>
 
       <!-- Preview card -->
       <GxCard class="preview-card">
         <view class="gx-form-label section-label">
-          初步预览
+          {{ t('jiedu.processing.previewLabel') }}
         </view>
         <view class="preview-text">
-          根据您提供的信息，心语老师已经开始整理本次专属解读。<strong>初步来看，本次内容会重点围绕您的阶段状态、家庭关系和生活节奏展开。</strong>
+          <text>{{ t('jiedu.processing.previewText') }}</text>
+          <text class="preview-highlight">{{ t('jiedu.processing.previewHighlight') }}</text>
         </view>
       </GxCard>
 
@@ -131,10 +134,10 @@ function goRecords() {
       <!-- Action buttons -->
       <view class="gx-btn-group action-buttons">
         <GxButton type="secondary" @click="completeAndGoHome">
-          稍后查看
+          {{ t('jiedu.processing.later') }}
         </GxButton>
         <GxButton type="outline" @click="goRecords">
-          查看解读记录
+          {{ t('jiedu.processing.viewRecords') }}
         </GxButton>
       </view>
 
@@ -202,12 +205,16 @@ function goRecords() {
   }
 
   .preview-text {
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
     font-size: 26rpx;
     color: #665B4E;
     line-height: 1.7;
 
-    strong {
+    .preview-highlight {
       color: #241F19;
+      font-weight: 700;
     }
   }
 }

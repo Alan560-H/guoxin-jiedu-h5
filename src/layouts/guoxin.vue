@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { DISCLAIMER_TEXT } from '@/constants/guoxin'
 </script>
 

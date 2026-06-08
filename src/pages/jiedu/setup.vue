@@ -1,24 +1,33 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { DIRECTION_OPTIONS } from '@/constants/guoxin'
 import type { DirectionValue } from '@/constants/guoxin'
+import { ImageConfig } from '@/config/assets'
+import GxButton from '@/components/guoxin/GxButton.vue'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 
+const { t } = useI18n()
 const store = useGuoxinStore()
-const selected = ref<DirectionValue[]>(['家庭关系']) // Match the screenshot: '家庭关系' selected by default
-const step = ref(1) // 1: Directions selection, 2: Confirmation
+const selected = ref<DirectionValue[]>(['家庭关系'])
+const step = ref(1)
 const scrollIntoViewId = ref('')
 const inputText = ref('')
+const userQuestion = ref('')
+const ricePaperBg = ImageConfig.ricePaperBg
+const chatLandscape = ImageConfig.chatLandscape
 
 function handleSend() {
-  if (!inputText.value.trim()) {
-    uni.showToast({ title: '请输入提问内容', icon: 'none' })
+  const text = inputText.value.trim()
+  if (!text) {
+    uni.showToast({ title: t('jiedu.setup.toast.inputRequired'), icon: 'none' })
     return
   }
-  uni.showToast({ title: '已接收提问：' + inputText.value, icon: 'none' })
+  userQuestion.value = text
   inputText.value = ''
-  handleNextStep()
+  if (step.value === 1 && selected.value.length > 0)
+    handleNextStep()
 }
 
 onMounted(() => {
@@ -40,7 +49,7 @@ function toggleDirection(dir: DirectionValue) {
 
 function handleNextStep() {
   if (selected.value.length === 0) {
-    uni.showToast({ title: '请至少选择一个关注方向', icon: 'none' })
+    uni.showToast({ title: t('jiedu.setup.toast.directionRequired'), icon: 'none' })
     return
   }
   step.value = 2
@@ -88,28 +97,27 @@ function getIconName(dir: DirectionValue): string {
 </script>
 
 <template>
-  <view v-if="profile" class="gx-page flex_column page-container">
+  <view v-if="profile" class="gx-chat-page flex_column page-container">
 
     <!-- 1. Header Navigation Bar -->
     <view class="screen-header">
       <view class="header-btn" @tap="handleBack">
         <text class="arrow">‹</text>
-        <text class="btn-label">返回</text>
+        <text class="btn-label">{{ t('jiedu.setup.back') }}</text>
       </view>
-      <view class="screen-header-title">与心语老师对话</view>
+      <view class="screen-header-title">{{ t('jiedu.setup.title') }}</view>
       <view class="header-btn right-btn" @tap="goProfiles">
-        <!-- Two human figures icon -->
         <svg class="header-icon" aria-hidden="true">
-          <use href="/static/assets/direction-icons.svg#icon-recent"></use>
+          <use :href="ImageConfig.icon('recent')"></use>
         </svg>
-        <text class="btn-label">档案</text>
+        <text class="btn-label">{{ t('jiedu.setup.profiles') }}</text>
       </view>
     </view>
 
     <!-- 2. Sub-Header Credits Indicator -->
     <view class="sub-header-bar">
-      <view>剩余解读次数：<text class="credit-count-val" @tap.stop="goCredits">{{ store.credits }}</text>次</view>
-      <view class="consultant-label">专属顾问：心语老师</view>
+      <view>{{ t('jiedu.setup.creditsRemain') }}<text class="credit-count-val" @tap.stop="goCredits">{{ store.credits }}</text>{{ t('jiedu.setup.creditsUnit') }}</view>
+      <view class="consultant-label">{{ t('jiedu.setup.consultant') }}</view>
     </view>
 
     <!-- 3. Scrollable Conversation/Interactive Flow -->
@@ -124,10 +132,18 @@ function getIconName(dir: DirectionValue): string {
         <!-- Welcome Speech Bubble -->
         <view class="message-bubble teacher">
           <view class="chat-avatar-wrapper">
-            <image class="chat-avatar" src="/static/assets/xinyu-teacher.svg" mode="aspectFill" />
+            <image class="chat-avatar" :src="ImageConfig.xinyuTeacher" mode="aspectFill" />
           </view>
           <view class="message-content">
-            您好，我是心语老师。接下来我会根据您选择的档案“<text class="text-highlight">{{ profile.name }}（{{ profile.relationText }}）</text>”，通过几个简单问题，为您整理一份生活与心理参考。
+            <text>{{ t('jiedu.setup.welcomePrefix') }}</text>
+            <text class="text-highlight">{{ profile.name }}（{{ profile.relationText }}）</text>
+            <text>{{ t('jiedu.setup.welcomeSuffix') }}</text>
+          </view>
+        </view>
+
+        <view v-if="userQuestion" class="message-bubble user">
+          <view class="message-content">
+            {{ userQuestion }}
           </view>
         </view>
 
@@ -135,9 +151,9 @@ function getIconName(dir: DirectionValue): string {
         <view v-if="step === 1" class="chat-setup-card">
           <view class="chat-setup-title">
             <svg class="title-icon" aria-hidden="true">
-              <use href="/static/assets/direction-icons.svg#icon-cloud"></use>
+              <use :href="ImageConfig.icon('cloud')"></use>
             </svg>
-            <text>请选择本次解读关注方向（可多选）</text>
+            <text>{{ t('jiedu.setup.selectDirections') }}</text>
           </view>
 
           <view class="direction-grid">
@@ -150,37 +166,36 @@ function getIconName(dir: DirectionValue): string {
             >
               <view class="icon">
                 <svg aria-hidden="true" style="width: 100%; height: 100%;">
-                  <use :href="`/static/assets/direction-icons.svg#icon-${getIconName(dir)}`"></use>
+                  <use :href="ImageConfig.icon(getIconName(dir))"></use>
                 </svg>
               </view>
               <text class="label-text">{{ dir }}</text>
             </view>
           </view>
 
-          <!-- Cloud Border Pill Button -->
-          <button
-            class="btn btn-primary"
-            :class="{ 'btn-disabled': selected.length === 0 }"
-            @tap="handleNextStep"
+          <GxButton
+            type="primary"
+            :disabled="selected.length === 0"
+            @click="handleNextStep"
           >
-            <text class="btn-text">下一步，确认档案信息</text>
-          </button>
+            {{ t('jiedu.setup.nextConfirm') }}
+          </GxButton>
         </view>
 
         <!-- Step 2: User Choice Bubble -->
         <view v-if="step === 2" class="message-bubble user">
           <view class="message-content">
-            我希望关注：{{ selected.join('、') }}。
+            {{ t('jiedu.setup.userDirections', { directions: selected.join('、') }) }}
           </view>
         </view>
 
         <!-- Step 2: Teacher Confirm Greeting Bubble -->
         <view v-if="step === 2" class="message-bubble teacher">
           <view class="chat-avatar-wrapper">
-            <image class="chat-avatar" src="/static/assets/xinyu-teacher.svg" mode="aspectFill" />
+            <image class="chat-avatar" :src="ImageConfig.xinyuTeacher" mode="aspectFill" />
           </view>
           <view class="message-content">
-            好的，我已经记录了您的期望。请在开始前确认以下档案信息是否准确无误：
+            {{ t('jiedu.setup.teacherConfirm') }}
           </view>
         </view>
 
@@ -188,52 +203,52 @@ function getIconName(dir: DirectionValue): string {
         <view v-if="step === 2" id="confirm-card" class="chat-setup-card confirm-card">
           <view class="chat-setup-title">
             <svg class="title-icon" aria-hidden="true">
-              <use href="/static/assets/direction-icons.svg#icon-record"></use>
+              <use :href="ImageConfig.icon('record')"></use>
             </svg>
-            <text>信息核对确认</text>
+            <text>{{ t('jiedu.setup.confirmTitle') }}</text>
           </view>
 
           <view class="confirm-table">
             <view class="confirm-row">
-              <text class="label">档案名称</text>
+              <text class="label">{{ t('jiedu.setup.labelName') }}</text>
               <text class="value">{{ profile.name }}</text>
             </view>
             <view class="confirm-row">
-              <text class="label">与我关系</text>
+              <text class="label">{{ t('jiedu.setup.labelRelation') }}</text>
               <text class="value">{{ profile.relationText }}</text>
             </view>
             <view class="confirm-row">
-              <text class="label">出生日期</text>
-              <text class="value">{{ profile.calendarTypeText }} {{ profile.birthYear }}年{{ profile.birthMonth }}月{{ profile.birthDay }}日</text>
+              <text class="label">{{ t('jiedu.setup.labelBirthDate') }}</text>
+              <text class="value">{{ t('jiedu.setup.birthDateFmt', { calendar: profile.calendarTypeText, year: profile.birthYear, month: profile.birthMonth, day: profile.birthDay }) }}</text>
             </view>
             <view class="confirm-row">
-              <text class="label">出生时间</text>
+              <text class="label">{{ t('jiedu.setup.labelBirthHour') }}</text>
               <text class="value">{{ profile.birthHour }}</text>
             </view>
             <view class="confirm-row">
-              <text class="label">出生地点</text>
+              <text class="label">{{ t('jiedu.setup.labelBirthPlace') }}</text>
               <text class="value">{{ profile.birthPlace }}</text>
             </view>
             <view class="confirm-row">
-              <text class="label">真太阳时校对</text>
-              <text class="value">{{ profile.useTrueSolarTime ? '已启用' : '未启用' }}</text>
+              <text class="label">{{ t('jiedu.setup.labelTrueSolar') }}</text>
+              <text class="value">{{ profile.useTrueSolarTime ? t('common.enabled') : t('common.disabled') }}</text>
             </view>
             <view class="confirm-row no-border">
-              <text class="label">关注方向</text>
+              <text class="label">{{ t('jiedu.setup.labelDirections') }}</text>
               <text class="value highlight-text">{{ selected.join('、') }}</text>
             </view>
           </view>
 
           <view class="confirm-actions">
-            <button class="btn btn-primary" @tap="confirm">
-              <text class="btn-text">确认，开始本次解读</text>
-            </button>
-            <button class="btn btn-secondary" @tap="goProfiles">
-              <text class="btn-text">修改档案信息</text>
-            </button>
-            <button class="btn btn-outline" @tap="handlePrevStep">
-              <text class="btn-text">重新点选方向</text>
-            </button>
+            <GxButton type="primary" @click="confirm">
+              {{ t('jiedu.setup.confirmStart') }}
+            </GxButton>
+            <GxButton type="secondary" @click="goProfiles">
+              {{ t('jiedu.setup.editProfile') }}
+            </GxButton>
+            <GxButton type="outline" @click="handlePrevStep">
+              {{ t('jiedu.setup.reselectDirections') }}
+            </GxButton>
           </view>
         </view>
 
@@ -245,41 +260,27 @@ function getIconName(dir: DirectionValue): string {
       <input
         v-model="inputText"
         class="chat-text-field-input"
-        placeholder="输入问题，或点选上方方向"
+        :placeholder="t('jiedu.setup.inputPlaceholder')"
         confirm-type="send"
         @confirm="handleSend"
       />
-      <button class="send-btn" @tap="handleSend">发送</button>
+      <button class="send-btn" @tap="handleSend">{{ t('jiedu.setup.send') }}</button>
     </view>
 
   </view>
 </template>
 
 <style scoped lang="scss">
-/* Design tokens locally matching index.css styles */
-:root, .page-container {
-  --color-bg-cream: #FCF5E9;
-  --color-bg-sand: #EFE2CA;
-  --color-bg-sage: #EEF3EA;
-  --color-primary-green: #153F33;
-  --color-secondary-green: #255648;
-  --color-accent-gold: #B9945F;
-  --color-light-gold: #E7D6B9;
-  --color-dark-gold: #87643A;
-  --color-text-primary: #241F19;
-  --color-text-secondary: #665B4E;
-  --color-text-light: #958878;
-}
-
 .page-container {
   display: flex;
   flex-direction: column;
-  height: var(--window-height, 100vh); /* Use Uni-App window height variable for safe viewport boundaries */
+  flex: 1;
+  min-height: 0;
   width: 100%;
   max-width: 414px;
   margin: 0 auto;
   background:
-    url("/static/assets/rice-paper-bg.svg") center / cover no-repeat,
+    url(v-bind(ricePaperBg)) center / cover no-repeat,
     linear-gradient(140deg, rgba(255, 252, 244, 0.95), rgba(249, 239, 220, 0.9)),
     #FCF5E9;
   overflow: hidden;
@@ -385,12 +386,14 @@ function getIconName(dir: DirectionValue): string {
 }
 
 /* Scroll Area & Background Landscape */
+/* uni-app H5 的 scroll-view 必须在 flex 列里配合 height:0 才能正确滚动 */
 .chat-history-scroll {
   flex: 1;
   width: 100%;
+  height: 0;
+  min-height: 0;
   box-sizing: border-box;
   overflow: hidden;
-  min-height: 0; /* Restricts height correctly in flex column */
 }
 
 .chat-history-content {
@@ -410,7 +413,7 @@ function getIconName(dir: DirectionValue): string {
     right: 0;
     bottom: 0;
     height: 380rpx;
-    background: url("/static/assets/chat-landscape.svg") center bottom / 100% auto no-repeat;
+    background: url(v-bind(chatLandscape)) center bottom / 100% auto no-repeat;
     opacity: 0.74;
     pointer-events: none;
     z-index: 0;
@@ -573,100 +576,11 @@ function getIconName(dir: DirectionValue): string {
   }
 }
 
-/* Premium Buttons & Cloud Decorations */
-.btn {
+.confirm-actions {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 96rpx;
-  border-radius: 999rpx;
-  font-family: "Noto Serif SC", Georgia, serif;
-  font-weight: 900;
-  font-size: 32rpx;
-  line-height: 1.2;
-  white-space: nowrap;
-  border: none;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 2px 8px rgba(74, 49, 21, 0.06);
-  position: relative;
-  overflow: hidden;
+  flex-direction: column;
+  gap: 16rpx;
   box-sizing: border-box;
-}
-
-.btn-primary {
-  background: linear-gradient(180deg, #1E5546 0%, #153F33 100%);
-  color: #FCF5E9;
-  border: 4rpx solid rgba(217, 193, 144, 0.72);
-  box-shadow:
-    inset 0 2rpx 0 rgba(255, 255, 255, 0.16),
-    0 8px 18px rgba(21, 63, 51, 0.22);
-  padding: 0 48rpx;
-
-  /* Left/Right Cloud Vectors decoration */
-  &::before,
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: -10rpx;
-    width: 130rpx;
-    height: 70rpx;
-    background: url("/static/assets/button-cloud.svg") center / contain no-repeat;
-    opacity: 0.85;
-    pointer-events: none;
-  }
-
-  &::before {
-    left: 10rpx;
-  }
-
-  &::after {
-    right: 10rpx;
-    transform: scaleX(-1);
-  }
-
-  &:active {
-    opacity: 0.9;
-    transform: scale(0.98);
-  }
-}
-
-.btn-secondary {
-  background: linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(251, 244, 231, 0.9)), #FFF9ED;
-  color: #153F33;
-  border: 2rpx solid rgba(185, 148, 95, 0.58);
-  margin-top: 16rpx;
-
-  &:active {
-    background-color: #E7D6B9;
-    transform: scale(0.98);
-  }
-}
-
-.btn-outline {
-  background-color: transparent;
-  color: #153F33;
-  border: 4rpx solid #153F33;
-  margin-top: 16rpx;
-
-  &:active {
-    background-color: #EEF3EA;
-    transform: scale(0.98);
-  }
-}
-
-.btn-disabled {
-  background: linear-gradient(180deg, rgba(239, 226, 202, 0.72), rgba(232, 222, 202, 0.72)) !important;
-  color: #958878 !important;
-  border: 2rpx solid rgba(185, 148, 95, 0.32) !important;
-  cursor: not-allowed;
-  box-shadow: none !important;
-
-  &::before,
-  &::after {
-    opacity: 0.2;
-  }
 }
 
 /* Step 2 Confirmation Table styles */
@@ -704,12 +618,6 @@ function getIconName(dir: DirectionValue): string {
   &.no-border {
     border-bottom: none;
   }
-}
-
-.confirm-actions {
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
 }
 
 /* Fixed Bottom Input Bar (in relative flow) */

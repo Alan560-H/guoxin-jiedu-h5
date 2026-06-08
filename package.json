@@ -42,7 +42,8 @@
     "build:quickapp-webview-union": "uni build -p quickapp-webview-union",
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "ci": "npm run type-check && npm run lint"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4070620250821001",

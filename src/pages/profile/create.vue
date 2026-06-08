@@ -148,7 +148,7 @@ function save(startImmediately: boolean) {
       </view>
 
       <view class="form-wrapper">
-        <GxCard v-slot>
+        <GxCard>
           <!-- 1. Name Input -->
           <view class="form-item">
             <view class="gx-form-label item-label">

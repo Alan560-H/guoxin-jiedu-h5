@@ -54,7 +54,7 @@ function goDetail(id: string) {
       </view>
 
       <!-- Record Cards -->
-      <GxCard v-slot v-for="rec in list" :key="rec.id" class="record-item-card">
+      <GxCard v-for="rec in list" :key="rec.id" class="record-item-card">
         <view class="flex_row f_j_sb f_a_center card-header">
           <text class="record-title">{{ rec.title }}</text>
           <view class="gx-badge gx-badge-green">

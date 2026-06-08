@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
+const { t } = useI18n()
 const store = useGuoxinStore()
 
 onMounted(() => store.initSeedData())
@@ -16,7 +18,6 @@ function profileAge(p: { birthYear: number }) {
   return new Date().getFullYear() - p.birthYear
 }
 
-// Fixed compile target warning by naming parameters
 function goCreate() {
   uni.navigateTo({ url: RouterPaths.profileCreate })
 }
@@ -25,7 +26,6 @@ function startJiedu(id: string) {
   store.navigateToSetup(id)
 }
 
-// Fixed goRecords implementation
 function goRecords(id: string) {
   store.setActiveProfile(id)
   uni.navigateTo({ url: RouterPaths.jieduRecords })
@@ -39,46 +39,44 @@ function confirmDelete(id: string) {
   const p = store.getProfileById(id)
   if (!p) return
   uni.showModal({
-    title: '删除确认',
-    content: `您确定要删除“${p.name}”的档案吗？删除后其历史解读记录也将一并清除。`,
-    confirmText: '确定删除',
-    cancelText: '取消',
+    title: t('profile.list.deleteTitle'),
+    content: t('profile.list.deleteContent', { name: p.name }),
+    confirmText: t('profile.list.deleteConfirm'),
+    cancelText: t('profile.list.deleteCancel'),
     confirmColor: '#B7654A',
     success: (res) => {
       if (res.confirm) {
         store.deleteProfile(id)
-        uni.showToast({ title: '已删除', icon: 'success' })
+        uni.showToast({ title: t('profile.list.deleted'), icon: 'success' })
       }
-    }
+    },
   })
 }
 </script>
 
 <template>
   <view class="gx-page flex_column page-container">
-    <GxNavBar title="我的心语档案" right-text="+ 新建" @right-click="goCreate" />
+    <GxNavBar :title="t('profile.list.title')" :right-text="t('profile.list.new')" @right-click="goCreate" />
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="profile-explain">
-        心语档案用于保存每位家人独立的基础信息和历史解读记录，方便心语老师给出更有针对性的参考建议。
+        {{ t('profile.list.explain') }}
       </view>
 
-      <!-- Empty State -->
-      <view v-slot v-if="profiles.length === 0" class="gx-empty-state">
+      <view v-if="profiles.length === 0" class="gx-empty-state">
         <view class="empty-icon">👤</view>
-        <view class="empty-text">您还没有创建心语档案，可以先为自己或家人创建一个档案。</view>
+        <view class="empty-text">{{ t('profile.list.emptyText') }}</view>
         <GxButton type="primary" @click="goCreate">
-          创建第一个档案
+          {{ t('profile.list.createFirst') }}
         </GxButton>
       </view>
 
-      <!-- Profile Cards -->
-      <GxCard v-slot v-for="p in profiles" :key="p.id" class="profile-card">
+      <GxCard v-for="p in profiles" :key="p.id" class="profile-card">
         <view class="flex_row f_j_sb f_a_center card-header">
           <text class="profile-name">{{ p.name }}</text>
           <view class="flex_row f_a_center header-right-actions">
-            <text class="profile-action-btn edit-btn" @tap.stop="goEdit(p.id)">编辑</text>
-            <text class="profile-action-btn delete-btn" @tap.stop="confirmDelete(p.id)">删除</text>
+            <text class="profile-action-btn edit-btn" @tap.stop="goEdit(p.id)">{{ t('profile.list.edit') }}</text>
+            <text class="profile-action-btn delete-btn" @tap.stop="confirmDelete(p.id)">{{ t('profile.list.delete') }}</text>
             <view class="gx-badge gx-badge-gold">
               {{ p.relationText }}
             </view>
@@ -86,29 +84,28 @@ function confirmDelete(id: string) {
         </view>
 
         <view class="profile-card-grid">
-          <view class="profile-meta-item">性别：<strong>{{ p.genderText }}</strong></view>
-          <view class="profile-meta-item">年龄：<strong>{{ profileAge(p) }}岁</strong></view>
-          <view class="profile-meta-item">历法：<strong>{{ p.calendarTypeText }}</strong></view>
-          <view class="profile-meta-item">真太阳时：<strong>{{ p.useTrueSolarTime ? '是' : '否' }}</strong></view>
-          <view class="profile-meta-item" style="grid-column: span 2;">出生地：<strong>{{ p.birthPlace || '未填写' }}</strong></view>
-          <view class="profile-meta-item" style="grid-column: span 2;">已完成解读：<strong>{{ p.jieduCount }} 次</strong></view>
-          <view class="profile-meta-item" style="grid-column: span 2;">最近解读：<strong>{{ p.lastJieduTime }}</strong></view>
+          <view class="profile-meta-item">{{ t('profile.list.gender') }}<strong>{{ p.genderText }}</strong></view>
+          <view class="profile-meta-item">{{ t('profile.list.age') }}<strong>{{ t('common.age', { n: profileAge(p) }) }}</strong></view>
+          <view class="profile-meta-item">{{ t('profile.list.calendar') }}<strong>{{ p.calendarTypeText }}</strong></view>
+          <view class="profile-meta-item">{{ t('profile.list.trueSolar') }}<strong>{{ p.useTrueSolarTime ? t('common.yes') : t('common.no') }}</strong></view>
+          <view class="profile-meta-item profile-meta-full">{{ t('profile.list.birthPlace') }}<strong>{{ p.birthPlace || t('common.notFilled') }}</strong></view>
+          <view class="profile-meta-item profile-meta-full">{{ t('profile.list.jieduCount') }}<strong>{{ p.jieduCount }} {{ t('common.times') }}</strong></view>
+          <view class="profile-meta-item profile-meta-full">{{ t('profile.list.lastJiedu') }}<strong>{{ p.lastJieduTime }}</strong></view>
         </view>
 
         <view class="profile-card-actions">
           <GxButton type="primary" size="sm" @click="startJiedu(p.id)">
-            开始解读
+            {{ t('profile.list.startJiedu') }}
           </GxButton>
           <GxButton type="secondary" size="sm" @click="goRecords(p.id)">
-            查看记录
+            {{ t('profile.list.viewRecords') }}
           </GxButton>
         </view>
       </GxCard>
 
-      <!-- Bottom Add Button -->
       <view v-if="profiles.length" class="gx-btn-group add-button-wrap">
         <GxButton type="outline" @click="goCreate">
-          ＋ 创建新的心语档案
+          {{ t('profile.list.createNew') }}
         </GxButton>
       </view>
 
@@ -236,6 +233,10 @@ function confirmDelete(id: string) {
     color: #241F19;
     margin-left: 8rpx;
   }
+}
+
+.profile-meta-full {
+  grid-column: span 2;
 }
 
 .profile-card-actions {

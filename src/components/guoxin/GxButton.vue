@@ -21,6 +21,7 @@ function handleClick() {
   <view
     class="gx-btn-wrap"
     :class="[`gx-btn-${props.type}`, `gx-btn-${props.size}`, { disabled: props.disabled }]"
+    :aria-disabled="props.disabled"
     @tap="handleClick"
   >
     <slot />
@@ -131,6 +132,7 @@ function handleClick() {
   color: #958878 !important;
   border: 2rpx solid rgba(185, 148, 95, 0.32) !important;
   cursor: not-allowed;
+  pointer-events: none;
   box-shadow: none !important;
   opacity: 1;
 
