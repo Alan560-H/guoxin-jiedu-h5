@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;700;900&display=swap');
+
 :root {
   --gx-bg: #FCF5E9;
   --gx-card: #FFF9ED;
@@ -35,6 +37,14 @@ page {
 .gx-page {
   min-height: 100vh;
   background: transparent;
+}
+
+/* 对话全屏页在 guoxinChat layout 内撑满，勿再用 100vh 撑破父级 */
+.gx-chat-page {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .gx-scroll {

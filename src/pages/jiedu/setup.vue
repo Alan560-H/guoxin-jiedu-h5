@@ -97,7 +97,7 @@ function getIconName(dir: DirectionValue): string {
 </script>
 
 <template>
-  <view v-if="profile" class="gx-page flex_column page-container">
+  <view v-if="profile" class="gx-chat-page flex_column page-container">
 
     <!-- 1. Header Navigation Bar -->
     <view class="screen-header">
@@ -288,8 +288,9 @@ function getIconName(dir: DirectionValue): string {
 .page-container {
   display: flex;
   flex-direction: column;
-  height: var(--window-height, 100vh); /* Use Uni-App window height variable for safe viewport boundaries */
-  width: 100vw;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   background:
     url("/static/assets/rice-paper-bg.svg") center / cover no-repeat,
     linear-gradient(140deg, rgba(255, 252, 244, 0.95), rgba(249, 239, 220, 0.9)),
@@ -374,12 +375,13 @@ function getIconName(dir: DirectionValue): string {
 }
 
 /* Scroll Area & Background Landscape */
+/* uni-app H5 的 scroll-view 必须在 flex 列里配合 height:0 才能正确滚动 */
 .chat-history-scroll {
   flex: 1;
   width: 100%;
+  height: 0;
   box-sizing: border-box;
   overflow: hidden;
-  min-height: 0; /* Restricts height correctly in flex column */
 }
 
 .chat-history-content {
@@ -572,12 +574,19 @@ function getIconName(dir: DirectionValue): string {
   font-weight: 900;
   font-size: 32rpx;
   border: none;
+  padding: 0;
+  margin: 0;
+  line-height: 1.4;
   cursor: pointer;
   transition: all 0.25s ease;
   box-shadow: 0 2px 8px rgba(74, 49, 21, 0.06);
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
+
+  &::after {
+    border: none;
+  }
 }
 
 .btn-primary {
@@ -754,7 +763,23 @@ function getIconName(dir: DirectionValue): string {
     align-items: center;
     justify-content: center;
     border: none;
+    padding: 0;
+    margin: 0;
+    line-height: 1.4;
     box-sizing: border-box;
+
+    &::after {
+      border: none;
+    }
   }
+}
+
+/* SVG sprite 图标统一描边 */
+.title-icon,
+.header-icon,
+.direction-chip .icon svg,
+.voice-btn svg {
+  stroke: currentColor;
+  fill: none;
 }
 </style>

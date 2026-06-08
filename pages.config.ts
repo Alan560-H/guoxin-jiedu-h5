@@ -17,7 +17,12 @@ export default defineUniPages({
     },
     guoxinPage('pages/profile/list', '我的心语档案'),
     guoxinPage('pages/profile/create', '创建心语档案'),
-    guoxinPage('pages/jiedu/setup', '心语老师'),
+    {
+      path: 'pages/jiedu/setup',
+      type: 'page' as const,
+      layout: 'guoxinChat',
+      style: { navigationBarTitleText: '心语老师' },
+    },
     guoxinPage('pages/jiedu/processing', '心语老师正在为您整理'),
     guoxinPage('pages/jiedu/complete', '解读已完成'),
     guoxinPage('pages/jiedu/detail', '专属解读详情'),

@@ -54,7 +54,7 @@
       "style": {
         "navigationBarTitleText": "心语老师"
       },
-      "layout": "guoxin"
+      "layout": "guoxinChat"
     },
     {
       "path": "pages/profile/create",

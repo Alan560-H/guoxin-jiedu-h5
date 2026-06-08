@@ -16,10 +16,16 @@ import { DISCLAIMER_TEXT } from '@/constants/guoxin'
 <style scoped lang="scss">
 .gx-layout {
   min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   background: var(--gx-bg);
 }
 
 .gx-layout-body {
+  flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 </style>
