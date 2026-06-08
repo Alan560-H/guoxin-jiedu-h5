@@ -19,7 +19,7 @@ export async function wxChoosePay(param: WxPayCreateParam): Promise<void> {
       timestamp: Number(payParams.timeStamp),
       nonceStr: payParams.nonceStr,
       package: payParams.package,
-      signType: payParams.signType as wx.chooseWXPaySignType,
+      signType: payParams.signType as any,
       paySign: payParams.paySign,
       success: () => {
         uni.showToast({ title: '支付成功', icon: 'success' })

@@ -10,6 +10,7 @@ declare module 'vue' {
     GxButton: typeof import('./src/components/guoxin/GxButton.vue')['default']
     GxCard: typeof import('./src/components/guoxin/GxCard.vue')['default']
     GxChip: typeof import('./src/components/guoxin/GxChip.vue')['default']
+    GxLoginModal: typeof import('./src/components/guoxin/GxLoginModal.vue')['default']
     GxNavBar: typeof import('./src/components/guoxin/GxNavBar.vue')['default']
     UConfigProvider: typeof import('uview-pro/components/u-config-provider/u-config-provider.vue')['default']
     UIcon: typeof import('uview-pro/components/u-icon/u-icon.vue')['default']

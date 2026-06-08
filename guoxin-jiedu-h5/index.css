@@ -5,36 +5,43 @@
    1. Design Tokens & Root Custom Properties
    ========================================================================== */
 :root {
-  /* Color Palette - Modern Eastern & Psychological Companion Theme */
-  --color-bg-cream: #FDFBF7;       /* Soft warm cream background */
-  --color-bg-sand: #F5EFE6;        /* Warm sand / accent background */
-  --color-bg-sage: #EAF0EE;        /* Light sage green for elements */
+  /* Color Palette - Warm rice-paper Chinese consultation theme */
+  --color-bg-cream: #FCF5E9;       /* Soft rice-paper base */
+  --color-bg-sand: #EFE2CA;        /* Warm parchment divider */
+  --color-bg-sage: #EEF3EA;        /* Pale jade selection */
   
-  --color-primary-green: #1E3F35;  /* Deep stable jade green */
-  --color-secondary-green: #2C4E43;/* Medium jade green */
-  --color-light-green: #3D6659;     /* Light accent jade green */
+  --color-primary-green: #153F33;  /* Deep ink jade */
+  --color-secondary-green: #255648;/* Medium jade green */
+  --color-light-green: #497465;     /* Light accent jade green */
   
-  --color-accent-gold: #C5A880;    /* Premium warm gold/bronze */
-  --color-light-gold: #DFD5C6;     /* Muted cream gold */
-  --color-dark-gold: #A58458;      /* Deep gold accent */
+  --color-accent-gold: #B9945F;    /* Muted bronze ink */
+  --color-light-gold: #E7D6B9;     /* Light tea-gold */
+  --color-dark-gold: #87643A;      /* Deep tea-brown */
   
-  --color-terracotta: #D97455;     /* Soft warm orange-red for status/accents */
+  --color-terracotta: #B7654A;     /* Soft seal-red accent */
   
-  --color-text-primary: #262E2A;   /* Soft charcoal green */
-  --color-text-secondary: #5E6E67; /* Muted slate green */
-  --color-text-light: #8E9E97;     /* Light grey green */
+  --color-text-primary: #241F19;   /* Soft ink black */
+  --color-text-secondary: #665B4E; /* Warm grey-brown */
+  --color-text-light: #958878;     /* Light tea grey */
   --color-text-white: #FFFFFF;     
   
   /* Layout & Sizing */
   --phone-width: 390px;
   --phone-height: 844px;
-  --border-radius-lg: 16px;
+  --border-radius-lg: 18px;
   --border-radius-md: 12px;
   --border-radius-sm: 8px;
-  --shadow-sm: 0 2px 4px rgba(30, 63, 53, 0.04);
-  --shadow-md: 0 4px 12px rgba(30, 63, 53, 0.08);
-  --shadow-lg: 0 12px 30px rgba(30, 63, 53, 0.12);
+  --shadow-sm: 0 2px 8px rgba(74, 49, 21, 0.06);
+  --shadow-md: 0 8px 20px rgba(74, 49, 21, 0.1);
+  --shadow-lg: 0 18px 38px rgba(55, 38, 20, 0.16);
   --shadow-phone: 0 24px 64px rgba(0, 0, 0, 0.15);
+  --paper-bg:
+    url("assets/rice-paper-bg.svg") center / cover no-repeat,
+    linear-gradient(140deg, rgba(255, 252, 244, 0.95), rgba(249, 239, 220, 0.9)),
+    #FCF5E9;
+  --paper-card-bg:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(251, 244, 231, 0.9)),
+    #FFF9ED;
   
   /* Font Families */
   --font-serif: "Noto Serif SC", Georgia, serif;
@@ -56,7 +63,9 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: #F0EDE6;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(185, 148, 95, 0.14), transparent 36rem),
+    #ECE2D1;
   color: var(--color-text-primary);
   line-height: 1.6;
   display: flex;
@@ -83,9 +92,9 @@ body {
 .phone-frame {
   width: var(--phone-width);
   height: var(--phone-height);
-  background-color: var(--color-bg-cream);
+  background: var(--paper-bg);
   border-radius: 40px;
-  border: 12px solid #2A2F2D; /* Elegant metal bezel border */
+  border: 12px solid #29251F; /* Warm ink device bezel */
   position: relative;
   box-shadow: var(--shadow-phone);
   overflow: hidden;
@@ -130,7 +139,7 @@ body {
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background-color: var(--color-bg-cream);
+  background: var(--paper-bg);
   position: relative;
   overflow: hidden;
   padding-top: 25px;    /* Leave space for notch */
@@ -169,7 +178,7 @@ body {
   transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateX(15px);
   z-index: 1;
-  background-color: var(--color-bg-cream);
+  background: var(--paper-bg);
 }
 
 .screen.active {
@@ -183,7 +192,7 @@ body {
 .screen-content {
   flex: 1;
   overflow-y: auto;
-  padding: 1.25rem 1.25rem 2.5rem 1.25rem;
+  padding: 1.25rem 1.15rem 2.5rem 1.15rem;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none;  /* IE 10+ */
 }
@@ -194,20 +203,23 @@ body {
 
 /* Screen Header */
 .screen-header {
-  padding: 0.75rem 1.25rem;
+  padding: 0.98rem 1.1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--color-bg-sand);
-  background-color: var(--color-bg-cream);
+  border-bottom: 1px solid rgba(135, 100, 58, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 250, 239, 0.98), rgba(246, 235, 213, 0.94)),
+    var(--color-bg-cream);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
   z-index: 15;
 }
 
 .screen-header-title {
   font-family: var(--font-serif);
-  font-size: 1.25rem;
+  font-size: 1.46rem;
   color: var(--color-primary-green);
-  font-weight: 700;
+  font-weight: 900;
   text-align: center;
   flex: 1;
 }
@@ -216,7 +228,7 @@ body {
   background: none;
   border: none;
   color: var(--color-primary-green);
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-family: var(--font-sans);
   cursor: pointer;
   display: flex;
@@ -228,7 +240,7 @@ body {
 }
 
 .header-btn:hover {
-  background-color: var(--color-bg-sage);
+  background-color: rgba(238, 243, 234, 0.86);
 }
 
 /* ==========================================================================
@@ -250,12 +262,12 @@ p {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 3.25rem; /* Large accessible target */
+  min-height: 3.35rem; /* Large accessible target */
   padding: 0.75rem 1.5rem;
-  border-radius: 30px; /* Elegant pill-shaped */
+  border-radius: 999px; /* Elegant pill-shaped */
   font-family: var(--font-sans);
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   border: none;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -264,8 +276,13 @@ p {
 }
 
 .btn-primary {
-  background-color: var(--color-primary-green);
+  background:
+    linear-gradient(180deg, #1E5546 0%, var(--color-primary-green) 100%);
   color: var(--color-bg-cream);
+  border: 1px solid rgba(185, 148, 95, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 8px 18px rgba(21, 63, 51, 0.22);
 }
 
 .btn-primary:active {
@@ -274,9 +291,9 @@ p {
 }
 
 .btn-secondary {
-  background-color: var(--color-bg-sand);
+  background: var(--paper-card-bg);
   color: var(--color-primary-green);
-  border: 1px solid var(--color-accent-gold);
+  border: 1px solid rgba(185, 148, 95, 0.58);
 }
 
 .btn-secondary:active {
@@ -296,11 +313,11 @@ p {
 }
 
 .btn-disabled {
-  background-color: var(--color-bg-sage) !important;
+  background: linear-gradient(180deg, rgba(239, 226, 202, 0.72), rgba(232, 222, 202, 0.72)) !important;
   color: var(--color-text-light) !important;
-  border: none !important;
+  border: 1px solid rgba(185, 148, 95, 0.32) !important;
   cursor: not-allowed;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 /* Group container with consistent bottom spacings */
@@ -330,14 +347,14 @@ p {
 }
 
 .chip-btn {
-  background-color: var(--color-bg-cream);
-  border: 2px solid var(--color-bg-sand);
+  background: var(--paper-card-bg);
+  border: 2px solid rgba(185, 148, 95, 0.28);
   color: var(--color-text-secondary);
   padding: 0.8rem 0.5rem;
   border-radius: var(--border-radius-md);
   font-family: var(--font-sans);
   font-weight: 500;
-  font-size: 0.95rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
@@ -349,7 +366,8 @@ p {
 }
 
 .chip-btn.selected {
-  background-color: var(--color-bg-sage);
+  background:
+    linear-gradient(180deg, rgba(238, 243, 234, 0.95), rgba(245, 248, 242, 0.95));
   border-color: var(--color-primary-green);
   color: var(--color-primary-green);
   font-weight: 700;
@@ -357,10 +375,10 @@ p {
 
 /* Card components */
 .card {
-  background-color: #FFFFFF;
+  background: var(--paper-card-bg);
   border-radius: var(--border-radius-lg);
   padding: 1.25rem;
-  border: 1px solid var(--color-bg-sand);
+  border: 1px solid rgba(185, 148, 95, 0.34);
   box-shadow: var(--shadow-sm);
   margin-bottom: 1.25rem;
   position: relative;
@@ -394,25 +412,29 @@ p {
 /* --- 1. Homepage --- */
 .home-banner {
   text-align: center;
-  padding: 2rem 0 1.5rem 0;
-  background: radial-gradient(circle at top, var(--color-bg-sand) 0%, var(--color-bg-cream) 100%);
+  padding: 2.1rem 0 1.7rem 0;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(21, 63, 51, 0.08), transparent 58%),
+    radial-gradient(ellipse at 20% 16%, rgba(185, 148, 95, 0.22), transparent 42%),
+    linear-gradient(180deg, rgba(255, 249, 235, 0.96), rgba(247, 236, 214, 0.72));
   border-bottom-left-radius: 24px;
   border-bottom-right-radius: 24px;
+  border-bottom: 1px solid rgba(185, 148, 95, 0.34);
 }
 
 .home-logo {
   font-family: var(--font-serif);
-  font-size: 2.25rem;
+  font-size: 2.35rem;
   font-weight: 900;
   color: var(--color-primary-green);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.06em;
   margin-bottom: 0.25rem;
-  text-shadow: 1px 1px 0px rgba(197, 174, 128, 0.4);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .home-subtitle {
-  font-size: 0.95rem;
-  letter-spacing: 0.2em;
+  font-size: 0.98rem;
+  letter-spacing: 0.04em;
   color: var(--color-text-secondary);
   text-transform: uppercase;
   margin-bottom: 1.5rem;
@@ -420,8 +442,8 @@ p {
 }
 
 .teacher-intro-card {
-  background-color: #FFFFFF;
-  border: 1px solid var(--color-bg-sand);
+  background: var(--paper-card-bg);
+  border: 1px solid rgba(185, 148, 95, 0.38);
   border-radius: var(--border-radius-lg);
   padding: 1.25rem;
   margin: 1.25rem 0;
@@ -436,9 +458,9 @@ p {
   position: absolute;
   top: 0;
   left: 0;
-  width: 4px;
+  width: 5px;
   height: 100%;
-  background-color: var(--color-accent-gold);
+  background: linear-gradient(180deg, var(--color-accent-gold), var(--color-primary-green));
 }
 
 .avatar-wrapper {
@@ -449,7 +471,8 @@ p {
   width: 4.5rem;
   height: 4.5rem;
   border-radius: 50%;
-  background-color: var(--color-bg-sage);
+  background:
+    radial-gradient(circle at 35% 25%, #FFFFFF, var(--color-bg-sage));
   border: 2px solid var(--color-accent-gold);
   overflow: hidden;
   display: flex;
@@ -464,12 +487,12 @@ p {
 }
 
 .teacher-details h3 {
-  font-size: 1.15rem;
+  font-size: 1.22rem;
   margin-bottom: 0.25rem;
 }
 
 .teacher-details p {
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   line-height: 1.5;
 }
 
@@ -477,8 +500,8 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background-color: var(--color-bg-sand);
-  border: 1px solid var(--color-accent-gold);
+  background-color: rgba(239, 226, 202, 0.72);
+  border: 1px solid rgba(185, 148, 95, 0.62);
   padding: 0.4rem 0.8rem;
   border-radius: 20px;
   font-size: 0.85rem;
@@ -501,10 +524,11 @@ p {
 
 /* --- 2. Profile List --- */
 .profile-explain {
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   color: var(--color-text-secondary);
   margin-bottom: 1.25rem;
-  background-color: var(--color-bg-sage);
+  background:
+    linear-gradient(180deg, rgba(238, 243, 234, 0.88), rgba(252, 245, 233, 0.88));
   padding: 0.75rem 1rem;
   border-radius: var(--border-radius-sm);
   border-left: 3px solid var(--color-primary-green);
@@ -555,13 +579,13 @@ p {
 /* --- 3. Create Profile --- */
 .custom-input {
   width: 100%;
-  min-height: 3rem;
+  min-height: 3.15rem;
   padding: 0.75rem 1rem;
   border-radius: var(--border-radius-md);
-  border: 2px solid var(--color-bg-sand);
-  background-color: #FFFFFF;
+  border: 2px solid rgba(185, 148, 95, 0.32);
+  background: rgba(255, 253, 248, 0.92);
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: var(--color-text-primary);
   outline: none;
   transition: border-color 0.2s ease;
@@ -587,11 +611,11 @@ p {
 /* Large select fields */
 .custom-select {
   width: 100%;
-  min-height: 3rem;
+  min-height: 3.15rem;
   padding: 0.75rem 1.25rem;
   border-radius: var(--border-radius-md);
-  border: 2px solid var(--color-bg-sand);
-  background-color: #FFFFFF;
+  border: 2px solid rgba(185, 148, 95, 0.32);
+  background-color: rgba(255, 253, 248, 0.94);
   font-family: var(--font-sans);
   font-size: 1rem;
   color: var(--color-text-primary);
@@ -607,31 +631,168 @@ p {
   border-color: var(--color-primary-green);
 }
 
+.option-toggle {
+  display: grid;
+  grid-template-columns: 3.1rem 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 4.2rem;
+  padding: 0.78rem 0.92rem;
+  border: 2px solid rgba(185, 148, 95, 0.32);
+  border-radius: var(--border-radius-md);
+  background: var(--paper-card-bg);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.option-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.option-toggle-box {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 2px solid rgba(21, 63, 51, 0.46);
+  background: rgba(255, 253, 247, 0.9);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.option-toggle-box::after {
+  content: "";
+  position: absolute;
+  left: 0.73rem;
+  top: 0.47rem;
+  width: 0.58rem;
+  height: 1.05rem;
+  border: solid var(--color-bg-cream);
+  border-width: 0 0.18rem 0.18rem 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.18s ease;
+}
+
+.option-toggle input:checked + .option-toggle-box {
+  background: var(--color-primary-green);
+  border-color: var(--color-primary-green);
+  box-shadow: 0 6px 14px rgba(21, 63, 51, 0.16);
+}
+
+.option-toggle input:checked + .option-toggle-box::after {
+  transform: rotate(45deg) scale(1);
+}
+
+.option-toggle-copy strong {
+  display: block;
+  font-size: 1.03rem;
+  color: var(--color-primary-green);
+  line-height: 1.3;
+}
+
+.option-toggle-copy small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 /* --- 4. Teacher Chat Screen --- */
 .chat-container {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--paper-bg);
+  position: relative;
+}
+
+.chat-container > div:first-child {
+  background:
+    linear-gradient(90deg, rgba(239, 226, 202, 0.78), rgba(248, 240, 224, 0.88)) !important;
+  font-size: 0.96rem !important;
+  padding: 0.68rem 0.9rem !important;
+  color: var(--color-text-secondary) !important;
+  border-bottom: 1px solid rgba(185, 148, 95, 0.28) !important;
+  font-weight: 700;
 }
 
 .chat-history {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 1.15rem 0.9rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   scrollbar-width: none;
+  position: relative;
+}
+
+.chat-history::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2.4rem;
+  height: 20rem;
+  background: url("assets/chat-landscape.svg") center bottom / 100% auto no-repeat;
+  opacity: 0.74;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .chat-history::-webkit-scrollbar {
   display: none;
 }
 
+.chat-current-profile-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 16px;
+  border: 1px solid rgba(185, 148, 95, 0.36);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.92), rgba(249, 241, 224, 0.9));
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-current-profile-card strong {
+  display: block;
+  color: var(--color-primary-green);
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.chat-current-profile-card button {
+  min-width: 5.3rem;
+  min-height: 2.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(21, 63, 51, 0.3);
+  background: rgba(238, 243, 234, 0.86);
+  color: var(--color-primary-green);
+  font-weight: 800;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+}
+
+.mini-label {
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+}
+
 .message-bubble {
   display: flex;
-  gap: 0.75rem;
-  max-width: 90%;
+  gap: 0.86rem;
+  max-width: 94%;
+  position: relative;
+  z-index: 1;
 }
 
 .message-bubble.teacher {
@@ -645,8 +806,8 @@ p {
 }
 
 .chat-avatar {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 50%;
   background-color: var(--color-bg-sage);
   border: 1px solid var(--color-accent-gold);
@@ -664,85 +825,256 @@ p {
 }
 
 .message-content {
-  background-color: #FFFFFF;
-  border-radius: var(--border-radius-lg);
-  padding: 0.85rem 1rem;
+  background: var(--paper-card-bg);
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-bg-sand);
-  font-size: 0.95rem;
-  line-height: 1.5;
+  border: 1px solid rgba(185, 148, 95, 0.35);
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.62;
+  font-weight: 700;
   color: var(--color-text-primary);
 }
 
 .message-bubble.teacher .message-content {
-  border-top-left-radius: 4px;
+  border-top-left-radius: 6px;
 }
 
 .message-bubble.user .message-content {
-  background-color: var(--color-primary-green);
+  background:
+    linear-gradient(180deg, #1E5546, var(--color-primary-green));
   color: var(--color-bg-cream);
   border-top-right-radius: 4px;
   border-color: var(--color-primary-green);
 }
 
 .chat-interactive-area {
-  padding: 0.5rem 1rem;
+  padding: 0.56rem 0.9rem 0.8rem;
+  position: relative;
+  z-index: 2;
 }
 
 /* Chat Setup Card in Dialog */
 .chat-setup-card {
-  background-color: #FFFFFF;
-  border: 1px solid var(--color-bg-sand);
-  border-radius: var(--border-radius-lg);
-  padding: 1.25rem;
+  background: var(--paper-card-bg);
+  border: 2px solid rgba(185, 148, 95, 0.46);
+  border-radius: 20px;
+  padding: 1rem 0.85rem 0.78rem;
   box-shadow: var(--shadow-md);
   margin-top: 0.5rem;
 }
 
 .chat-setup-title {
-  font-size: 1rem;
-  font-weight: 700;
+  font-family: var(--font-serif);
+  font-size: 1.08rem;
+  font-weight: 900;
   color: var(--color-primary-green);
   margin-bottom: 0.75rem;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.5rem;
+}
+
+.title-icon {
+  width: 1.65rem;
+  height: 1.65rem;
+  color: var(--color-dark-gold);
+  flex-shrink: 0;
 }
 
 /* Direction chips - larger for easy tapping */
 .direction-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.6rem;
-  margin-bottom: 1rem;
+  gap: 0.68rem 0.72rem;
+  margin-bottom: 0.95rem;
 }
 
 .direction-chip {
-  background-color: var(--color-bg-cream);
-  border: 2px solid var(--color-bg-sand);
-  padding: 0.85rem 0.5rem;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.98), rgba(250, 243, 230, 0.9));
+  border: 2px solid rgba(185, 148, 95, 0.3);
+  min-height: 4.25rem;
+  padding: 0.68rem 0.55rem;
   border-radius: var(--border-radius-md);
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
+  font-weight: 900;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--color-text-primary);
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  gap: 0.5rem;
   align-items: center;
-  box-shadow: var(--shadow-sm);
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(74, 49, 21, 0.035);
+  white-space: nowrap;
 }
 
 .direction-chip .icon {
-  font-size: 1.25rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #635845;
+  flex-shrink: 0;
+}
+
+.direction-chip .icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
 }
 
 .direction-chip.selected {
-  background-color: var(--color-bg-sage);
+  background:
+    linear-gradient(180deg, rgba(238, 243, 234, 0.96), rgba(248, 246, 237, 0.96));
   border-color: var(--color-primary-green);
   color: var(--color-primary-green);
+  box-shadow:
+    inset 0 0 0 1px rgba(21, 63, 51, 0.24),
+    0 6px 16px rgba(21, 63, 51, 0.1);
+}
+
+.direction-chip.selected .icon {
+  color: var(--color-primary-green);
+}
+
+.chat-setup-card .btn-primary {
+  min-height: 3.18rem;
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  font-weight: 900;
+  border: 2px solid rgba(217, 193, 144, 0.72);
+}
+
+.chat-setup-card .btn-primary::before,
+.chat-setup-card .btn-primary::after {
+  content: "";
+  position: absolute;
+  bottom: -0.35rem;
+  width: 5.75rem;
+  height: 3rem;
+  background: url("assets/button-cloud.svg") center / contain no-repeat;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.chat-setup-card .btn-primary::before {
+  left: 0.25rem;
+}
+
+.chat-setup-card .btn-primary::after {
+  right: 0.25rem;
+  transform: scaleX(-1);
+}
+
+.chat-setup-card .btn-primary.btn-disabled::before,
+.chat-setup-card .btn-primary.btn-disabled::after {
+  opacity: 0.2;
+}
+
+.chat-input-row {
+  display: grid;
+  grid-template-columns: 2.55rem 1fr 4.05rem;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.72rem;
+}
+
+.voice-btn,
+.send-btn {
+  border: none;
+  font-family: var(--font-sans);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.voice-btn {
+  width: 2.55rem;
+  height: 2.55rem;
+  border-radius: 999px;
+  background: rgba(255, 253, 247, 0.82);
+  color: var(--color-primary-green);
+  border: 2px solid var(--color-primary-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-btn.listening {
+  background: var(--color-primary-green);
+  color: var(--color-bg-cream);
+  box-shadow: 0 0 0 0.35rem rgba(21, 63, 51, 0.12);
+}
+
+.voice-btn svg {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.chat-text-field {
+  width: 100%;
+  min-width: 0;
+  height: 2.55rem;
+  border-radius: 999px;
+  border: 2px solid rgba(185, 148, 95, 0.35);
+  background: rgba(255, 253, 247, 0.88);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  padding: 0 0.82rem;
+  font-size: 0.9rem;
+  line-height: 2.55rem;
+  white-space: nowrap;
+  overflow: hidden;
+  outline: none;
+  box-shadow: none;
+}
+
+.chat-text-field::placeholder {
+  color: var(--color-text-light);
+  font-weight: 700;
+}
+
+.chat-text-field:focus {
+  border-color: var(--color-primary-green);
+  background: rgba(255, 253, 247, 0.98);
+}
+
+.send-btn {
+  min-height: 2.55rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #1E5546, var(--color-primary-green));
+  color: var(--color-bg-cream);
+  font-size: 1rem;
+  box-shadow: 0 5px 12px rgba(21, 63, 51, 0.18);
+}
+
+.chat-input-hint {
+  margin-top: 0.42rem;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  padding: 0 0.18rem;
+}
+
+.chat-input-hint.success {
+  color: var(--color-primary-green);
+  font-weight: 700;
+}
+
+.chat-input-hint.warning {
+  color: var(--color-terracotta);
+  font-weight: 700;
 }
 
 /* Confirmation dialog inside chat */
@@ -803,9 +1135,9 @@ p {
   line-height: 1.6;
   margin-bottom: 1.5rem;
   padding: 0.85rem;
-  background-color: #FFFFFF;
+  background: var(--paper-card-bg);
   border-radius: var(--border-radius-md);
-  border: 1px solid var(--color-bg-sand);
+  border: 1px solid rgba(185, 148, 95, 0.34);
 }
 
 /* Steps checklist indicator */
@@ -930,6 +1262,148 @@ p {
   transform: scale(1);
 }
 
+.app-modal-overlay {
+  z-index: 140;
+  padding: 1rem;
+}
+
+.modal-card-compact,
+.profile-picker-card {
+  position: relative;
+  width: 92%;
+  max-height: 84%;
+  background: var(--paper-card-bg);
+}
+
+.modal-card-compact {
+  padding-top: 2rem;
+}
+
+.profile-picker-card {
+  padding-top: 2rem;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.78rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 1px solid rgba(185, 148, 95, 0.42);
+  background: rgba(255, 253, 247, 0.88);
+  color: var(--color-primary-green);
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modal-mini-title {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--color-primary-green);
+  text-align: center;
+  margin-bottom: 0.55rem;
+}
+
+.modal-intro-text {
+  font-size: 0.96rem;
+  line-height: 1.65;
+  text-align: left;
+  color: var(--color-text-secondary);
+  margin-bottom: 1rem;
+}
+
+.login-benefits {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.login-benefits span {
+  min-height: 2.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(185, 148, 95, 0.34);
+  background: rgba(238, 243, 234, 0.78);
+  color: var(--color-primary-green);
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 0.25rem;
+}
+
+.profile-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 22rem;
+  overflow-y: auto;
+  margin: 0.5rem 0 1rem;
+  padding-right: 0.15rem;
+}
+
+.profile-picker-item {
+  width: 100%;
+  min-height: 4.4rem;
+  border: 2px solid rgba(185, 148, 95, 0.32);
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 253, 247, 0.9);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  text-align: left;
+  padding: 0.76rem 0.88rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-picker-item:active {
+  border-color: var(--color-primary-green);
+  background: var(--color-bg-sage);
+  transform: scale(0.99);
+}
+
+.profile-picker-main strong {
+  display: block;
+  font-family: var(--font-serif);
+  color: var(--color-primary-green);
+  font-size: 1.12rem;
+  line-height: 1.35;
+}
+
+.profile-picker-main span,
+.profile-picker-meta {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--color-text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.profile-picker-meta {
+  min-width: 4.8rem;
+  text-align: right;
+  font-weight: 700;
+  color: var(--color-dark-gold);
+}
+
+.compact-empty-state {
+  padding: 1.2rem 0.5rem;
+}
+
 .success-mark {
   width: 4rem;
   height: 4rem;
@@ -1039,6 +1513,7 @@ p {
   color: var(--color-text-secondary);
   margin: 0.25rem 0 0.75rem 0;
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 

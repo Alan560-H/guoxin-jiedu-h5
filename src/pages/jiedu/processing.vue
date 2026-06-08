@@ -14,7 +14,7 @@ const completed = ref(false)
 
 const steps = [
   { title: '已确认档案信息', desc: '档案与关注方向已记录' },
-  { title: '已完成关注方向整理', desc: '重点方向已归纳' },
+  { title: '正在整理关注方向', desc: '重点方向已归纳' },
   { title: '正在生成完整解读', desc: '结合性格与阶段状态深度整理中…' },
   { title: '完成后通知您查看', desc: '' },
 ]
@@ -71,58 +71,55 @@ function goRecords() {
 </script>
 
 <template>
-  <view class="gx-page flex_column">
-    <GxNavBar title="心语老师正在为您整理" />
+  <view class="gx-page flex_column page-container">
+    <GxNavBar title="正在为您整理" />
+
     <scroll-view scroll-y class="gx-scroll">
-      <view style="background: linear-gradient(160deg, #2C5040, #1E3A30); padding: 48rpx 32rpx; text-align: center; color: #fff;">
-        <view style="font-size: 72rpx;">
-          🌿
-        </view>
-        <view style="font-size: calc(36rpx * var(--gx-font-scale)); font-weight: 700; margin-top: 16rpx;">
-          心语老师正在深度整理
-        </view>
-        <view class="gx-text-sub" style="color: rgba(255,255,255,0.75); margin-top: 12rpx;">
-          约 10 秒，请稍候
-        </view>
+      <!-- Loading Banner -->
+      <view class="loading-banner">
+        <view class="loading-circle"></view>
+        <view class="banner-title">心语老师正在深度整理</view>
+        <view class="banner-desc">我正在调阅东方传统哲学观点，结合心理学模型为您整理更完整的内容。预计需要一些时间，完成后会通知您查看完整解读。</view>
       </view>
 
-      <GxCard style="margin-top: 24rpx;">
-        <view style="font-weight: 700; color: var(--gx-gold); margin-bottom: 12rpx;">
+      <!-- Preview card -->
+      <GxCard class="preview-card">
+        <view class="gx-form-label section-label">
           初步预览
         </view>
-        <view class="gx-text-sub" style="line-height: 1.8;">
-          根据您提供的信息，心语老师已经开始整理本次专属解读。初步来看，本次内容会重点围绕阶段状态、家庭关系和生活节奏展开。
+        <view class="preview-text">
+          根据您提供的信息，心语老师已经开始整理本次专属解读。<strong>初步来看，本次内容会重点围绕您的阶段状态、家庭关系和生活节奏展开。</strong>
         </view>
       </GxCard>
 
-      <view style="padding: 24rpx 32rpx;">
+      <!-- Vertical timeline checklist -->
+      <view class="progress-timeline">
         <view
           v-for="(s, idx) in steps"
           :key="idx"
-          class="gx-timeline-step"
+          class="timeline-step"
+          :class="{
+            completed: idx + 1 < step,
+            active: idx + 1 === step,
+          }"
         >
-          <view
-            class="gx-step-dot"
-            :class="{
-              'gx-step-done': idx + 1 < step,
-              'gx-step-active': idx + 1 === step,
-              'gx-step-pending': idx + 1 > step,
-            }"
-          >
-            {{ idx + 1 < step ? '✓' : idx + 1 }}
+          <view class="timeline-icon">
+            <text v-if="idx + 1 < step">✓</text>
+            <text v-else>{{ idx + 1 }}</text>
           </view>
-          <view>
-            <view style="font-weight: 700; color: var(--gx-text);">
+          <view class="step-content">
+            <view class="step-title">
               {{ s.title }}
             </view>
-            <view v-if="s.desc" class="gx-text-hint">
+            <view v-if="s.desc && (idx + 1 === step || idx + 1 < step)" class="step-desc">
               {{ s.desc }}
             </view>
           </view>
         </view>
       </view>
 
-      <view class="gx-btn-group">
+      <!-- Action buttons -->
+      <view class="gx-btn-group action-buttons">
         <GxButton type="secondary" @click="skipNow">
           解读完成，立即查看
         </GxButton>
@@ -130,7 +127,187 @@ function goRecords() {
           查看解读记录
         </GxButton>
       </view>
+
       <view class="gx-safe-bottom" />
     </scroll-view>
   </view>
 </template>
+
+<style scoped lang="scss">
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.loading-banner {
+  background: linear-gradient(160deg, #153F33, #255648);
+  padding: 60rpx 40rpx 48rpx;
+  text-align: center;
+  color: #FCF5E9;
+  flex-shrink: 0;
+}
+
+.loading-circle {
+  width: 90rpx;
+  height: 90rpx;
+  border-radius: 50%;
+  border: 8rpx solid rgba(239, 226, 202, 0.3);
+  border-top-color: #B9945F;
+  margin: 0 auto 24rpx auto;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.banner-title {
+  font-family: "Noto Serif SC", Georgia, serif;
+  font-size: 36rpx;
+  font-weight: 700;
+  margin-bottom: 16rpx;
+}
+
+.banner-desc {
+  font-size: 24rpx;
+  line-height: 1.6;
+  opacity: 0.85;
+}
+
+.preview-card {
+  margin-top: 32rpx;
+
+  .section-label {
+    font-family: "Noto Serif SC", Georgia, serif;
+    color: #153F33;
+    font-size: 30rpx;
+    font-weight: 700;
+    border-left: 6rpx solid #B9945F;
+    padding-left: 16rpx;
+    line-height: 1;
+    margin-bottom: 16rpx;
+  }
+
+  .preview-text {
+    font-size: 26rpx;
+    color: #665B4E;
+    line-height: 1.7;
+
+    strong {
+      color: #241F19;
+    }
+  }
+}
+
+/* Timeline vertical checklists */
+.progress-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 40rpx;
+  margin: 40rpx 32rpx;
+  padding-left: 16rpx;
+}
+
+.timeline-step {
+  display: flex;
+  gap: 24rpx;
+  align-items: flex-start;
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 24rpx;
+    top: 52rpx;
+    bottom: -52rpx;
+    width: 4rpx;
+    background-color: #E2DCD3;
+    z-index: 1;
+  }
+
+  &:last-child::before {
+    display: none;
+  }
+}
+
+.timeline-icon {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background-color: #E2DCD3;
+  color: #958878;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  font-weight: 700;
+  z-index: 5;
+  flex-shrink: 0;
+}
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.step-title {
+  font-size: 28rpx;
+  color: #958878;
+  font-weight: 500;
+  line-height: 52rpx; /* Align with center of icon */
+}
+
+.step-desc {
+  font-size: 24rpx;
+  color: #958878;
+  margin-top: 8rpx;
+}
+
+/* Timeline Active / Completed status */
+.timeline-step.completed {
+  .timeline-icon {
+    background-color: #153F33;
+    color: #FCF5E9;
+  }
+
+  .step-title {
+    color: #241F19;
+    font-weight: 700;
+  }
+
+  .step-desc {
+    color: #665B4E;
+  }
+}
+
+.timeline-step.active {
+  .timeline-icon {
+    background-color: #B9945F;
+    color: #241F19;
+    animation: pulse 1.5s infinite;
+  }
+
+  .step-title {
+    color: #153F33;
+    font-weight: 700;
+  }
+
+  .step-desc {
+    color: #153F33;
+  }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(185, 148, 95, 0.4); }
+  70% { box-shadow: 0 0 0 16rpx rgba(185, 148, 95, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(185, 148, 95, 0); }
+}
+
+.action-buttons {
+  margin-top: 16rpx;
+  margin-bottom: 40rpx;
+}
+</style>

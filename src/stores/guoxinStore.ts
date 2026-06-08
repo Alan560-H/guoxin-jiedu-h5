@@ -12,11 +12,12 @@ import { computed, ref } from 'vue'
 export const useGuoxinStore = defineStore('guoxin', () => {
   const profiles = ref<ProfileVo[]>([])
   const records = ref<RecordVo[]>([])
-  const credits = ref(1)
+  const credits = ref(99)
   const activeProfileId = ref('')
   const activeRecordId = ref('')
   const selectedDirections = ref<DirectionValue[]>([])
   const fontScale = ref<FontScale>('standard')
+  const isLoggedIn = ref(false)
 
   const activeProfile = computed(() =>
     profiles.value.find(p => p.id === activeProfileId.value) ?? null,
@@ -28,12 +29,13 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     if (profiles.value.length === 0) {
       profiles.value = DEFAULT_PROFILES.map(normalizeSeedProfile)
       records.value = [...DEFAULT_RECORDS]
-      if (credits.value <= 0)
-        credits.value = 1
       activeProfileId.value = profiles.value[0]?.id ?? ''
     }
     else if (!activeProfileId.value || !profiles.value.some(p => p.id === activeProfileId.value)) {
       activeProfileId.value = profiles.value[0]?.id ?? ''
+    }
+    if (credits.value <= 0) {
+      credits.value = 99
     }
     setFontScale(fontScale.value)
   }
@@ -68,6 +70,27 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     profiles.value.push(profile)
     activeProfileId.value = profile.id
     return profile
+  }
+
+  function updateProfile(id: string, dto: CreateProfileDto): ProfileVo | null {
+    const idx = profiles.value.findIndex(p => p.id === id)
+    if (idx === -1)
+      return null
+    const existing = profiles.value[idx]
+    const updated: ProfileVo = {
+      ...existing,
+      ...dto,
+    }
+    profiles.value[idx] = updated
+    return updated
+  }
+
+  function deleteProfile(id: string) {
+    profiles.value = profiles.value.filter(p => p.id !== id)
+    records.value = records.value.filter(r => r.profileId !== id)
+    if (activeProfileId.value === id) {
+      activeProfileId.value = profiles.value[0]?.id ?? ''
+    }
   }
 
   function setActiveProfile(profileId: string) {
@@ -204,6 +227,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     // #endif
   }
 
+  function addCredits(amount: number) {
+    credits.value += amount
+  }
+
   return {
     profiles,
     records,
@@ -212,6 +239,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     activeRecordId,
     selectedDirections,
     fontScale,
+    isLoggedIn,
     activeProfile,
     latestRecord,
     initSeedData,
@@ -219,6 +247,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     getRecordsByProfileId,
     getRecordById,
     createProfile,
+    updateProfile,
+    deleteProfile,
     setActiveProfile,
     resolveStartProfile,
     navigateToSetup,
@@ -227,11 +257,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     completeJiedu,
     purchaseCredits,
     setFontScale,
+    addCredits,
   }
 }, {
   persist: {
     key: 'guoxin-store',
     storage: localStorage,
-    pick: ['profiles', 'records', 'credits', 'activeProfileId', 'selectedDirections', 'fontScale'],
+    pick: ['profiles', 'records', 'credits', 'activeProfileId', 'selectedDirections', 'fontScale', 'isLoggedIn'],
   },
 })

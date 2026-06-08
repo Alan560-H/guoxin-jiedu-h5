@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>国心解读 - H5原型演示</title>
-  <link rel="stylesheet" href="index.css">
-  <script src="app.js" defer></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23FCF5E9'/%3E%3Cpath d='M18 38c6-13 19-16 29-6 4-10 14-12 21-4' fill='none' stroke='%23153F33' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M15 46c10-6 22-6 33 0' fill='none' stroke='%23B9945F' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="index.css?v=20260608-chat-input">
+  <script src="app.js?v=20260608-chat-input" defer></script>
 </head>
 <body>
 
@@ -25,7 +26,7 @@
               <!-- Banner Section -->
               <div class="home-banner">
                 <div class="home-logo">国心解读</div>
-                <div class="home-subtitle">东方文化视角下的生活与心理参考</div>
+                <div class="home-subtitle">东方文化视角下的个人解读服务</div>
               </div>
               
               <!-- Teacher Intro Card -->
@@ -33,7 +34,7 @@
                 <div class="avatar-wrapper">
                   <div class="avatar">
                     <!-- Placeholder avatar from Unsplash representing warm psychological companion -->
-                    <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=60" alt="心语老师">
+                    <img src="assets/xinyu-teacher.svg" alt="心语老师">
                   </div>
                 </div>
                 <div class="teacher-details">
@@ -42,18 +43,18 @@
                   
                   <!-- Credit counter -->
                   <div class="credit-badge">
-                    剩余解读次数：<span class="credit-count">1</span>次
+                    剩余解读次数：<span class="credit-count">3</span>次
                   </div>
                 </div>
               </div>
               
               <!-- Navigation Buttons -->
               <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
-                <button class="btn btn-primary" onclick="startJieduWithProfile(state.activeProfileId)">
+                <button class="btn btn-primary" onclick="openProfilePicker()">
                   开始我的专属解读
                 </button>
-                <button class="btn btn-secondary" onclick="navigateTo('screen-profiles')">
-                  查看/管理心语档案
+                <button class="btn btn-secondary" onclick="openProfilesPage()">
+                  查看心语档案
                 </button>
               </div>
               
@@ -79,7 +80,7 @@
             
             <div class="screen-content">
               <div class="profile-explain">
-                心语档案用于保存每位家人独立的基础信息和历史解读记录，方便心语老师给出更有针对性的参考建议。
+                心语档案用于保存每位家人独立的基础信息和解读记录。
               </div>
               
               <!-- Dynamic profile list items -->
@@ -88,8 +89,8 @@
               </div>
               
               <!-- Create button -->
-              <button class="btn btn-secondary" style="margin-top: 0.5rem;" onclick="navigateTo('screen-create-profile')">
-                ➕ 创建新的心语档案
+              <button class="btn btn-secondary" style="margin-top: 0.5rem;" onclick="openCreateProfile()">
+                创建新的心语档案
               </button>
             </div>
           </section>
@@ -102,7 +103,7 @@
               <button class="header-btn" onclick="handleBack()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>返回
               </button>
-              <div class="screen-header-title">创建心语档案</div>
+              <div class="screen-header-title" id="profile-form-title">创建心语档案</div>
               <div style="width: 50px;"></div>
             </header>
             
@@ -180,13 +181,24 @@
                 <label class="form-label" for="form-birth-place">出生地点</label>
                 <input type="text" class="custom-input" id="form-birth-place" placeholder="请选择或输入省市区，如：省市县区">
               </div>
+
+              <div class="form-group">
+                <label class="option-toggle" for="form-true-solar-time">
+                  <input type="checkbox" id="form-true-solar-time">
+                  <span class="option-toggle-box"></span>
+                  <span class="option-toggle-copy">
+                    <strong>使用真太阳时校正</strong>
+                    <small>勾选后，表示出生时间按出生地做校正。</small>
+                  </span>
+                </label>
+              </div>
               
               <!-- Form Action Buttons -->
               <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 2rem;">
-                <button class="btn btn-primary" onclick="handleSaveProfile(true)">
+                <button class="btn btn-primary" id="profile-form-primary-btn" onclick="handleSaveProfile(true)">
                   保存档案并开始解读
                 </button>
-                <button class="btn btn-secondary" onclick="handleSaveProfile(false)">
+                <button class="btn btn-secondary" id="profile-form-secondary-btn" onclick="handleSaveProfile(false)">
                   仅保存档案
                 </button>
               </div>
@@ -195,14 +207,14 @@
           </section>
 
           <!-- ==========================================
-               SCREEN 4: Chat Setup Page (心语老师对话交互)
+               SCREEN 4: Chat Setup Page (心语老师解读交互)
                ========================================== -->
           <section class="screen" id="screen-chat-setup">
             <header class="screen-header">
               <button class="header-btn" onclick="handleBack()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>返回
               </button>
-              <div class="screen-header-title">与心语老师对话</div>
+              <div class="screen-header-title">心语老师解读</div>
               <button class="header-btn" onclick="navigateTo('screen-profiles')">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>档案
               </button>
@@ -212,8 +224,8 @@
               
               <!-- Top bar indicator inside viewport -->
               <div style="background-color: var(--color-bg-sand); font-size: 0.8rem; padding: 0.5rem 1rem; color: var(--color-text-secondary); display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-bg-sand);">
-                <div>剩余解读次数：<span class="credit-count">1</span>次</div>
-                <div>专属顾问：心语老师</div>
+                <div>剩余解读次数：<span class="credit-count">3</span>次</div>
+                <div>心语老师</div>
               </div>
               
               <!-- Chat scroll area -->
@@ -237,7 +249,7 @@
               <button class="header-btn" onclick="handleBack()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>返回
               </button>
-              <div class="screen-header-title">正在为您整理</div>
+              <div class="screen-header-title">快速预览与深度整理</div>
               <div style="width: 50px;"></div>
             </header>
             
@@ -252,7 +264,7 @@
                 </div>
                 
                 <p style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 1.5rem; text-align: left; padding: 0 0.5rem;">
-                  我正在调阅东方传统哲学观点，结合心理学模型为您整理更完整的内容。<strong>预计 10 分钟左右完成</strong>，完成后会通知您查看完整解读。
+                  我正在继续为您整理更完整的内容，<strong>预计 10 分钟左右完成</strong>，完成后会通知您。
                 </p>
                 
                 <!-- Checklist timeline showing progress stages -->
@@ -278,10 +290,13 @@
                 <!-- Action Buttons during progress -->
                 <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 2rem;">
                   <button class="btn btn-secondary" onclick="navigateTo('screen-home')">
-                    稍后查看 / 返回首页
+                    稍后查看
                   </button>
                   <button class="btn btn-outline" onclick="navigateTo('screen-records')">
                     查看我的解读记录
+                  </button>
+                  <button class="btn btn-outline" onclick="navigateTo('screen-home')">
+                    返回首页
                   </button>
                 </div>
                 
@@ -304,14 +319,14 @@
                 <!-- Bullet list of generated content -->
                 <div style="background-color: var(--color-bg-sage); padding: 1rem; border-radius: var(--border-radius-md); font-size: 0.9rem; margin-bottom: 1.5rem; border: 1px dashed var(--color-accent-gold);">
                   <div style="font-weight: 700; color: var(--color-primary-green); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 4px;">
-                    🎯 解读报告包含以下内容：
+                    本次解读包含以下内容：
                   </div>
                   <ul style="list-style-type: none; padding-left: 0.5rem; display: flex; flex-direction: column; gap: 6px; color: var(--color-text-primary);">
-                    <li>• 🌟 <strong>阶段状态分析</strong> (您的生命发展周期观察)</li>
-                    <li>• 👤 <strong>性格表达特点</strong> (与家人的主要相处沟通模式)</li>
-                    <li>• 🏡 <strong>家庭关系建议</strong> (和谐温暖的生活交往建议)</li>
-                    <li>• 🍵 <strong>生活节奏建议</strong> (身心调节与情绪照护建议)</li>
-                    <li>• 🍂 <strong>近期尝试行动</strong> (可以尝试的传统生活微仪式)</li>
+                    <li>• <strong>阶段状态</strong></li>
+                    <li>• <strong>性格特点</strong></li>
+                    <li>• <strong>家庭关系建议</strong></li>
+                    <li>• <strong>生活节奏建议</strong></li>
+                    <li>• <strong>近期关注方向</strong></li>
                   </ul>
                 </div>
                 
@@ -364,24 +379,23 @@
                   <!-- Filled dynamically via JS based on selected directions -->
                 </div>
                 
-                <!-- Footer legal/medical disclaimer -->
                 <div class="report-disclaimer-card">
-                  <strong>温馨提示与免责声明：</strong><br>
-                  本解读报告基于东方传统文化视角与现代基础心理分析方法整理，旨在为您在面对日常情绪及家庭交往时提供柔性参考建议。本内容不属于玄学占卜或命运预测，不具备医疗诊断、心理治疗、法律维权或理财投资等专业效力。涉及重大现实决策时，请咨询专业人士。
+                  <strong>底部声明：</strong><br>
+                  本内容基于东方文化视角与心理分析方法整理，仅供学习、交流和生活参考，不作为医疗、投资、法律或重大人生决策依据。
                 </div>
                 
               </div>
               
-              <!-- Report bottom buttons -->
+              <!-- Detail bottom buttons -->
               <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 2rem;">
                 <button class="btn btn-primary" onclick="navigateTo('screen-chat-setup')">
-                  再次解读 / 重新生成
+                  返回心语老师
                 </button>
                 <button class="btn btn-secondary" onclick="navigateTo('screen-records')">
-                  返回解读记录
+                  查看解读记录
                 </button>
-                <button class="btn btn-outline" onclick="navigateTo('screen-home')">
-                  返回首页
+                <button class="btn btn-outline" onclick="startJieduWithProfile(state.activeProfileId)">
+                  再次解读
                 </button>
               </div>
               
@@ -396,7 +410,7 @@
               <button class="header-btn" onclick="handleBack()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>返回
               </button>
-              <div class="screen-header-title">历史解读记录</div>
+              <div class="screen-header-title">解读记录</div>
               <div style="width: 50px;"></div>
             </header>
             
@@ -404,7 +418,7 @@
               
               <!-- Info tag showing whose records are listed -->
               <div class="profile-explain" style="display: flex; align-items: center; justify-content: space-between;">
-                <span>当前正在查看：<strong id="records-profile-name">王建国 的</strong>档案记录</span>
+                <span>当前心语档案：<strong id="records-profile-name">王建国</strong></span>
                 <a href="#" style="color: var(--color-primary-green); font-weight: 700; text-decoration: none; font-size: 0.85rem;" onclick="navigateTo('screen-profiles')">切换档案</a>
               </div>
               
@@ -439,7 +453,7 @@
                 <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🌸</div>
                 <h2 class="paywall-intro-title">您的解读次数已用完</h2>
                 <p style="font-size: 0.9rem; color: var(--color-text-secondary); line-height: 1.5; padding: 0 0.5rem;">
-                  国心解读需要调阅计算并由心语老师进行深度生活梳理。开通以下权益包，即可继续为您和家人整理专属生活与心理建议。
+                  可以开通新的解读权益，继续让心语老师为您整理专属解读。
                 </p>
               </div>
               
@@ -455,7 +469,7 @@
                     <span class="paywall-price">¥19.9</span>
                     <span class="paywall-original-price">原价 ¥39</span>
                   </div>
-                  <span class="paywall-duration">包含 1 次解读 • 有效期 1 年</span>
+                  <span class="paywall-duration">可使用 1 次解读 • 有效期 1 年</span>
                 </div>
               </div>
               
@@ -471,7 +485,7 @@
                     <span class="paywall-price">¥99</span>
                     <span class="paywall-original-price">原价 ¥199</span>
                   </div>
-                  <span class="paywall-duration">包含 10 次解读 • 永久有效</span>
+                  <span class="paywall-duration">可使用 10 次 • 有效期 1 年</span>
                 </div>
               </div>
               
@@ -487,14 +501,14 @@
                     <span class="paywall-price">¥159</span>
                     <span class="paywall-original-price">原价 ¥299</span>
                   </div>
-                  <span class="paywall-duration">包含 20 次解读 • 永久有效</span>
+                  <span class="paywall-duration">可使用 20 次解读 • 有效期 1 年</span>
                 </div>
               </div>
               
               <!-- Paywall Action buttons -->
               <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 2rem;">
                 <button class="btn btn-primary" onclick="handlePurchase()">
-                  立即开通权益
+                  开通权益
                 </button>
                 <button class="btn btn-secondary" onclick="navigateTo('screen-home')">
                   稍后再说
@@ -502,12 +516,46 @@
               </div>
               
               <div style="text-align:center; font-size:0.75rem; color:var(--color-text-light); margin-top:1.5rem; line-height:1.4;">
-                购买即代表您已同意《用户使用协议》与《隐私权政策》<br>
-                网络数据服务，购买后即可直接计入账户额度。
+                原型仅展示解读权益选择，后续可接入实际开通流程。
               </div>
               
             </div>
           </section>
+
+          <div class="modal-overlay app-modal-overlay" id="modal-login">
+            <div class="modal-card modal-card-compact">
+              <button class="modal-close-btn" type="button" aria-label="关闭登录提示" onclick="closeLoginModal()">&times;</button>
+              <div class="modal-mini-title">登录国心解读</div>
+              <p class="modal-intro-text">
+                登录后可保存心语档案、解读记录与解读权益。本原型先展示登录判断，不展开授权细节。
+              </p>
+              <div class="login-benefits">
+                <span>心语档案保存</span>
+                <span>解读记录查看</span>
+                <span>解读权益同步</span>
+              </div>
+              <div class="modal-action-stack">
+                <button class="btn btn-primary" onclick="handleLoginConfirm()">确认登录</button>
+                <button class="btn btn-secondary" onclick="closeLoginModal()">暂不登录</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-overlay app-modal-overlay" id="modal-profile-picker">
+            <div class="modal-card profile-picker-card">
+              <button class="modal-close-btn" type="button" aria-label="关闭档案选择" onclick="closeProfilePicker()">&times;</button>
+              <div class="modal-mini-title">选择心语档案</div>
+              <p class="modal-intro-text">
+                请选择本次要解读的档案，也可以先为自己或家人创建新的心语档案。
+              </p>
+              <div class="profile-picker-list" id="profile-picker-list">
+                <!-- Populated dynamically via JS -->
+              </div>
+              <div class="modal-action-stack">
+                <button class="btn btn-secondary" onclick="closeProfilePicker(); openCreateProfile()">创建新的心语档案</button>
+              </div>
+            </div>
+          </div>
 
         </div>
       </div>
@@ -525,8 +573,8 @@
         <div class="dev-btn-grid">
           <button class="dev-btn active" data-screen="screen-home" onclick="navigateTo('screen-home')">1. 首页入口</button>
           <button class="dev-btn" data-screen="screen-profiles" onclick="navigateTo('screen-profiles')">2. 档案列表</button>
-          <button class="dev-btn" data-screen="screen-create-profile" onclick="navigateTo('screen-create-profile')">3. 创建档案</button>
-          <button class="dev-btn" data-screen="screen-chat-setup" onclick="navigateTo('screen-chat-setup')">4. 老师解读</button>
+          <button class="dev-btn" data-screen="screen-create-profile" onclick="openCreateProfile()">3. 创建档案</button>
+          <button class="dev-btn" data-screen="screen-chat-setup" onclick="navigateTo('screen-chat-setup')">4. 心语解读</button>
           <button class="dev-btn" data-screen="screen-researching" onclick="navigateTo('screen-researching')">5. 深度整理</button>
           <button class="dev-btn" data-screen="screen-detail" onclick="navigateTo('screen-detail')">7. 解读详情</button>
           <button class="dev-btn" data-screen="screen-records" onclick="navigateTo('screen-records')">8. 解读记录</button>
@@ -553,7 +601,7 @@
         <div class="dev-btn-grid">
           <button class="dev-btn" onclick="adjustCredits(5)">增加 +5 次</button>
           <button class="dev-btn" onclick="adjustCredits(-1)">减少 -1 次</button>
-          <button class="dev-btn dev-btn-full" onclick="state.credits = 0; syncUIData();">将次数设为 0 次 (触发购买)</button>
+          <button class="dev-btn dev-btn-full" onclick="state.credits = 0; saveState(); syncUIData();">将次数设为 0 次 (触发权益页)</button>
         </div>
       </div>
 
@@ -575,7 +623,8 @@
       
       <!-- Dynamic Info readout -->
       <div class="dev-info">
-        <div class="dev-info-row">剩余次数: <span id="dev-info-credits">1</span></div>
+        <div class="dev-info-row">登录状态: <span id="dev-info-login">未登录</span></div>
+        <div class="dev-info-row">剩余次数: <span id="dev-info-credits">3</span></div>
         <div class="dev-info-row">当前档案数: <span id="dev-info-profiles">3</span></div>
         <div class="dev-info-row">历史解读数: <span id="dev-info-records">2</span></div>
         <div style="font-size: 0.75rem; color:#8E9E97; margin-top:0.5rem; border-top:1px solid #3E4643; padding-top:0.4rem;">

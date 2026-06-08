@@ -16,11 +16,12 @@ export function initWxJssdk(jsApiList: wx.ApiMethod[] = []): Promise<void> {
     return Promise.resolve()
 
   const mergedApis = [...new Set([...configuredApis, ...jsApiList])]
-  if (initPromise && arraysEqual(configuredApis, mergedApis))
-    return initPromise
+  const cachedPromise = initPromise
+  if (cachedPromise !== undefined && arraysEqual(configuredApis, mergedApis))
+    return cachedPromise as Promise<void>
 
   configuredApis = mergedApis
-  initPromise = new Promise((resolve, reject) => {
+  const promise = new Promise<void>((resolve, reject) => {
     const signUrl = getJssdkSignUrl()
     getWxJssdkSign(signUrl)
       .then((res) => {
@@ -45,7 +46,8 @@ export function initWxJssdk(jsApiList: wx.ApiMethod[] = []): Promise<void> {
         reject(err)
       })
   })
-  return initPromise
+  initPromise = promise
+  return promise
   // #endif
 }
 

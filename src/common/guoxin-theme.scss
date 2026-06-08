@@ -1,16 +1,16 @@
 :root {
-  --gx-bg: #FAF6EF;
-  --gx-card: #FFFDF7;
-  --gx-green: #3A6B4A;
+  --gx-bg: #FCF5E9;
+  --gx-card: #FFF9ED;
+  --gx-green: #153F33;
   --gx-green-dark: #1E3F35;
-  --gx-green-light: #EAF3ED;
-  --gx-gold: #C9A84C;
+  --gx-green-light: #EEF3EA;
+  --gx-gold: #B9945F;
   --gx-gold-bg: #FDF5DC;
-  --gx-text: #2C2010;
-  --gx-text-sub: #7A6B55;
-  --gx-text-hint: #B0A080;
-  --gx-border: #E8D9C0;
-  --gx-radius: 32rpx;
+  --gx-text: #241F19;
+  --gx-text-sub: #665B4E;
+  --gx-text-hint: #958878;
+  --gx-border: #E2DCD3;
+  --gx-radius: 36rpx;
   --gx-font-scale: 1;
 }
 
@@ -23,14 +23,18 @@ html.gx-scale-xlarge {
 }
 
 page {
-  background-color: var(--gx-bg);
+  background:
+    url("/static/assets/rice-paper-bg.svg") center / cover no-repeat,
+    linear-gradient(140deg, rgba(255, 252, 244, 0.95), rgba(249, 239, 220, 0.9)),
+    #FCF5E9;
   color: var(--gx-text);
+  font-family: "Noto Sans SC", system-ui, -apple-system, sans-serif;
   font-size: calc(28rpx * var(--gx-font-scale));
 }
 
 .gx-page {
   min-height: 100vh;
-  background: var(--gx-bg);
+  background: transparent;
 }
 
 .gx-scroll {
@@ -58,8 +62,9 @@ page {
 }
 
 .gx-badge-gold {
-  background: var(--gx-gold-bg);
+  background: rgba(185, 148, 95, 0.16);
   color: var(--gx-gold);
+  border: 1px solid rgba(185, 148, 95, 0.3);
 }
 
 .gx-badge-green {
