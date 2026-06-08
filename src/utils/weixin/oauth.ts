@@ -29,18 +29,21 @@ export async function handleOAuthOnLaunch(): Promise<void> {
   const code = getOAuthCodeFromUrl()
   const store = userInfoStore()
 
-  if (code) {
-    try {
-      const res = await postWxOAuthLogin(code)
-      if (res.data.token)
-        store.setToken(res.data.token)
-      if (res.data.userInfo)
-        store.setUserInfo(res.data.userInfo)
-      clearOAuthParamsFromUrl()
-    }
-    catch {
-      clearOAuthParamsFromUrl()
-    }
+  if (!code)
+    return
+  const oauthCode = code as string
+
+  try {
+    const res = await postWxOAuthLogin(oauthCode)
+    const { token, userInfo } = res.data
+    if (token)
+      store.setToken(token)
+    if (userInfo)
+      store.setUserInfo(userInfo as Parameters<typeof store.setUserInfo>[0])
+    clearOAuthParamsFromUrl()
+  }
+  catch {
+    clearOAuthParamsFromUrl()
   }
   // #endif
 }

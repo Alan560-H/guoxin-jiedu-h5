@@ -16,6 +16,7 @@ export interface ProfileVo {
   calendarTypeText: string
   jieduCount: number
   lastJieduTime: string
+  useTrueSolarTime?: boolean
 }
 
 export interface CreateProfileDto {
@@ -31,4 +32,5 @@ export interface CreateProfileDto {
   birthPlace: string
   calendarType: CalendarValue
   calendarTypeText: string
+  useTrueSolarTime?: boolean
 }

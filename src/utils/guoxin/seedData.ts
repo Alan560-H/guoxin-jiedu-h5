@@ -84,5 +84,6 @@ export function normalizeSeedProfile(profile: ProfileVo): ProfileVo {
   const isHourFormat = BIRTH_HOUR_OPTIONS.some(h => h === next.birthHour)
   if (!isHourFormat)
     next.birthHour = '记不清了'
+  next.useTrueSolarTime = next.useTrueSolarTime ?? false
   return next
 }

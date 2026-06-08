@@ -1,25 +1,75 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { FontScale } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
+import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 
 const store = useGuoxinStore()
 
+const showLogin = ref(false)
+const showProfileSelect = ref(false)
+
 onMounted(() => {
   store.initSeedData()
+  // Trigger login modal immediately if not logged in
+  if (!store.isLoggedIn) {
+    showLogin.value = true
+  }
 })
 
 const latestRecord = computed(() => store.latestRecord)
+const profiles = computed(() => store.profiles)
+
+function handleStartJiedu() {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+
+  // Directly redirect to paywall/purchase if credits are 0
+  if (store.credits <= 0) {
+    uni.navigateTo({ url: RouterPaths.credits })
+    return
+  }
+
+  // Go to profile creation if no profiles exist
+  if (profiles.value.length === 0) {
+    uni.navigateTo({ url: RouterPaths.profileCreate })
+    return
+  }
+
+  // Open the custom choose profile modal
+  showProfileSelect.value = true
+}
+
+function handleSelectProfile(id: string) {
+  store.setActiveProfile(id)
+  showProfileSelect.value = false
+  uni.navigateTo({ url: RouterPaths.jieduSetup })
+}
+
+function handleCreateProfileFromModal() {
+  showProfileSelect.value = false
+  uni.navigateTo({ url: RouterPaths.profileCreate })
+}
 
 function goProfiles() {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
   uni.navigateTo({ url: RouterPaths.profileList })
 }
 
 function goCredits() {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
   uni.navigateTo({ url: RouterPaths.credits })
 }
 
@@ -32,44 +82,66 @@ function goLatestDetail() {
 function setScale(scale: FontScale) {
   store.setFontScale(scale)
 }
+
+function handleLoginSuccess() {
+  // If login is successful, we can optionally open the profile select popup directly
+  if (store.credits <= 0) {
+    uni.navigateTo({ url: RouterPaths.credits })
+  } else {
+    showProfileSelect.value = true
+  }
+}
 </script>
 
 <template>
-  <view class="gx-page flex_column">
-    <view class="gx-hero">
-      <view class="gx-hero-title">
-        国心解读
-      </view>
-      <view class="gx-hero-sub">
-        东方文化视角下的个人解读服务
-      </view>
-      <view class="gx-quota-badge">
-        剩余解读次数：{{ store.credits }} 次
-        <text class="gx-link" @tap.stop="goCredits"> · 充值</text>
-      </view>
+  <view class="gx-page flex_column page-container">
+    <!-- Home Banner Section -->
+    <view class="home-banner">
+      <view class="home-logo">国心解读</view>
+      <view class="home-subtitle">东方文化视角下的生活与心理参考</view>
     </view>
 
     <scroll-view scroll-y class="gx-scroll">
-      <view style="height: 24rpx;" />
-      <view class="gx-btn-group">
-        <GxButton @click="store.startJieduFromHome()">
-          ✨ 开始我的专属解读
+
+      <!-- Teacher Intro Card -->
+      <view class="teacher-intro-card">
+        <view class="avatar-wrapper">
+          <view class="avatar">
+            <image class="avatar-img" src="/static/assets/xinyu-teacher.svg" mode="aspectFill" />
+          </view>
+        </view>
+        <view class="teacher-details">
+          <view class="teacher-name">心语老师</view>
+          <view class="teacher-desc">我会通过几个简单问题，帮您为自己或家人整理一份生活与心理参考。</view>
+
+          <!-- Remaining credits badge -->
+          <view class="credit-badge" @tap.stop="goCredits">
+            剩余解读次数：<text class="credit-count">{{ store.credits }}</text>次
+          </view>
+        </view>
+      </view>
+
+      <!-- Action Buttons -->
+      <view class="gx-btn-group action-buttons">
+        <GxButton type="primary" @click="handleStartJiedu">
+          开始我的专属解读
         </GxButton>
         <GxButton type="secondary" @click="goProfiles">
-          📋 查看心语档案
+          查看/管理心语档案
         </GxButton>
       </view>
 
-      <GxCard v-if="latestRecord">
-        <view class="gx-form-label">
+      <!-- Last Interpretation (if exists) -->
+      <GxCard v-if="latestRecord" class="latest-record-card">
+        <view class="gx-form-label section-label">
           上次解读
         </view>
-        <view class="flex_between f_a_center">
-          <view>
-            <view style="font-weight: 600;">
+        <view class="flex_row f_j_sb f_a_center">
+          <view class="record-meta">
+            <view class="record-title">
               {{ latestRecord.profileName }} · {{ latestRecord.directions.join('、') }}
             </view>
-            <view class="gx-text-hint" style="margin-top: 8rpx;">
+            <view class="gx-text-hint record-time">
               {{ latestRecord.time }}
             </view>
           </view>
@@ -79,20 +151,12 @@ function setScale(scale: FontScale) {
         </view>
       </GxCard>
 
-      <GxCard>
-        <view class="gx-form-label">
-          关于国心解读
-        </view>
-        <view class="gx-text-sub" style="line-height: 1.8;">
-          国心解读结合东方文化视角与心理分析方法，为您和家人提供生活参考与情感陪伴，帮助理解性格特点、家庭关系和当前生活状态。
-        </view>
-      </GxCard>
-
-      <GxCard padding="24rpx 32rpx">
-        <view class="gx-form-label">
+      <!-- Font Size Controller -->
+      <GxCard class="font-scale-card">
+        <view class="gx-form-label section-label">
           字号调节
         </view>
-        <view class="flex_row gap_05rem">
+        <view class="flex_row gap_05rem font-scale-chips">
           <GxChip
             v-for="item in ([['standard', '标准'], ['large', '大字号'], ['xlarge', '特大号']] as const)"
             :key="item[0]"
@@ -103,15 +167,362 @@ function setScale(scale: FontScale) {
         </view>
       </GxCard>
 
+      <!-- Footer Disclaimer -->
+      <view class="home-disclaimer">
+        内容仅供传统文化学习与生活参考，<br>不作为医疗、法律、理财等任何现实决策依据。
+      </view>
+
       <view class="gx-safe-bottom" />
     </scroll-view>
+
+    <!-- Immediate Login Dialog Modal -->
+    <GxLoginModal
+      :show="showLogin"
+      @close="showLogin = false"
+      @success="handleLoginSuccess"
+    />
+
+    <!-- Choose Profile Popup Modal (Removable) -->
+    <view v-if="showProfileSelect" class="modal-overlay select-modal-overlay">
+      <view class="modal-card select-modal-card">
+        <!-- Close button X -->
+        <view class="close-x" @tap="showProfileSelect = false">×</view>
+
+        <view class="modal-header">
+          <view class="modal-title">选择心语档案</view>
+          <view class="modal-subtitle">请选择要进行本次解读的家人档案：</view>
+        </view>
+
+        <scroll-view scroll-y class="modal-scroll-area">
+          <view class="profile-items-list">
+            <view
+              v-for="p in profiles"
+              :key="p.id"
+              class="profile-select-item"
+              @tap="handleSelectProfile(p.id)"
+            >
+              <view class="profile-item-left">
+                <view class="profile-item-name">{{ p.name }}</view>
+                <view class="profile-item-sub">{{ p.genderText }} · {{ p.birthYear }}年 · {{ p.birthPlace }}</view>
+              </view>
+              <view class="profile-item-right">
+                <view class="gx-badge gx-badge-gold">{{ p.relationText }}</view>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+
+        <!-- Create new profile button -->
+        <view class="create-profile-btn-wrap">
+          <GxButton type="outline" @click="handleCreateProfileFromModal">
+            ＋ 创建新档案
+          </GxButton>
+        </view>
+      </view>
+    </view>
+
   </view>
 </template>
 
 <style scoped lang="scss">
-.gx-link {
-  color: #fff;
-  text-decoration: underline;
-  margin-left: 8rpx;
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.home-banner {
+  text-align: center;
+  padding: 60rpx 32rpx 40rpx;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(21, 63, 51, 0.08), transparent 58%),
+    radial-gradient(ellipse at 20% 16%, rgba(185, 148, 95, 0.22), transparent 42%),
+    linear-gradient(180deg, rgba(255, 249, 235, 0.96), rgba(247, 236, 214, 0.72));
+  border-bottom-left-radius: 48rpx;
+  border-bottom-right-radius: 48rpx;
+  border-bottom: 2rpx solid rgba(185, 148, 95, 0.34);
+  flex-shrink: 0;
+}
+
+.home-logo {
+  font-family: "Noto Serif SC", Georgia, serif;
+  font-size: 56rpx;
+  font-weight: 900;
+  color: #153F33;
+  letter-spacing: 4rpx;
+  margin-bottom: 8rpx;
+  text-shadow: 0 2rpx 0 rgba(255, 255, 255, 0.72);
+}
+
+.home-subtitle {
+  font-size: 26rpx;
+  letter-spacing: 2rpx;
+  color: #665B4E;
+  font-weight: 500;
+}
+
+.teacher-intro-card {
+  background: linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(251, 244, 231, 0.9)), #FFF9ED;
+  border: 2rpx solid rgba(185, 148, 95, 0.38);
+  border-radius: 36rpx;
+  padding: 40rpx 32rpx;
+  margin: 40rpx 32rpx;
+  display: flex;
+  gap: 32rpx;
+  box-shadow: 0 8rpx 20rpx rgba(74, 49, 21, 0.1);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 10rpx;
+    height: 100%;
+    background: linear-gradient(180deg, #B9945F, #153F33);
+  }
+}
+
+.avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, #FFFFFF, #EEF3EA);
+  border: 4rpx solid #B9945F;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.teacher-details {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+
+  .teacher-name {
+    font-family: "Noto Serif SC", Georgia, serif;
+    font-size: 38rpx;
+    font-weight: 700;
+    color: #153F33;
+    margin-bottom: 8rpx;
+  }
+
+  .teacher-desc {
+    font-size: 26rpx;
+    line-height: 1.5;
+    color: #665B4E;
+    margin-bottom: 16rpx;
+  }
+}
+
+.credit-badge {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(239, 226, 202, 0.72);
+  border: 2rpx solid rgba(185, 148, 95, 0.62);
+  padding: 10rpx 24rpx;
+  border-radius: 40rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #153F33;
+
+  .credit-count {
+    color: #B7654A;
+    margin: 0 4rpx;
+  }
+}
+
+.action-buttons {
+  margin-top: 10rpx;
+  margin-bottom: 40rpx;
+}
+
+.latest-record-card, .font-scale-card {
+  .section-label {
+    font-family: "Noto Serif SC", Georgia, serif;
+    color: #153F33;
+    font-size: 30rpx;
+    font-weight: 700;
+    border-left: 6rpx solid #B9945F;
+    padding-left: 16rpx;
+    line-height: 1;
+    margin-bottom: 24rpx;
+  }
+}
+
+.record-meta {
+  flex: 1;
+  margin-right: 20rpx;
+}
+
+.record-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #241F19;
+}
+
+.record-time {
+  font-size: 24rpx;
+  color: #958878;
+  margin-top: 8rpx;
+}
+
+.font-scale-chips {
+  flex-wrap: wrap;
+}
+
+.home-disclaimer {
+  font-size: 24rpx;
+  color: #958878;
+  text-align: center;
+  margin: 48rpx 32rpx 32rpx;
+  line-height: 1.5;
+}
+
+/* Modals styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(38, 46, 42, 0.6);
+  backdrop-filter: blur(4rpx);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  background-color: #FCF5E9;
+  background-image: url("/static/assets/rice-paper-bg.svg");
+  border-radius: 40rpx;
+  width: 85%;
+  max-width: 600rpx;
+  padding: 48rpx 36rpx;
+  box-shadow: 0 18rpx 38rpx rgba(55, 38, 20, 0.25);
+  border: 4rpx solid #B9945F;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.close-x {
+  position: absolute;
+  top: 20rpx;
+  right: 30rpx;
+  font-size: 56rpx;
+  color: #958878;
+  cursor: pointer;
+  line-height: 1;
+  z-index: 10;
+}
+
+/* Custom Profile Select Dialog styles */
+.select-modal-overlay {
+  z-index: 900;
+}
+
+.select-modal-card {
+  height: 80vh;
+  max-height: 1000rpx;
+}
+
+.modal-header {
+  text-align: center;
+  border-bottom: 2rpx solid rgba(185, 148, 95, 0.28);
+  padding-bottom: 24rpx;
+  margin-bottom: 24rpx;
+
+  .modal-title {
+    font-family: "Noto Serif SC", Georgia, serif;
+    font-size: 36rpx;
+    font-weight: 900;
+    color: #153F33;
+    margin-bottom: 8rpx;
+  }
+
+  .modal-subtitle {
+    font-size: 24rpx;
+    color: #665B4E;
+  }
+}
+
+.modal-scroll-area {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.profile-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  padding: 8rpx 0;
+  box-sizing: border-box;
+}
+
+.profile-select-item {
+  background: linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(251, 244, 231, 0.9)), #FFF9ED;
+  border: 2rpx solid rgba(185, 148, 95, 0.35);
+  border-radius: 24rpx;
+  padding: 24rpx 28rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4rpx 12rpx rgba(74, 49, 21, 0.04);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+
+  &:active {
+    border-color: #153F33;
+    background-color: #EEF3EA;
+  }
+}
+
+.profile-item-left {
+  flex: 1;
+  margin-right: 20rpx;
+
+  .profile-item-name {
+    font-family: "Noto Serif SC", Georgia, serif;
+    font-size: 30rpx;
+    font-weight: 700;
+    color: #153F33;
+    margin-bottom: 6rpx;
+  }
+
+  .profile-item-sub {
+    font-size: 24rpx;
+    color: #665B4E;
+  }
+}
+
+.create-profile-btn-wrap {
+  margin-top: 24rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+
+  :deep(.gx-btn-wrap) {
+    width: 100%;
+  }
 }
 </style>
