@@ -12,11 +12,6 @@ onMounted(() => store.initSeedData())
 
 const record = computed(() => store.getRecordById(store.activeRecordId))
 
-function goDetail() {
-  if (!record.value)
-    return
-  uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${record.value.id}` })
-}
 function goRecords() {
   uni.navigateTo({ url: RouterPaths.jieduRecords })
 }
@@ -60,8 +55,8 @@ function goHome() {
 
       <!-- Action Buttons -->
       <view class="gx-btn-group action-buttons">
-        <GxButton type="primary" @click="goDetail">
-          查看完整解读
+        <GxButton type="primary" @click="goHome">
+          稍后查看
         </GxButton>
         <GxButton type="secondary" @click="store.navigateToSetup()">
           继续和心语老师聊聊

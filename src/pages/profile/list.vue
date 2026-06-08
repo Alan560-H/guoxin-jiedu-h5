@@ -95,17 +95,13 @@ function confirmDelete(id: string) {
           <view class="profile-meta-item" style="grid-column: span 2;">最近解读：<strong>{{ p.lastJieduTime }}</strong></view>
         </view>
 
-        <view class="gx-btn-row profile-card-actions">
-          <view class="gx-btn-wrap">
-            <GxButton type="primary" size="sm" @click="startJiedu(p.id)">
-              开始解读
-            </GxButton>
-          </view>
-          <view class="gx-btn-wrap">
-            <GxButton type="secondary" size="sm" @click="goRecords(p.id)">
-              查看记录
-            </GxButton>
-          </view>
+        <view class="profile-card-actions">
+          <GxButton type="primary" size="sm" @click="startJiedu(p.id)">
+            开始解读
+          </GxButton>
+          <GxButton type="secondary" size="sm" @click="goRecords(p.id)">
+            查看记录
+          </GxButton>
         </view>
       </GxCard>
 
@@ -169,19 +165,31 @@ function confirmDelete(id: string) {
     border-bottom: 2rpx solid rgba(185, 148, 95, 0.15);
     padding-bottom: 16rpx;
     margin-bottom: 16rpx;
+    gap: 16rpx;
+    flex-wrap: wrap;
+    align-items: flex-start;
   }
 
   .profile-name {
+    flex: 1 1 220rpx;
+    min-width: 0;
     font-family: "Noto Serif SC", Georgia, serif;
     font-size: 34rpx;
     font-weight: 700;
     color: #153F33;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .header-right-actions {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 16rpx;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
   }
 
   .profile-action-btn {
@@ -231,11 +239,13 @@ function confirmDelete(id: string) {
 }
 
 .profile-card-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16rpx;
 
-  .gx-btn-wrap {
-    flex: 1;
+  :deep(.gx-btn-wrap) {
+    width: 100%;
+    min-width: 0;
   }
 }
 

@@ -11,15 +11,6 @@ const step = ref(1) // 1: Directions selection, 2: Confirmation
 const scrollIntoViewId = ref('')
 const inputText = ref('')
 
-function handleVoiceInput() {
-  uni.showLoading({ title: '正在录音...' })
-  setTimeout(() => {
-    uni.hideLoading()
-    inputText.value = '请帮我解读一下近期的健康作息与家庭关系。'
-    uni.showToast({ title: '语音已转换为文字', icon: 'success' })
-  }, 1200)
-}
-
 function handleSend() {
   if (!inputText.value.trim()) {
     uni.showToast({ title: '请输入提问内容', icon: 'none' })
@@ -251,11 +242,6 @@ function getIconName(dir: DirectionValue): string {
 
     <!-- 4. Fixed Input Bar at the Bottom (within layout flow) -->
     <view class="chat-input-row-fixed">
-      <view class="voice-btn" @tap="handleVoiceInput">
-        <svg aria-hidden="true" style="width: 100%; height: 100%;">
-          <use href="/static/assets/direction-icons.svg#icon-mic"></use>
-        </svg>
-      </view>
       <input
         v-model="inputText"
         class="chat-text-field-input"
@@ -289,7 +275,9 @@ function getIconName(dir: DirectionValue): string {
   display: flex;
   flex-direction: column;
   height: var(--window-height, 100vh); /* Use Uni-App window height variable for safe viewport boundaries */
-  width: 100vw;
+  width: 100%;
+  max-width: 414px;
+  margin: 0 auto;
   background:
     url("/static/assets/rice-paper-bg.svg") center / cover no-repeat,
     linear-gradient(140deg, rgba(255, 252, 244, 0.95), rgba(249, 239, 220, 0.9)),
@@ -315,22 +303,27 @@ function getIconName(dir: DirectionValue): string {
 
   .screen-header-title {
     font-family: "Noto Serif SC", Georgia, serif;
-    font-size: 34rpx;
+    font-size: 32rpx;
     color: #153F33;
     font-weight: 900;
     text-align: center;
     flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .header-btn {
+    flex: 0 0 112rpx;
     background: none;
     border: none;
     color: #153F33;
-    font-size: 28rpx;
+    font-size: 26rpx;
     display: flex;
     align-items: center;
     gap: 8rpx;
-    padding: 8rpx 16rpx;
+    padding: 8rpx 0;
     border-radius: 8rpx;
     cursor: pointer;
 
@@ -342,6 +335,7 @@ function getIconName(dir: DirectionValue): string {
 
     .btn-label {
       font-weight: 500;
+      white-space: nowrap;
     }
 
     .header-icon {
@@ -351,20 +345,37 @@ function getIconName(dir: DirectionValue): string {
       fill: none;
     }
   }
+
+  .right-btn {
+    justify-content: flex-end;
+  }
 }
 
 /* Sub-Header Credits Bar */
 .sub-header-bar {
   background: linear-gradient(90deg, rgba(239, 226, 202, 0.78), rgba(248, 240, 224, 0.88));
-  font-size: 26rpx;
+  font-size: 24rpx;
   padding: 14rpx 32rpx;
   color: #665B4E;
   display: flex;
+  gap: 16rpx;
+  align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(185, 148, 95, 0.28);
   font-weight: 700;
   box-sizing: border-box;
   flex-shrink: 0;
+
+  > view {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .consultant-label {
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
   .credit-count-val {
     color: #B7654A;
@@ -506,13 +517,14 @@ function getIconName(dir: DirectionValue): string {
 /* Direction multi-select grid */
 .direction-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20rpx;
   margin-bottom: 30rpx;
   box-sizing: border-box;
 }
 
 .direction-chip {
+  min-width: 0;
   background: linear-gradient(180deg, rgba(255, 253, 247, 0.98), rgba(250, 243, 230, 0.9));
   border: 4rpx solid rgba(185, 148, 95, 0.3);
   min-height: 110rpx;
@@ -525,16 +537,16 @@ function getIconName(dir: DirectionValue): string {
   transition: all 0.2s ease;
   color: #241F19;
   display: flex;
-  flex-direction: row;
-  gap: 10rpx;
+  flex-direction: column;
+  gap: 8rpx;
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 8px rgba(74, 49, 21, 0.035);
   box-sizing: border-box;
 
   .icon {
-    width: 60rpx;
-    height: 60rpx;
+    width: 52rpx;
+    height: 52rpx;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -544,6 +556,7 @@ function getIconName(dir: DirectionValue): string {
 
   .label-text {
     white-space: nowrap;
+    line-height: 1.2;
   }
 
   &.selected {
@@ -571,6 +584,8 @@ function getIconName(dir: DirectionValue): string {
   font-family: "Noto Serif SC", Georgia, serif;
   font-weight: 900;
   font-size: 32rpx;
+  line-height: 1.2;
+  white-space: nowrap;
   border: none;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -587,7 +602,7 @@ function getIconName(dir: DirectionValue): string {
   box-shadow:
     inset 0 2rpx 0 rgba(255, 255, 255, 0.16),
     0 8px 18px rgba(21, 63, 51, 0.22);
-  padding: 0 96rpx;
+  padding: 0 48rpx;
 
   /* Left/Right Cloud Vectors decoration */
   &::before,
@@ -697,11 +712,11 @@ function getIconName(dir: DirectionValue): string {
   box-sizing: border-box;
 }
 
-/* Fixed Bottom Voice Input Bar (in relative flow) */
+/* Fixed Bottom Input Bar (in relative flow) */
 .chat-input-row-fixed {
   z-index: 50;
   display: grid;
-  grid-template-columns: 88rpx 1fr 130rpx;
+  grid-template-columns: minmax(0, 1fr) 130rpx;
   gap: 16rpx;
   align-items: center;
   padding: 24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
@@ -711,20 +726,6 @@ function getIconName(dir: DirectionValue): string {
   border-top: 1px solid rgba(135, 100, 58, 0.28);
   box-sizing: border-box;
   flex-shrink: 0; /* Prevents input bar from shrinking on small/landscape viewports */
-
-  .voice-btn {
-    width: 82rpx;
-    height: 82rpx;
-    border-radius: 50%;
-    background: rgba(255, 253, 247, 0.82);
-    color: #153F33;
-    border: 4rpx solid #153F33;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-    cursor: pointer;
-  }
 
   .chat-text-field-input {
     min-width: 0;
@@ -742,6 +743,7 @@ function getIconName(dir: DirectionValue): string {
   }
 
   .send-btn {
+    min-width: 0;
     min-height: 82rpx;
     border-radius: 999rpx;
     background: linear-gradient(180deg, #1E5546, #153F33);

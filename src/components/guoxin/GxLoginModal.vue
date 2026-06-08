@@ -33,7 +33,7 @@ function sendCode() {
       timer = null
     }
   }, 1000)
-  uni.showToast({ title: '验证码已发送（模拟）', icon: 'success' })
+  uni.showToast({ title: '验证码已发送', icon: 'success' })
 }
 
 function handleLogin() {
