@@ -9,18 +9,24 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 const store = useGuoxinStore()
 
 onMounted(async () => {
-  if (!(await store.requireAuthForPage())) {
-    store.redirectToBindPhone()
-    return
+  store.initSeedData()
+  // 远程模式：加载服务器报告列表
+  if (store.useRemoteApi && store.userId) {
+    await store.loadReports()
   }
-  if (!store.activeProfileId)
-    await store.fetchProfiles()
-  if (store.activeProfileId)
-    await store.fetchRecords(store.activeProfileId)
 })
 
 const profile = computed(() => store.activeProfile)
-const list = computed(() => store.records)
+const list = computed(() => {
+  if (store.useRemoteApi && store.serverReports.length > 0) {
+    // 远程模式：映射服务器报告为本地格式
+    return store.serverReports.map((r: any) => store.mapServerReportToRecord(r))
+  }
+  // 本地模式
+  if (!profile.value)
+    return []
+  return store.getRecordsByProfileId(profile.value.id)
+})
 
 function goDetail(id: string) {
   uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${id}` })
@@ -59,7 +65,7 @@ function goDetail(id: string) {
       </view>
 
       <!-- Record Cards -->
-      <GxCard v-for="rec in list" :key="rec.id" class="record-item-card">
+      <GxCard v-slot v-for="rec in list" :key="rec.id" class="record-item-card">
         <view class="flex_row f_j_sb f_a_center card-header">
           <text class="record-title">{{ rec.title }}</text>
           <view class="gx-badge gx-badge-green">

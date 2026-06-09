@@ -12,7 +12,6 @@ import UniPlatformModifier from '@uni-helper/vite-plugin-uni-platform-modifier'
 import UniRoot from '@uni-ku/root'
 import UnoCSS from 'unocss/vite'
 import { defineConfig } from 'vite'
-import { guoxinMockPlugin } from './mock/guoxin/vitePlugin'
 
 export default defineConfig({
   resolve: {
@@ -28,6 +27,12 @@ export default defineConfig({
         target: 'https://paipanapp.yipuwh.com',
         changeOrigin: true,
         secure: false,
+      },
+      '/prod-api/api/yiqixue/app/guoxin': {
+        target: 'http://127.0.0.1:8082',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/prod-api/, ''),
       },
       '/prod-api': {
         // target: 'https://care.yipuwenhua.com',
@@ -50,7 +55,6 @@ export default defineConfig({
     },
   },
   plugins: [
-    guoxinMockPlugin(),
     // https://uni-helper.js.org/vite-plugin-uni-components
     Components({
       dts: true,

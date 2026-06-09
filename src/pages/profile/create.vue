@@ -35,12 +35,8 @@ const yearOptions = Array.from({ length: new Date().getFullYear() - 1930 + 1 }, 
 const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
 const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1)
 
-onLoad(async (options: any) => {
-  if (!(await store.requireAuthForPage())) {
-    store.redirectToBindPhone()
-    return
-  }
-  await store.fetchProfiles()
+onLoad((options: any) => {
+  store.initSeedData()
   if (options && options.id) {
     profileId.value = options.id
     isEditMode.value = true

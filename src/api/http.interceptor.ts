@@ -38,7 +38,8 @@ const httpInterceptor : RequestInterceptor = {
 		let token = uni.getStorageSync('apph5Token')
 		config.header['custom-eader'] = isAppEmbeddedWebView() ? 'app' : 'apph5'
 		if (token) {
-			config.header.Authorization = token
+			// 确保Token以 Bearer 格式发送
+			config.header.Authorization = token.startsWith('Bearer ') ? token : `Bearer ${token}`
 		}
 		// config.header.Authorization = "Bearer eyJhbGciOiJIUzUxMiJ9.eyJsb2dpbl91c2VyX2tleSI6ImRmZDI5YjEzLTJjM2UtNDY5Zi1hNWI1LTkyZGIxMzhjNTI2MSJ9.PlSEvYjkyqcP9HUsm-h1yWcId9pGyTCbeLs25id9e0GdDu6bgfD9ASP65o-mtEml0thQwlcYeLnaXTx_4JxEbQ";
 		// console.log("当前请求头", config)
@@ -70,7 +71,9 @@ const httpInterceptor : RequestInterceptor = {
 		// 这里仅为演示，根据实际业务确定
 		const { code, msg = '请求错误：未知' } = rawData as any
 		if (code === 403 || code === 401) {
-			meta.toast && showToast('登录已过期', 'error')
+			// Token失效，清除本地存储的token
+			uni.removeStorageSync('apph5Token')
+			meta.toast && showToast('登录已过期，请重新登录', 'error')
 			let userInfo = userInfoStore();
 			userInfo.loginOut();
 		

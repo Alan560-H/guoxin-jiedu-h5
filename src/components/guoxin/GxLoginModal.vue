@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxButton from './GxButton.vue'
 
 const props = defineProps<{
   show: boolean
+  /** 模式：smsLogin=短信登录, bindMobile=绑定手机号 */
+  mode?: 'smsLogin' | 'bindMobile'
 }>()
 
 const emit = defineEmits<{
@@ -21,29 +23,33 @@ const agreed = ref(false)
 const countdown = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
 
+const isBindMode = computed(() => props.mode === 'bindMobile')
+const titleText = computed(() => isBindMode.value ? '绑定手机号' : '欢迎登录心语小助手')
+const subtitleText = computed(() => isBindMode.value ? '请绑定手机号以继续使用' : '输入手机号和验证码即可登录')
+const btnText = computed(() => isBindMode.value ? '确认绑定' : '立即登录')
+
 async function sendCode() {
   if (!phone.value.match(/^1[3-9]\d{9}$/)) {
     uni.showToast({ title: '请输入正确的手机号码', icon: 'none' })
     return
   }
-  try {
-    await store.sendSmsCode(phone.value)
-    countdown.value = 60
-    timer = setInterval(() => {
-      countdown.value--
-      if (countdown.value <= 0 && timer) {
-        clearInterval(timer)
-        timer = null
-      }
-    }, 1000)
-    uni.showToast({ title: '验证码已发送', icon: 'success' })
-  }
-  catch {
-    // toast handled by api
-  }
+  uni.showLoading({ title: '发送中...' })
+  const ok = await store.doSendSmsCode(phone.value)
+  uni.hideLoading()
+  if (!ok) return
+  // 开始倒计时
+  countdown.value = 60
+  timer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0 && timer) {
+      clearInterval(timer)
+      timer = null
+    }
+  }, 1000)
+  uni.showToast({ title: '验证码已发送', icon: 'success' })
 }
 
-async function handleLogin() {
+async function handleSubmit() {
   if (!phone.value.match(/^1[3-9]\d{9}$/)) {
     uni.showToast({ title: '请输入正确的手机号码', icon: 'none' })
     return
@@ -57,14 +63,30 @@ async function handleLogin() {
     return
   }
 
+  uni.showLoading({ title: isBindMode.value ? '绑定中...' : '登录中...' })
   try {
-    await store.bindPhone(phone.value, code.value)
-    uni.showToast({ title: '绑定成功', icon: 'success' })
+    if (isBindMode.value) {
+      // 绑定手机号模式
+      await store.doBindMobileWithSms(phone.value, code.value)
+      uni.hideLoading()
+      uni.showToast({ title: '绑定成功', icon: 'success' })
+    } else {
+      // 短信登录模式
+      if (store.useRemoteApi) {
+        await store.doLoginBySms(phone.value, code.value)
+        await store.initRemoteData()
+      } else {
+        store.isLoggedIn = true
+      }
+      uni.hideLoading()
+      uni.showToast({ title: '登录成功', icon: 'success' })
+    }
     emit('success')
     emit('close')
-  }
-  catch {
-    // toast handled by api
+  } catch (e: any) {
+    uni.hideLoading()
+    console.error(isBindMode.value ? '绑定失败' : '登录失败', e)
+    uni.showToast({ title: e?.message || '操作失败，请重试', icon: 'none' })
   }
 }
 
@@ -85,7 +107,8 @@ function openPrivacyAgreement() {
 
       <view class="login-header">
         <view class="login-logo">国心解读</view>
-        <view class="login-welcome">绑定手机号，开启专属解读</view>
+        <view class="login-welcome">{{ titleText }}</view>
+        <view class="login-subtitle">{{ subtitleText }}</view>
       </view>
 
       <view class="login-form">
@@ -126,14 +149,14 @@ function openPrivacyAgreement() {
           <view class="agreement-text">
             我已阅读并同意
             <text class="link-text" @tap.stop="openServiceAgreement">《用户协议》</text>与
-            <text class="link-text" @tap.stop="openPrivacyAgreement">《隐私协议》</text>
+            <text class="link-text" @tap.stop="openPrivacyAgreement">《隐私政策》</text>
           </view>
         </view>
 
         <!-- Submit button -->
         <view class="submit-wrap">
-          <GxButton type="primary" @click="handleLogin">
-            绑定并继续
+          <GxButton type="primary" @click="handleSubmit">
+            {{ btnText }}
           </GxButton>
         </view>
       </view>
@@ -198,6 +221,12 @@ function openPrivacyAgreement() {
   .login-welcome {
     font-size: 26rpx;
     color: #665B4E;
+  }
+
+  .login-subtitle {
+    font-size: 24rpx;
+    color: #958878;
+    margin-top: 4rpx;
   }
 }
 

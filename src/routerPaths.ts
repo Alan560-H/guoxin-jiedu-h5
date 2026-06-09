@@ -1,7 +1,5 @@
 export class RouterPaths {
   public static readonly home = '/pages/index'
-  /** 子页未登录时跳首页并弹出绑手机 */
-  public static readonly homeBindPhone = '/pages/index?bindPhone=1'
   public static readonly profileList = '/pages/profile/list'
   public static readonly profileCreate = '/pages/profile/create'
   public static readonly jieduSetup = '/pages/jiedu/setup'

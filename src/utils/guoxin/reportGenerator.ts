@@ -1,4 +1,4 @@
-/** @deprecated 业务报告改由 mock/guoxin/report.ts 生成，此文件仅作参考保留 */
+/** @deprecated 远程模式报告由 Java 后端生成；仅 useRemoteApi=false 时本地演示使用 */
 import type { DirectionValue } from '@/constants/guoxin'
 import type { ProfileVo } from '@/models/guoxin/profile'
 import type { ReportSection } from '@/models/guoxin/record'

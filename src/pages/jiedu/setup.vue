@@ -30,12 +30,8 @@ function handleSend() {
     handleNextStep()
 }
 
-onMounted(async () => {
-  if (!(await store.requireAuthForPage())) {
-    store.redirectToBindPhone()
-    return
-  }
-  await store.fetchProfiles()
+onMounted(() => {
+  store.initSeedData()
   if (!store.activeProfile) {
     uni.redirectTo({ url: RouterPaths.profileList })
   }

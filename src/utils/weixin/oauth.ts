@@ -4,6 +4,7 @@ import {
   buildOAuthUrl,
   clearOAuthParamsFromUrl,
   getOAuthCodeFromUrl,
+  getOAuthStateFromUrl,
   isWeChatBrowser,
 } from '@/utils/weixin/env'
 
@@ -24,6 +25,11 @@ export async function handleOAuthOnLaunch(): Promise<void> {
 
   // #ifdef H5
   if (!isWeChatBrowser())
+    return
+
+  // 如果是国心解读模块的 OAuth 回调，跳过此处处理，由 index.vue 处理
+  const state = getOAuthStateFromUrl()
+  if (state === 'GUOXIN_LOGIN')
     return
 
   const code = getOAuthCodeFromUrl()

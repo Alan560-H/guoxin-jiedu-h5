@@ -1,64 +1,78 @@
-import type {
-  BindPhoneReq,
-  BindPhoneVo,
-  CreditsVo,
-  SmsCodeReq,
-  SmsCodeVo,
-  WxAuthorizeVo,
-  WxSessionReq,
-  WxSessionVo,
-} from '@/models/guoxin/auth'
-import type {
-  JieduTaskCreateReq,
-  JieduTaskCreateVo,
-  JieduTaskStatusVo,
-} from '@/models/guoxin/jiedu'
-import type { CreateProfileDto, ProfileVo } from '@/models/guoxin/profile'
-import type { RecordVo } from '@/models/guoxin/record'
+import { http } from 'uview-pro'
 import type { ResponseData } from '@/models/responseData'
-import { guoxinDelete, guoxinGet, guoxinPost, guoxinPut } from '@/api/guoxinHttp'
+import type { ProfileVo } from '@/models/guoxin/profile'
+import type { RecordVo } from '@/models/guoxin/record'
 
-export const postWxSession = (data: WxSessionReq): Promise<ResponseData<WxSessionVo>> =>
-  guoxinPost('/app/guoxin/auth/wx-session', data, { loading: false, toast: false })
+const BASE = '/api/yiqixue/app/guoxin'
 
-export const postWxAuthorize = (): Promise<ResponseData<WxAuthorizeVo>> =>
-  guoxinPost('/app/guoxin/auth/wx-authorize', { mock: true }, { loading: false })
+/** 发送短信验证码 */
+export const sendSmsCode = (data: { mobile: string }): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/sendSms`, data)
 
-export const postSmsCode = (data: SmsCodeReq): Promise<ResponseData<SmsCodeVo>> =>
-  guoxinPost('/app/guoxin/auth/sms-code', data, { loading: false })
+/** 短信验证码登录 */
+export const loginBySms = (data: { mobile: string; smsCode: string }): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/loginBySms`, data)
 
-export const postBindPhone = (data: BindPhoneReq): Promise<ResponseData<BindPhoneVo>> =>
-  guoxinPost('/app/guoxin/auth/bind-phone', data)
+/** 微信网页授权登录（code换用户信息） */
+export const wxLogin = (data: { code: string }): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/wxLogin`, data)
 
+/** 用户登录（微信openid） */
+export const login = (data: { openid: string; unionid?: string; nickname?: string; avatarUrl?: string }): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/login`, data)
+
+/** 绑定手机号（需短信验证码） */
+export const bindMobile = (data: { userId: number; mobile: string; smsCode: string }): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/bindMobile`, data)
+
+/** 获取用户信息（userId由后端从JWT解析） */
+export const getUserInfo = (): Promise<ResponseData<any>> =>
+  http.get(`${BASE}/userInfo`)
+
+/** 获取商品列表(上架) */
+export const getProducts = (): Promise<ResponseData<any[]>> =>
+  http.get(`${BASE}/products`)
+
+/** 获取用户订单列表（userId由后端从JWT解析） */
+export const getOrders = (): Promise<ResponseData<any[]>> =>
+  http.get(`${BASE}/orders`)
+
+/** 获取用户可用权益次数（userId由后端从JWT解析） */
+export const getAvailableCount = (productId: number): Promise<ResponseData<any>> =>
+  http.get(`${BASE}/availableCount`, { productId })
+
+/** 获取用户报告列表（userId由后端从JWT解析） */
+export const getReports = (): Promise<ResponseData<any[]>> =>
+  http.get(`${BASE}/reports`)
+
+/** 获取报告详情 */
+export const getReportDetail = (reportId: number): Promise<ResponseData<any>> =>
+  http.get(`${BASE}/report/detail`, { reportId })
+
+/** 提交报告生成请求（userId由后端从JWT解析） */
+export const generateReport = (data: { productId: number; inputJson?: string }): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/report/generate`, data)
+
+/** 查询任务状态 */
+export const getTaskStatus = (taskId: number): Promise<ResponseData<any>> =>
+  http.get(`${BASE}/task/status`, { taskId })
+
+/** 获取消费记录（userId由后端从JWT解析） */
+export const getConsumeRecords = (): Promise<ResponseData<any[]>> =>
+  http.get(`${BASE}/consumeRecords`)
+
+/** V2 预留：档案列表 */
 export const getProfiles = (): Promise<ResponseData<ProfileVo[]>> =>
-  guoxinGet('/app/guoxin/profiles')
+  http.get(`${BASE}/profiles`)
 
-export const createProfile = (dto: CreateProfileDto): Promise<ResponseData<ProfileVo>> =>
-  guoxinPost('/app/guoxin/profiles', dto)
-
-export const updateProfile = (id: string, dto: CreateProfileDto): Promise<ResponseData<ProfileVo>> =>
-  guoxinPut(`/app/guoxin/profiles/${id}`, dto)
-
-export const deleteProfile = (id: string): Promise<ResponseData<null>> =>
-  guoxinDelete(`/app/guoxin/profiles/${id}`)
-
+/** V2 预留：解读记录 */
 export const getJieduRecords = (profileId: string): Promise<ResponseData<RecordVo[]>> =>
-  guoxinGet('/app/guoxin/records', { profileId })
+  http.get(`${BASE}/records`, { profileId })
 
-export const getLatestRecord = (): Promise<ResponseData<RecordVo | null>> =>
-  guoxinGet('/app/guoxin/records/latest')
+/** V2 预留：创建解读任务 */
+export const createJieduTask = (profileId: string, directions: string[]): Promise<ResponseData<{ taskId: string }>> =>
+  http.post(`${BASE}/jiedu/create`, { profileId, directions })
 
-export const getCredits = (): Promise<ResponseData<CreditsVo>> =>
-  guoxinGet('/app/guoxin/credits', undefined, { loading: false })
-
-export const postCreditsPurchase = (packageId: string): Promise<ResponseData<CreditsVo>> =>
-  guoxinPost('/app/guoxin/credits/purchase', { packageId })
-
-export const createJieduTask = (data: JieduTaskCreateReq): Promise<ResponseData<JieduTaskCreateVo>> =>
-  guoxinPost('/app/guoxin/jiedu/create', data)
-
-export const getJieduTaskStatus = (taskId: string): Promise<ResponseData<JieduTaskStatusVo>> =>
-  guoxinGet(`/app/guoxin/jiedu/task/${taskId}`, undefined, { loading: false, toast: false })
-
+/** V2 预留：获取解读报告 */
 export const getJieduReport = (recordId: string): Promise<ResponseData<RecordVo>> =>
-  guoxinGet('/app/guoxin/jiedu/report', { recordId })
+  http.get(`${BASE}/jiedu/report`, { recordId })

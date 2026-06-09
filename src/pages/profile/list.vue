@@ -10,12 +10,8 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 const { t } = useI18n()
 const store = useGuoxinStore()
 
-onMounted(async () => {
-  if (!(await store.requireAuthForPage())) {
-    store.redirectToBindPhone()
-    return
-  }
-  await store.fetchProfiles()
+onMounted(() => {
+  store.initSeedData()
 })
 
 const profiles = computed(() => store.profiles)

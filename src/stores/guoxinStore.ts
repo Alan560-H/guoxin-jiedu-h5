@@ -1,254 +1,138 @@
 import type { CreditPackageId, DirectionValue, FontScale } from '@/constants/guoxin'
 import { CREDIT_PACKAGES } from '@/constants/guoxin'
-import type { AuthStep } from '@/models/guoxin/auth'
 import type { CreateProfileDto, ProfileVo } from '@/models/guoxin/profile'
 import type { RecordVo } from '@/models/guoxin/record'
-import {
-  createJieduTask,
-  createProfile as apiCreateProfile,
-  deleteProfile as apiDeleteProfile,
-  getCredits,
-  getJieduRecords,
-  getJieduReport,
-  getJieduTaskStatus,
-  getLatestRecord,
-  getProfiles,
-  postBindPhone,
-  postCreditsPurchase,
-  postSmsCode,
-  postWxAuthorize,
-  postWxSession,
-  updateProfile as apiUpdateProfile,
-} from '@/api/guoxin'
-import { clearGuoxinToken, getGuoxinToken, setGuoxinToken } from '@/api/guoxinHttp'
-import { subscribeJieduStream } from '@/api/guoxinStream'
 import { RouterPaths } from '@/routerPaths'
 import { wxChoosePay } from '@/utils/weixin/pay'
+import { DEFAULT_PROFILES, DEFAULT_RECORDS, normalizeSeedProfile } from '@/utils/guoxin/seedData'
+import { formatNowTime, formatRecordTitle, generateDynamicReportContent } from '@/utils/guoxin/reportGenerator'
+import { login as apiLogin, loginBySms as apiLoginBySms, wxLogin as apiWxLogin, sendSmsCode as apiSendSmsCode, bindMobile as apiBindMobile, getUserInfo, getProducts, getAvailableCount, generateReport as apiGenerateReport, getTaskStatus, getReports, getReportDetail } from '@/api/guoxin'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-
-const GUOXIN_OPENID_KEY = 'guoxin-openid'
-const GUOXIN_TASK_KEY = 'guoxin-task-id'
-const LEGACY_STORE_KEY = 'guoxin-store'
-
-function clearLegacyStorage() {
-  try {
-    uni.removeStorageSync(LEGACY_STORE_KEY)
-  }
-  catch {
-    // ignore
-  }
-}
 
 export const useGuoxinStore = defineStore('guoxin', () => {
   const profiles = ref<ProfileVo[]>([])
   const records = ref<RecordVo[]>([])
-  const credits = ref(0)
-  const latestRecord = ref<RecordVo | null>(null)
+  const credits = ref(99)
   const activeProfileId = ref('')
   const activeRecordId = ref('')
-  const taskId = ref('')
+  const selectedDirections = ref<DirectionValue[]>([])
+  const userQuestion = ref('')
   const fontScale = ref<FontScale>('standard')
-  const authStep = ref<AuthStep>('anonymous')
-  const openid = ref('')
-  const loading = ref(false)
+  const isLoggedIn = ref(false)
 
-  const isLoggedIn = computed(() => authStep.value === 'ready')
+  // ---- 后端集成状态 ----
+  const userId = ref<number | null>(null)
+  const mobile = ref<string>('')
+  const bindStatus = ref<number>(0)
+  const token = ref<string>('')
+  const serverProducts = ref<any[]>([])
+  const serverReports = ref<any[]>([])
+  const totalAvailableCount = ref<number>(0)
+  const useRemoteApi = ref(true) // 是否启用远程API
+
   const activeProfile = computed(() =>
     profiles.value.find(p => p.id === activeProfileId.value) ?? null,
   )
 
-  function persistAuth(token: string, oid: string) {
-    setGuoxinToken(token)
-    uni.setStorageSync(GUOXIN_OPENID_KEY, oid)
-    openid.value = oid
-    authStep.value = 'ready'
-  }
+  const latestRecord = computed(() => records.value[0] ?? null)
 
-  function clearAuth() {
-    clearGuoxinToken()
-    uni.removeStorageSync(GUOXIN_OPENID_KEY)
-    openid.value = ''
-    authStep.value = 'anonymous'
-    profiles.value = []
-    records.value = []
-    credits.value = 0
-    latestRecord.value = null
-  }
-
-  function clearPendingTask() {
-    taskId.value = ''
-    uni.removeStorageSync(GUOXIN_TASK_KEY)
-  }
-
-  async function tryRestoreSession() {
-    clearLegacyStorage()
-    const token = getGuoxinToken()
-    const oid = uni.getStorageSync(GUOXIN_OPENID_KEY) || ''
-    if (!token || !oid)
-      return false
-    openid.value = oid
-    try {
-      const res = await postWxSession({ openid: oid })
-      if (res.data.step === 'ready' && res.data.token) {
-        persistAuth(res.data.token, res.data.openid)
-        await bootstrap()
-        return true
-      }
-      clearAuth()
-      return false
+  function initSeedData() {
+    if (profiles.value.length === 0) {
+      profiles.value = DEFAULT_PROFILES.map(normalizeSeedProfile)
+      records.value = [...DEFAULT_RECORDS]
+      activeProfileId.value = profiles.value[0]?.id ?? ''
     }
-    catch {
-      clearAuth()
-      return false
+    else if (!activeProfileId.value || !profiles.value.some(p => p.id === activeProfileId.value)) {
+      activeProfileId.value = profiles.value[0]?.id ?? ''
     }
-  }
-
-  /** 业务子页门禁：未登录返回 false（调用方应 redirectToBindPhone） */
-  async function requireAuthForPage(): Promise<boolean> {
-    let step = await ensureAuth()
-    if (step === 'need_wx_auth')
-      step = await mockWxAuthorize()
-    return step === 'ready'
-  }
-
-  function buildPageReturnUrl(): string {
-    const pages = getCurrentPages()
-    const page = pages[pages.length - 1] as { route?: string, options?: Record<string, string> } | undefined
-    if (!page?.route)
-      return ''
-    let url = `/${page.route}`
-    const opts = page.options
-    if (opts && Object.keys(opts).length > 0) {
-      const qs = Object.entries(opts)
-        .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
-        .join('&')
-      url += `?${qs}`
+    if (credits.value <= 0) {
+      credits.value = 99
     }
-    return url
-  }
-
-  /** 未登录时跳首页绑手机；可选 returnUrl，默认取当前页路径（含 query） */
-  function redirectToBindPhone(returnUrl?: string) {
-    const target = returnUrl || buildPageReturnUrl()
-    const url = target
-      ? `${RouterPaths.home}?bindPhone=1&returnUrl=${encodeURIComponent(target)}`
-      : RouterPaths.homeBindPhone
-    uni.reLaunch({ url })
-  }
-
-  async function initWxSession(oid?: string) {
-    const res = await postWxSession({ openid: oid || openid.value || undefined })
-    const data = res.data
-    openid.value = data.openid
-    if (data.step === 'ready' && data.token) {
-      persistAuth(data.token, data.openid)
-      return 'ready' as const
-    }
-    if (data.step === 'need_wx_auth') {
-      authStep.value = 'need_wx_auth'
-      return 'need_wx_auth' as const
-    }
-    authStep.value = 'need_phone'
-    return 'need_phone' as const
-  }
-
-  async function mockWxAuthorize() {
-    const res = await postWxAuthorize()
-    openid.value = res.data.openid
-    return initWxSession(res.data.openid)
-  }
-
-  async function sendSmsCode(phone: string) {
-    await postSmsCode({ phone })
-  }
-
-  async function bindPhone(phone: string, smsCode: string) {
-    const res = await postBindPhone({ openid: openid.value, phone, smsCode })
-    persistAuth(res.data.token, openid.value)
-    await bootstrap()
-  }
-
-  /** 确保已登录；返回是否 ready */
-  async function ensureAuth(): Promise<'ready' | 'need_phone' | 'need_wx_auth'> {
-    if (isLoggedIn.value)
-      return 'ready'
-    const token = getGuoxinToken()
-    if (token) {
-      const ok = await tryRestoreSession()
-      if (ok)
-        return 'ready'
-    }
-    return initWxSession()
-  }
-
-  async function bootstrap() {
-    if (!isLoggedIn.value)
-      return
-    loading.value = true
-    try {
-      const [pRes, cRes, lRes] = await Promise.all([
-        getProfiles(),
-        getCredits(),
-        getLatestRecord(),
-      ])
-      profiles.value = pRes.data
-      credits.value = cRes.data.credits
-      latestRecord.value = lRes.data
-      if (!activeProfileId.value && profiles.value.length)
-        activeProfileId.value = profiles.value[0].id
-    }
-    catch (err: unknown) {
-      if (err && typeof err === 'object' && 'needAuth' in err)
-        clearAuth()
-      throw err
-    }
-    finally {
-      loading.value = false
-    }
+    setFontScale(fontScale.value)
   }
 
   function getProfileById(id: string) {
     return profiles.value.find(p => p.id === id) ?? null
   }
 
-  async function fetchProfiles() {
-    const res = await getProfiles()
-    profiles.value = res.data
+  function getRecordsByProfileId(profileId: string) {
+    return records.value.filter(r => r.profileId === profileId)
   }
 
-  async function fetchRecords(profileId: string) {
-    const res = await getJieduRecords(profileId)
-    records.value = res.data
+  function getRecordById(id: string) {
+    const record = records.value.find(r => r.id === id)
+    if (!record)
+      return null
+    if (!record.content) {
+      const profile = getProfileById(record.profileId)
+      if (profile)
+        record.content = generateDynamicReportContent(profile, record.directions)
+    }
+    return record
   }
 
-  async function fetchCredits() {
-    const res = await getCredits()
-    credits.value = res.data.credits
+  function createProfile(dto: CreateProfileDto): ProfileVo {
+    const profile: ProfileVo = {
+      id: `p_${Date.now()}`,
+      ...dto,
+      jieduCount: 0,
+      lastJieduTime: '无',
+    }
+    profiles.value.push(profile)
+    activeProfileId.value = profile.id
+    return profile
   }
 
-  async function createProfile(dto: CreateProfileDto) {
-    const res = await apiCreateProfile(dto)
-    await fetchProfiles()
-    activeProfileId.value = res.data.id
-    return res.data
+  function updateProfile(id: string, dto: CreateProfileDto): ProfileVo | null {
+    const idx = profiles.value.findIndex(p => p.id === id)
+    if (idx === -1)
+      return null
+    const existing = profiles.value[idx]
+    const updated: ProfileVo = {
+      ...existing,
+      ...dto,
+    }
+    profiles.value[idx] = updated
+    return updated
   }
 
-  async function updateProfile(id: string, dto: CreateProfileDto) {
-    const res = await apiUpdateProfile(id, dto)
-    await fetchProfiles()
-    return res.data
-  }
-
-  async function deleteProfile(id: string) {
-    await apiDeleteProfile(id)
-    await fetchProfiles()
-    if (activeProfileId.value === id)
+  function deleteProfile(id: string) {
+    profiles.value = profiles.value.filter(p => p.id !== id)
+    records.value = records.value.filter(r => r.profileId !== id)
+    if (activeProfileId.value === id) {
       activeProfileId.value = profiles.value[0]?.id ?? ''
+    }
   }
 
   function setActiveProfile(profileId: string) {
     activeProfileId.value = profileId
+  }
+
+  function resolveStartProfile(): Promise<string | null> {
+    initSeedData()
+    if (profiles.value.length === 0)
+      return Promise.resolve(null)
+    if (profiles.value.length === 1) {
+      activeProfileId.value = profiles.value[0].id
+      return Promise.resolve(profiles.value[0].id)
+    }
+    return new Promise((resolve) => {
+      uni.showActionSheet({
+        itemList: profiles.value.map(p => `${p.name}（${p.relationText}）`),
+        success: (res) => {
+          const profile = profiles.value[res.tapIndex]
+          if (profile) {
+            activeProfileId.value = profile.id
+            resolve(profile.id)
+          }
+          else {
+            resolve(null)
+          }
+        },
+        fail: () => resolve(null),
+      })
+    })
   }
 
   function navigateToSetup(profileId?: string) {
@@ -257,114 +141,70 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     uni.navigateTo({ url: RouterPaths.jieduSetup })
   }
 
-  async function confirmJiedu(directions: DirectionValue[], userQuestion?: string) {
+  async function startJieduFromHome() {
+    initSeedData()
+    if (profiles.value.length === 0) {
+      uni.navigateTo({ url: RouterPaths.profileCreate })
+      return
+    }
+    const id = await resolveStartProfile()
+    if (id)
+      navigateToSetup(id)
+  }
+
+  function confirmJiedu(directions: DirectionValue[], question?: string): boolean {
     if (directions.length === 0) {
       uni.showToast({ title: '请至少选择一个关注方向', icon: 'none' })
       return false
     }
-    if (credits.value <= 0) {
+    if (useRemoteApi.value) {
+      // 远程模式：检查后端可用次数
+      if (totalAvailableCount.value <= 0 && serverProducts.value.length > 0) {
+        uni.navigateTo({ url: RouterPaths.credits })
+        return false
+      }
+    } else if (credits.value <= 0) {
       uni.navigateTo({ url: RouterPaths.credits })
       return false
     }
-    if (!activeProfileId.value) {
-      uni.showToast({ title: '请先选择档案', icon: 'none' })
-      return false
-    }
-    try {
-      const res = await createJieduTask({
-        profileId: activeProfileId.value,
-        directions,
-        userQuestion,
-      })
-      taskId.value = res.data.taskId
-      uni.setStorageSync(GUOXIN_TASK_KEY, res.data.taskId)
-      uni.navigateTo({ url: RouterPaths.jieduProcessing })
-      return true
-    }
-    catch {
-      return false
-    }
+    userQuestion.value = question?.trim() || ''
+    selectedDirections.value = [...directions]
+    uni.navigateTo({ url: RouterPaths.jieduProcessing })
+    return true
   }
 
-  async function fetchReport(recordId: string) {
-    const res = await getJieduReport(recordId)
-    return res.data
-  }
-
-  function getTaskIdFromStorage() {
-    return taskId.value || uni.getStorageSync(GUOXIN_TASK_KEY) || ''
-  }
-
-  async function runJieduStream(
-    onStep: (index: number) => void,
-    signal?: AbortSignal,
-    onDelta?: (text: string) => void,
-  ): Promise<string | null> {
-    const tid = getTaskIdFromStorage()
-    if (!tid)
+  function completeJiedu() {
+    const profile = activeProfile.value
+    if (!profile || selectedDirections.value.length === 0)
       return null
-
-    return new Promise((resolve) => {
-      subscribeJieduStream(tid, {
-        onStep: (data) => onStep(data.index),
-        onDelta: (data) => onDelta?.(data.text),
-        onDone: (data) => {
-          void (async () => {
-            activeRecordId.value = data.recordId
-            clearPendingTask()
-            await fetchCredits()
-            await bootstrap()
-            resolve(data.recordId)
-          })()
-        },
-        onError: (data) => {
-          uni.showToast({ title: data.msg, icon: 'none' })
-          resolve(null)
-        },
-      }, signal).catch(() => resolve(null))
-    })
-  }
-
-  /** SSE 失败或中断后根据任务状态兜底跳转 */
-  async function recoverFromStreamFailure(): Promise<'complete' | 'stream' | 'setup'> {
-    const tid = getTaskIdFromStorage()
-    if (!tid)
-      return 'setup'
-    try {
-      const res = await getJieduTaskStatus(tid)
-      if (res.data.status === 'done' && res.data.recordId) {
-        activeRecordId.value = res.data.recordId
-        clearPendingTask()
-        return 'complete'
+    if (!useRemoteApi.value) {
+      // 本地模式
+      if (credits.value <= 0) {
+        uni.showToast({ title: '解读次数不足', icon: 'none' })
+        uni.redirectTo({ url: RouterPaths.credits })
+        return null
       }
-      if (res.data.status === 'pending' || res.data.status === 'streaming')
-        return 'stream'
-    }
-    catch {
-      // ignore
-    }
-    return 'setup'
-  }
-
-  async function resumeProcessingTask(): Promise<'complete' | 'stream' | 'setup' | null> {
-    const tid = getTaskIdFromStorage()
-    if (!tid)
-      return null
-    taskId.value = tid
-    try {
-      const res = await getJieduTaskStatus(tid)
-      if (res.data.status === 'done' && res.data.recordId) {
-        activeRecordId.value = res.data.recordId
-        clearPendingTask()
-        return 'complete'
+      credits.value -= 1
+      const timeStr = formatNowTime()
+      const content = generateDynamicReportContent(profile, selectedDirections.value)
+      const newRecord: RecordVo = {
+        id: `r_${Date.now()}`,
+        profileId: profile.id,
+        profileName: profile.name,
+        title: formatRecordTitle(selectedDirections.value),
+        time: timeStr,
+        directions: [...selectedDirections.value],
+        content,
       }
-      if (res.data.status === 'streaming' || res.data.status === 'pending')
-        return 'stream'
-      return 'setup'
+      profile.jieduCount += 1
+      profile.lastJieduTime = timeStr
+      records.value.unshift(newRecord)
+      activeRecordId.value = newRecord.id
+      selectedDirections.value = []
+      return newRecord
     }
-    catch {
-      return 'setup'
-    }
+    // 远程模式：由 processing 页面调用 doGenerateReport + pollTaskStatus
+    return null
   }
 
   async function purchaseCredits(pkgId: CreditPackageId): Promise<boolean> {
@@ -372,23 +212,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     if (!pkg)
       return false
 
-    const useMock = import.meta.env.VITE_USE_MOCK === 'true'
-    if (useMock) {
-      try {
-        await postCreditsPurchase(pkgId)
-        await fetchCredits()
-        uni.showToast({ title: '开通成功', icon: 'success' })
-        return true
-      }
-      catch {
-        return false
-      }
-    }
-
     try {
       await wxChoosePay({ orderId: pkg.id, amount: Math.round(pkg.price * 100), description: pkg.name })
-      await postCreditsPurchase(pkgId)
-      await fetchCredits()
+      credits.value += pkg.amount
       uni.showToast({ title: '开通成功', icon: 'success' })
       return true
     }
@@ -396,8 +222,18 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       const code = err instanceof Error ? err.message : ''
       if (code === 'cancel')
         return false
-      uni.showToast({ title: '支付失败', icon: 'none' })
-      return false
+
+      await new Promise<void>((resolve) => {
+        uni.showModal({
+          title: '模拟支付',
+          content: `【演示】已成功购买：${pkg.name}\n解读次数 +${pkg.amount}`,
+          showCancel: false,
+          success: () => resolve(),
+        })
+      })
+      credits.value += pkg.amount
+      uni.showToast({ title: '开通成功', icon: 'success' })
+      return true
     }
   }
 
@@ -413,51 +249,348 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     // #endif
   }
 
+  function addCredits(amount: number) {
+    credits.value += amount
+  }
+
+  // ---- 后端集成方法 ----
+
+  /** 启用远程API模式 */
+  function enableRemoteApi() {
+    useRemoteApi.value = true
+  }
+
+  /** 发送短信验证码 */
+  async function doSendSmsCode(mobileStr: string): Promise<boolean> {
+    if (!useRemoteApi.value) {
+      // 本地演示模式
+      return true
+    }
+    try {
+      const res = await apiSendSmsCode({ mobile: mobileStr })
+      if (res.code === 200) {
+        return true
+      } else {
+        uni.showToast({ title: res.msg || '发送失败', icon: 'none' })
+        return false
+      }
+    } catch (e: any) {
+      console.error('发送验证码失败', e)
+      uni.showToast({ title: e?.message || '发送失败', icon: 'none' })
+      return false
+    }
+  }
+
+  /** 短信验证码登录 */
+  async function doLoginBySms(mobileStr: string, smsCode: string) {
+    if (!useRemoteApi.value) {
+      // 本地演示模式
+      isLoggedIn.value = true
+      userId.value = Date.now()
+      mobile.value = mobileStr
+      bindStatus.value = 1
+      return
+    }
+    try {
+      const res = await apiLoginBySms({ mobile: mobileStr, smsCode })
+      if (res.code === 200 && res.data) {
+        userId.value = res.data.userId
+        mobile.value = res.data.mobile || mobileStr
+        bindStatus.value = res.data.bindStatus || 1
+        // 存储JWT Token
+        if (res.data.token) {
+          token.value = res.data.token
+          uni.setStorageSync('apph5Token', res.data.token)
+        }
+        isLoggedIn.value = true
+      } else {
+        throw new Error(res.msg || '登录失败')
+      }
+    } catch (e) {
+      console.error('登录失败', e)
+      throw e
+    }
+  }
+
+  /** 微信登录 */
+  async function doLogin(openid: string, unionid?: string, nickname?: string, avatarUrl?: string) {
+    if (!useRemoteApi.value) {
+      // 本地演示模式
+      isLoggedIn.value = true
+      userId.value = Date.now()
+      return
+    }
+    try {
+      const res = await apiLogin({ openid, unionid, nickname, avatarUrl })
+      if (res.code === 200 && res.data) {
+        userId.value = res.data.userId
+        mobile.value = res.data.mobile || ''
+        bindStatus.value = res.data.bindStatus || 0
+        // 存储JWT Token
+        if (res.data.token) {
+          token.value = res.data.token
+          uni.setStorageSync('apph5Token', res.data.token)
+        }
+        isLoggedIn.value = true
+      }
+    } catch (e) {
+      console.error('登录失败', e)
+      throw e
+    }
+  }
+
+  /** 微信网页授权登录（code换用户信息） */
+  async function doWxLogin(code: string): Promise<{ needBindMobile: boolean }> {
+    if (!useRemoteApi.value) {
+      // 本地演示模式
+      isLoggedIn.value = true
+      userId.value = Date.now()
+      return { needBindMobile: false }
+    }
+    try {
+      const res = await apiWxLogin({ code })
+      if (res.code === 200 && res.data) {
+        userId.value = res.data.userId
+        mobile.value = res.data.mobile || ''
+        bindStatus.value = res.data.bindStatus || 0
+        // 存储JWT Token
+        if (res.data.token) {
+          token.value = res.data.token
+          uni.setStorageSync('apph5Token', res.data.token)
+        }
+        isLoggedIn.value = true
+        return { needBindMobile: !!res.data.needBindMobile }
+      } else {
+        throw new Error(res.msg || '微信登录失败')
+      }
+    } catch (e) {
+      console.error('微信登录失败', e)
+      throw e
+    }
+  }
+
+  /** 绑定手机号（需短信验证码） */
+  async function doBindMobile(mobileStr: string) {
+    if (!useRemoteApi.value || !userId.value) return
+    try {
+      const res = await apiBindMobile({ userId: userId.value, mobile: mobileStr, smsCode: '' })
+      if (res.code === 200) {
+        mobile.value = mobileStr
+        bindStatus.value = 1
+      }
+    } catch (e) {
+      console.error('绑定手机号失败', e)
+    }
+  }
+
+  /** 绑定手机号（带短信验证码） */
+  async function doBindMobileWithSms(mobileStr: string, smsCode: string) {
+    if (!userId.value) {
+      throw new Error('用户未登录')
+    }
+    const res = await apiBindMobile({ userId: userId.value, mobile: mobileStr, smsCode })
+    if (res.code === 200) {
+      mobile.value = mobileStr
+      bindStatus.value = 1
+      // 绑定成功后更新Token（后端会返回新token）
+      if (res.data && res.data.token) {
+        token.value = res.data.token
+        uni.setStorageSync('apph5Token', res.data.token)
+      }
+    } else {
+      throw new Error(res.msg || '绑定失败')
+    }
+  }
+
+  /** 加载商品列表 */
+  async function loadProducts() {
+    if (!useRemoteApi.value) return
+    try {
+      const res = await getProducts()
+      if (res.code === 200 && res.data) {
+        serverProducts.value = res.data
+      }
+    } catch (e) {
+      console.error('加载商品失败', e)
+    }
+  }
+
+  /** 刷新可用权益次数 */
+  async function refreshAvailableCount(productId?: number) {
+    if (!useRemoteApi.value || !userId.value) return
+    if (!productId && serverProducts.value.length > 0) {
+      productId = serverProducts.value[0].id
+    }
+    if (!productId) return
+    try {
+      const res = await getAvailableCount(productId)
+      if (res.code === 200 && res.data) {
+        totalAvailableCount.value = res.data.availableCount || 0
+        credits.value = totalAvailableCount.value
+      }
+    } catch (e) {
+      console.error('刷新可用次数失败', e)
+    }
+  }
+
+  /** 加载用户报告列表 */
+  async function loadReports() {
+    if (!useRemoteApi.value || !userId.value) return
+    try {
+      const res = await getReports()
+      if (res.code === 200 && res.data) {
+        serverReports.value = res.data
+      }
+    } catch (e) {
+      console.error('加载报告列表失败', e)
+    }
+  }
+
+  /** 提交报告生成 */
+  async function doGenerateReport(productId: number, inputJson?: string) {
+    if (!useRemoteApi.value || !userId.value) return null
+    try {
+      const res = await apiGenerateReport({ productId, inputJson })
+      if (res.code === 200 && res.data) {
+        return res.data
+      } else {
+        uni.showToast({ title: res.msg || '生成失败', icon: 'none' })
+      }
+    } catch (e) {
+      console.error('生成报告失败', e)
+    }
+    return null
+  }
+
+  /** 轮询任务状态 */
+  async function pollTaskStatus(taskId: number, maxRetries = 30, interval = 3000): Promise<any> {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const res = await getTaskStatus(taskId)
+        if (res.code === 200 && res.data) {
+          const status = res.data.status
+          if (status === 'success' || status === 'failed') {
+            return res.data
+          }
+        }
+      } catch (e) {
+        console.error('查询任务状态失败', e)
+      }
+      await new Promise(resolve => setTimeout(resolve, interval))
+    }
+    return null
+  }
+
+  /** 加载用户信息 */
+  async function loadUserInfo() {
+    if (!useRemoteApi.value || !userId.value) return
+    try {
+      const res = await getUserInfo()
+      if (res.code === 200 && res.data) {
+        mobile.value = res.data.mobile || ''
+        bindStatus.value = res.data.bindStatus || 0
+      }
+    } catch (e) {
+      console.error('加载用户信息失败', e)
+    }
+  }
+
+  /** 初始化远程数据（登录后调用） */
+  async function initRemoteData() {
+    if (!useRemoteApi.value) return
+    await loadProducts()
+    if (serverProducts.value.length > 0) {
+      await refreshAvailableCount(serverProducts.value[0].id)
+    }
+    await loadReports()
+  }
+
+  /** 将后端报告映射为本地 RecordVo 格式 */
+  function mapServerReportToRecord(report: any): RecordVo {
+    return {
+      id: String(report.id),
+      profileId: activeProfileId.value || 'server',
+      profileName: report.reportName || '命理报告',
+      title: report.reportName || '命理报告',
+      time: report.createTime || '',
+      directions: [],
+      content: report._content || [],
+      status: report.status,
+    }
+  }
+
+  /** 加载报告详情 */
+  async function loadReportDetail(reportId: number): Promise<any> {
+    if (!useRemoteApi.value || !userId.value) return null
+    try {
+      const res = await getReportDetail(reportId)
+      if (res.code === 200 && res.data) {
+        return res.data
+      }
+    } catch (e) {
+      console.error('加载报告详情失败', e)
+    }
+    return null
+  }
+
   return {
     profiles,
     records,
     credits,
-    latestRecord,
     activeProfileId,
     activeRecordId,
-    taskId,
+    selectedDirections,
+    userQuestion,
     fontScale,
-    authStep,
-    openid,
-    loading,
     isLoggedIn,
     activeProfile,
-    tryRestoreSession,
-    ensureAuth,
-    mockWxAuthorize,
-    sendSmsCode,
-    bindPhone,
-    bootstrap,
+    latestRecord,
+    initSeedData,
     getProfileById,
-    fetchProfiles,
-    fetchRecords,
-    fetchCredits,
+    getRecordsByProfileId,
+    getRecordById,
     createProfile,
     updateProfile,
     deleteProfile,
     setActiveProfile,
+    resolveStartProfile,
     navigateToSetup,
+    startJieduFromHome,
     confirmJiedu,
-    fetchReport,
-    runJieduStream,
-    resumeProcessingTask,
-    recoverFromStreamFailure,
+    completeJiedu,
     purchaseCredits,
     setFontScale,
-    clearAuth,
-    clearPendingTask,
-    requireAuthForPage,
-    redirectToBindPhone,
+    addCredits,
+    // 后端集成
+    userId,
+    mobile,
+    bindStatus,
+    token,
+    serverProducts,
+    serverReports,
+    totalAvailableCount,
+    useRemoteApi,
+    enableRemoteApi,
+    doSendSmsCode,
+    doLoginBySms,
+    doWxLogin,
+    doLogin,
+    doBindMobile,
+    doBindMobileWithSms,
+    loadProducts,
+    refreshAvailableCount,
+    loadReports,
+    doGenerateReport,
+    pollTaskStatus,
+    loadUserInfo,
+    initRemoteData,
+    mapServerReportToRecord,
+    loadReportDetail,
   }
 }, {
   persist: {
-    key: 'guoxin-ui',
+    key: 'guoxin-store',
     storage: localStorage,
-    pick: ['fontScale', 'activeProfileId'],
+    pick: ['profiles', 'records', 'credits', 'activeProfileId', 'selectedDirections', 'fontScale', 'isLoggedIn', 'userId', 'mobile', 'token', 'useRemoteApi'],
   },
 })

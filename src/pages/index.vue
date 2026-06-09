@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
 import type { FontScale } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
@@ -8,55 +7,103 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
+import { isWeChatBrowser, getOAuthCodeFromUrl, clearOAuthParamsFromUrl } from '@/utils/weixin/env'
+import { redirectToWxOAuth } from '@/utils/weixin/oauth'
 
 const store = useGuoxinStore()
 
 const showLogin = ref(false)
+const loginMode = ref<'smsLogin' | 'bindMobile'>('smsLogin')
 const showProfileSelect = ref(false)
 
-const pendingAfterLogin = ref<'start' | 'profiles' | 'credits' | null>(null)
-const pendingReturnUrl = ref('')
+onMounted(async () => {
+  store.initSeedData()
 
-onLoad((query) => {
-  if (query?.bindPhone === '1')
+  // 如果已登录且启用远程API，刷新远程数据
+  if (store.isLoggedIn && store.useRemoteApi && store.userId) {
+    await store.initRemoteData()
+    return
+  }
+
+  // 远程模式：处理微信 OAuth 流程
+  if (store.useRemoteApi) {
+    const code = getOAuthCodeFromUrl()
+    if (code) {
+      // URL 中有 code，是微信授权回调
+      clearOAuthParamsFromUrl()
+      try {
+        uni.showLoading({ title: '登录中...' })
+        const result = await store.doWxLogin(code)
+        uni.hideLoading()
+        if (result.needBindMobile) {
+          // 用户未绑定手机号，弹出绑定手机号弹窗
+          loginMode.value = 'bindMobile'
+          showLogin.value = true
+        } else {
+          // 已绑定手机号，直接初始化数据
+          await store.initRemoteData()
+        }
+      } catch (e: any) {
+        uni.hideLoading()
+        console.error('微信登录失败', e)
+        // 微信登录失败，降级为短信登录
+        loginMode.value = 'smsLogin'
+        showLogin.value = true
+      }
+      return
+    }
+
+    // 没有 code，如果在微信浏览器中，跳转微信授权
+    if (isWeChatBrowser()) {
+      redirectToWxOAuth('GUOXIN_LOGIN')
+      return
+    }
+
+    // 非微信浏览器，显示短信登录弹窗
+    loginMode.value = 'smsLogin'
     showLogin.value = true
-  if (query?.returnUrl)
-    pendingReturnUrl.value = decodeURIComponent(String(query.returnUrl))
+    return
+  }
+
+  // 本地演示模式
+  if (!store.isLoggedIn) {
+    showLogin.value = true
+  }
 })
 
-onMounted(() => {
-  store.tryRestoreSession()
-})
-
-const latestRecord = computed(() => store.isLoggedIn ? store.latestRecord : null)
+const latestRecord = computed(() => store.latestRecord)
 const profiles = computed(() => store.profiles)
 
-async function runAuthGate(): Promise<boolean> {
-  let step = await store.ensureAuth()
-  if (step === 'need_wx_auth')
-    step = await store.mockWxAuthorize()
-  if (step === 'need_phone') {
-    showLogin.value = true
-    return false
-  }
-  return store.isLoggedIn
+const displayCredits = computed(() => {
+  if (store.useRemoteApi && store.isLoggedIn)
+    return store.totalAvailableCount
+  return store.credits
+})
+
+function hasNoCredits() {
+  if (store.useRemoteApi && store.isLoggedIn)
+    return store.totalAvailableCount <= 0
+  return store.credits <= 0
 }
 
-async function handleStartJiedu() {
-  pendingAfterLogin.value = 'start'
-  if (!(await runAuthGate()))
+function handleStartJiedu() {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
     return
+  }
 
-  if (store.credits <= 0) {
+  if (hasNoCredits()) {
     uni.navigateTo({ url: RouterPaths.credits })
     return
   }
 
+  // Go to profile creation if no profiles exist
   if (profiles.value.length === 0) {
     uni.navigateTo({ url: RouterPaths.profileCreate })
     return
   }
 
+  // Open the custom choose profile modal
   showProfileSelect.value = true
 }
 
@@ -71,17 +118,19 @@ function handleCreateProfileFromModal() {
   uni.navigateTo({ url: RouterPaths.profileCreate })
 }
 
-async function goProfiles() {
-  pendingAfterLogin.value = 'profiles'
-  if (!(await runAuthGate()))
+function goProfiles() {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
     return
+  }
   uni.navigateTo({ url: RouterPaths.profileList })
 }
 
-async function goCredits() {
-  pendingAfterLogin.value = 'credits'
-  if (!(await runAuthGate()))
+function goCredits() {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
     return
+  }
   uni.navigateTo({ url: RouterPaths.credits })
 }
 
@@ -96,32 +145,23 @@ function setScale(scale: FontScale) {
 }
 
 async function handleLoginSuccess() {
-  const returnUrl = pendingReturnUrl.value
-  pendingReturnUrl.value = ''
-  if (returnUrl) {
-    uni.reLaunch({ url: returnUrl })
+  // 登录/绑定成功后刷新远程数据
+  if (store.useRemoteApi) {
+    await store.initRemoteData()
+  }
+  // 绑定手机号模式成功后，直接进入主页
+  if (loginMode.value === 'bindMobile') {
     return
   }
-
-  const action = pendingAfterLogin.value
-  pendingAfterLogin.value = null
-  if (action === 'profiles') {
-    uni.navigateTo({ url: RouterPaths.profileList })
-    return
-  }
-  if (action === 'credits') {
+  if (hasNoCredits()) {
     uni.navigateTo({ url: RouterPaths.credits })
-    return
   }
-  if (store.credits <= 0) {
-    uni.navigateTo({ url: RouterPaths.credits })
-    return
-  }
-  if (store.profiles.length === 0) {
+  else if (store.profiles.length === 0) {
     uni.navigateTo({ url: RouterPaths.profileCreate })
-    return
   }
-  showProfileSelect.value = true
+  else {
+    showProfileSelect.value = true
+  }
 }
 </script>
 
@@ -148,7 +188,7 @@ async function handleLoginSuccess() {
 
           <!-- Remaining credits badge -->
           <view class="credit-badge" @tap.stop="goCredits">
-            剩余解读次数：<text class="credit-count">{{ store.isLoggedIn ? store.credits : '--' }}</text>次
+            剩余解读次数：<text class="credit-count">{{ store.isLoggedIn ? displayCredits : '--' }}</text>次
           </view>
         </view>
       </view>
@@ -210,6 +250,7 @@ async function handleLoginSuccess() {
     <!-- Immediate Login Dialog Modal -->
     <GxLoginModal
       :show="showLogin"
+      :mode="loginMode"
       @close="showLogin = false"
       @success="handleLoginSuccess"
     />
@@ -397,7 +438,6 @@ async function handleLoginSuccess() {
 
 .record-meta {
   flex: 1;
-  min-width: 0;
   margin-right: 20rpx;
 }
 
@@ -405,7 +445,6 @@ async function handleLoginSuccess() {
   font-size: 28rpx;
   font-weight: 700;
   color: #241F19;
-  line-height: 1.5;
 }
 
 .record-time {

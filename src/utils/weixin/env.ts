@@ -38,6 +38,14 @@ export function getOAuthCodeFromUrl(): string | null {
   return params.get('code')
 }
 
+/** 从 URL 解析 OAuth state */
+export function getOAuthStateFromUrl(): string | null {
+  if (typeof window === 'undefined')
+    return null
+  const params = new URLSearchParams(window.location.search)
+  return params.get('state')
+}
+
 /** 清除 URL 中的 OAuth 参数（code、state） */
 export function clearOAuthParamsFromUrl(): void {
   if (typeof window === 'undefined')

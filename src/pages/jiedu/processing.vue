@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { onMounted, ref } from 'vue'
 import { onUnload } from '@dcloudio/uni-app'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
@@ -8,107 +7,136 @@ import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
-const { t } = useI18n()
 const store = useGuoxinStore()
 const step = ref(1)
+let timer: ReturnType<typeof setInterval> | null = null
 const completed = ref(false)
-const previewText = ref('')
-let abortController: AbortController | null = null
-let streamRetry = 0
-const MAX_STREAM_RETRY = 2
+const remoteTaskId = ref<number | null>(null)
+const remoteReportId = ref<number | null>(null)
 
-const steps = computed(() => [
-  { title: t('jiedu.processing.steps.s1Title'), desc: t('jiedu.processing.steps.s1Desc') },
-  { title: t('jiedu.processing.steps.s2Title'), desc: t('jiedu.processing.steps.s2Desc') },
-  { title: t('jiedu.processing.steps.s3Title'), desc: t('jiedu.processing.steps.s3Desc') },
-  { title: t('jiedu.processing.steps.s4Title'), desc: t('jiedu.processing.steps.s4Desc') },
-])
+const steps = [
+  { title: '已确认档案信息', desc: '档案与关注方向已记录' },
+  { title: '正在整理关注方向', desc: '重点方向已归纳' },
+  { title: '正在生成完整解读', desc: '结合性格与阶段状态深度整理中…' },
+  { title: '完成后通知您查看', desc: '' },
+]
 
-async function startStream() {
-  abortController = new AbortController()
-  const recordId = await store.runJieduStream((index) => {
-    step.value = index
-  }, abortController.signal, (text) => {
-    previewText.value += text
-  })
-
-  if (recordId) {
-    completed.value = true
-    uni.redirectTo({ url: RouterPaths.jieduComplete })
+function finishAndGoComplete() {
+  if (completed.value)
     return
+  if (timer) {
+    clearInterval(timer)
+    timer = null
   }
-  const next = await store.recoverFromStreamFailure()
-  if (next === 'complete') {
-    completed.value = true
-    uni.redirectTo({ url: RouterPaths.jieduComplete })
+  // 本地模式
+  if (!store.useRemoteApi) {
+    const record = store.completeJiedu()
+    if (!record)
+      return
   }
-  else if (next === 'stream' && streamRetry < MAX_STREAM_RETRY) {
-    streamRetry += 1
-    startStream()
-  }
-  else {
-    uni.redirectTo({ url: RouterPaths.jieduSetup })
+  completed.value = true
+  uni.redirectTo({ url: `${RouterPaths.jieduComplete}?reportId=${remoteReportId.value || ''}` })
+}
+
+function startSimulation() {
+  step.value = 1
+  timer = setInterval(() => {
+    step.value += 1
+    if (step.value >= 4) {
+      if (timer)
+        clearInterval(timer)
+      // 远程模式下，等待后端任务完成
+      if (store.useRemoteApi && remoteTaskId.value) {
+        pollRemoteTask()
+      } else {
+        setTimeout(finishAndGoComplete, 800)
+      }
+    }
+  }, 2500)
+}
+
+async function pollRemoteTask() {
+  if (!remoteTaskId.value) return
+  const result = await store.pollTaskStatus(remoteTaskId.value, 60, 3000)
+  if (result && result.status === 'success') {
+    remoteReportId.value = result.reportId
+    // 刷新报告列表
+    await store.loadReports()
+    await store.refreshAvailableCount()
+    finishAndGoComplete()
+  } else {
+    uni.showToast({ title: '报告生成超时，请稍后查看', icon: 'none' })
+    uni.redirectTo({ url: RouterPaths.jieduRecords })
   }
 }
 
 onMounted(async () => {
-  const resume = await store.resumeProcessingTask()
-  if (resume === 'setup' || !resume) {
+  store.initSeedData()
+  if (!store.activeProfile || !store.selectedDirections.length) {
     uni.redirectTo({ url: RouterPaths.jieduSetup })
     return
   }
-  if (resume === 'complete') {
-    uni.redirectTo({ url: RouterPaths.jieduComplete })
-    return
+  // 远程模式：提交生成请求
+  if (store.useRemoteApi && store.userId && store.serverProducts.length > 0) {
+    const productId = store.serverProducts[0].id
+    const inputJson = JSON.stringify({
+      profileId: store.activeProfileId,
+      directions: store.selectedDirections,
+      profileName: store.activeProfile?.name,
+      userQuestion: store.userQuestion || undefined,
+    })
+    const result = await store.doGenerateReport(productId, inputJson)
+    if (result && result.taskId) {
+      remoteTaskId.value = result.taskId
+      remoteReportId.value = result.reportId
+    } else {
+      uni.showToast({ title: '提交失败，请重试', icon: 'none' })
+      uni.navigateBack()
+      return
+    }
   }
-  startStream()
+  startSimulation()
 })
-
-function leaveProcessing() {
-  abortController?.abort()
-  if (!completed.value)
-    store.clearPendingTask()
-}
 
 onUnload(() => {
   if (!completed.value) {
-    leaveProcessing()
-    uni.showToast({ title: t('jiedu.processing.interrupted'), icon: 'none' })
+    uni.showToast({ title: '整理已中断，可重新解读', icon: 'none' })
   }
+  if (timer)
+    clearInterval(timer)
 })
 
-function completeAndGoHome() {
-  leaveProcessing()
-  uni.reLaunch({ url: RouterPaths.home })
+function skipNow() {
+  finishAndGoComplete()
 }
-
 function goRecords() {
-  leaveProcessing()
   uni.navigateTo({ url: RouterPaths.jieduRecords })
 }
 </script>
 
 <template>
   <view class="gx-page flex_column page-container">
-    <GxNavBar :title="t('jiedu.processing.title')" />
+    <GxNavBar title="正在为您整理" />
 
     <scroll-view scroll-y class="gx-scroll">
+      <!-- Loading Banner -->
       <view class="loading-banner">
-        <view class="loading-circle" />
-        <view class="banner-title">{{ t('jiedu.processing.bannerTitle') }}</view>
-        <view class="banner-desc">{{ t('jiedu.processing.bannerDesc') }}</view>
+        <view class="loading-circle"></view>
+        <view class="banner-title">心语老师正在深度整理</view>
+        <view class="banner-desc">我正在调阅东方传统哲学观点，结合心理学模型为您整理更完整的内容。预计需要一些时间，完成后会通知您查看完整解读。</view>
       </view>
 
+      <!-- Preview card -->
       <GxCard class="preview-card">
         <view class="gx-form-label section-label">
-          {{ t('jiedu.processing.previewLabel') }}
+          初步预览
         </view>
         <view class="preview-text">
-          <text>{{ previewText || t('jiedu.processing.previewText') }}</text>
-          <text class="preview-highlight">{{ t('jiedu.processing.previewHighlight') }}</text>
+          根据您提供的信息，心语老师已经开始整理本次专属解读。<strong>初步来看，本次内容会重点围绕您的阶段状态、家庭关系和生活节奏展开。</strong>
         </view>
       </GxCard>
 
+      <!-- Vertical timeline checklist -->
       <view class="progress-timeline">
         <view
           v-for="(s, idx) in steps"
@@ -134,12 +162,13 @@ function goRecords() {
         </view>
       </view>
 
+      <!-- Action buttons -->
       <view class="gx-btn-group action-buttons">
-        <GxButton type="secondary" @click="completeAndGoHome">
-          {{ t('jiedu.processing.later') }}
+        <GxButton type="secondary" @click="skipNow">
+          解读完成，立即查看
         </GxButton>
         <GxButton type="outline" @click="goRecords">
-          {{ t('jiedu.processing.viewRecords') }}
+          查看解读记录
         </GxButton>
       </view>
 
@@ -207,20 +236,17 @@ function goRecords() {
   }
 
   .preview-text {
-    display: flex;
-    flex-direction: column;
-    gap: 8rpx;
     font-size: 26rpx;
     color: #665B4E;
     line-height: 1.7;
 
-    .preview-highlight {
+    strong {
       color: #241F19;
-      font-weight: 700;
     }
   }
 }
 
+/* Timeline vertical checklists */
 .progress-timeline {
   display: flex;
   flex-direction: column;
@@ -275,7 +301,7 @@ function goRecords() {
   font-size: 28rpx;
   color: #958878;
   font-weight: 500;
-  line-height: 52rpx;
+  line-height: 52rpx; /* Align with center of icon */
 }
 
 .step-desc {
@@ -284,6 +310,7 @@ function goRecords() {
   margin-top: 8rpx;
 }
 
+/* Timeline Active / Completed status */
 .timeline-step.completed {
   .timeline-icon {
     background-color: #153F33;

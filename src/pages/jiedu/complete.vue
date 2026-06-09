@@ -1,38 +1,41 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import type { RecordVo } from '@/models/guoxin/record'
+import { computed, onMounted, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
-const { t } = useI18n()
 const store = useGuoxinStore()
-const record = ref<RecordVo | null>(null)
-const loading = ref(true)
+const reportIdParam = ref('')
 
-onMounted(async () => {
-  if (!(await store.requireAuthForPage())) {
-    store.redirectToBindPhone()
-    return
-  }
-  if (!store.activeRecordId) {
-    loading.value = false
-    return
-  }
-  try {
-    record.value = await store.fetchReport(store.activeRecordId)
-  }
-  catch {
-    record.value = null
-  }
-  finally {
-    loading.value = false
-  }
+onLoad((query) => {
+  if (query?.reportId)
+    reportIdParam.value = String(query.reportId)
 })
 
+onMounted(() => store.initSeedData())
+
+const record = computed(() => {
+  // 远程模式：从服务器报告列表获取
+  if (store.useRemoteApi && store.serverReports.length > 0) {
+    const report = reportIdParam.value
+      ? store.serverReports.find((r: any) => String(r.id) === reportIdParam.value)
+      : store.serverReports[0]
+    if (report) {
+      return store.mapServerReportToRecord(report)
+    }
+  }
+  // 本地模式
+  return store.getRecordById(store.activeRecordId)
+})
+
+function goDetail() {
+  if (!record.value)
+    return
+  uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${record.value.id}` })
+}
 function goRecords() {
   uni.navigateTo({ url: RouterPaths.jieduRecords })
 }
@@ -43,51 +46,61 @@ function goHome() {
 </script>
 
 <template>
-  <view class="gx-page flex_column page-container">
-    <GxNavBar :title="t('jiedu.complete.title')" />
+  <view v-if="record" class="gx-page flex_column page-container">
+    <GxNavBar title="解读已完成" />
 
-    <view v-if="loading" class="gx-empty-state">
-      <view class="empty-text">加载中...</view>
-    </view>
-
-    <scroll-view v-else-if="record" scroll-y class="gx-scroll">
+    <scroll-view scroll-y class="gx-scroll">
+      <!-- Complete Banner -->
       <view class="complete-banner">
         <view class="success-mark">✓</view>
-        <view class="banner-title">{{ t('jiedu.complete.bannerTitle') }}</view>
-        <view class="banner-subtitle">{{ t('jiedu.complete.bannerSubtitle') }}</view>
+        <view class="banner-title">本次专属解读已整理完成</view>
+        <view class="banner-subtitle">心语老师已根据您的档案信息和关注方向，为您整理了本次专属解读建议。</view>
       </view>
 
+      <!-- Content Checklist Card -->
       <GxCard class="content-checklist-card">
         <view class="gx-form-label section-label">
-          {{ t('jiedu.complete.checklistLabel') }}
+          解读报告包含以下内容：
         </view>
-        <view
-          v-for="(section, idx) in record.content"
-          :key="idx"
-          class="checklist-item"
-        >
-          <view class="item-title">{{ section.title }}</view>
-          <view class="item-body">{{ section.body }}</view>
+
+        <view class="checklist-items">
+          <view
+            v-for="(sec, idx) in record.content || []"
+            :key="sec.title"
+            class="checklist-row flex_row f_a_center"
+          >
+            <view class="bullet-dot">
+              <text class="dot-num">{{ idx + 1 }}</text>
+            </view>
+            <text class="checklist-title">{{ sec.title.replace(/^[^、]+、/, '') }}</text>
+          </view>
         </view>
       </GxCard>
 
+      <!-- Action Buttons -->
       <view class="gx-btn-group action-buttons">
-        <GxButton type="primary" @click="goRecords">
-          {{ t('jiedu.complete.viewRecords') }}
+        <GxButton type="primary" @click="goDetail">
+          查看完整解读
         </GxButton>
-        <GxButton type="secondary" @click="goHome">
-          {{ t('jiedu.complete.backHome') }}
+        <GxButton type="secondary" @click="store.navigateToSetup()">
+          继续和心语老师聊聊
+        </GxButton>
+        <GxButton type="outline" @click="goRecords">
+          查看解读记录
         </GxButton>
       </view>
 
       <view class="gx-safe-bottom" />
     </scroll-view>
+  </view>
 
-    <view v-else class="gx-empty-state">
+  <view v-else class="gx-page flex_column page-container">
+    <GxNavBar title="解读已完成" />
+    <view class="gx-empty-state">
       <view class="empty-icon">📋</view>
-      <view class="empty-text">{{ t('jiedu.complete.emptyText') }}</view>
+      <view class="empty-text">未找到本次解读记录，您可以返回首页重新发起。</view>
       <GxButton type="primary" @click="goHome">
-        {{ t('jiedu.complete.backHome') }}
+        返回首页
       </GxButton>
     </view>
   </view>
@@ -103,33 +116,39 @@ function goHome() {
 
 .complete-banner {
   background: linear-gradient(160deg, #153F33, #255648);
-  padding: 60rpx 40rpx 48rpx;
+  padding: 60rpx 40rpx;
   text-align: center;
   color: #FCF5E9;
+  flex-shrink: 0;
 }
 
 .success-mark {
-  width: 80rpx;
-  height: 80rpx;
+  width: 110rpx;
+  height: 110rpx;
   border-radius: 50%;
-  background: #B9945F;
-  color: #241F19;
-  font-size: 40rpx;
+  background-color: #EEF3EA;
+  color: #153F33;
+  font-size: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24rpx auto;
+  border: 4rpx solid #B9945F;
   font-weight: 700;
-  line-height: 80rpx;
-  margin: 0 auto 24rpx;
 }
 
 .banner-title {
   font-family: "Noto Serif SC", Georgia, serif;
-  font-size: 36rpx;
-  font-weight: 700;
+  font-size: 38rpx;
+  font-weight: 900;
+  color: #FCF5E9;
   margin-bottom: 12rpx;
 }
 
 .banner-subtitle {
   font-size: 26rpx;
-  opacity: 0.9;
+  line-height: 1.6;
+  opacity: 0.85;
 }
 
 .content-checklist-card {
@@ -142,29 +161,69 @@ function goHome() {
     font-weight: 700;
     border-left: 6rpx solid #B9945F;
     padding-left: 16rpx;
-    margin-bottom: 24rpx;
+    line-height: 1;
+    margin-bottom: 30rpx;
   }
 }
 
-.checklist-item {
-  margin-bottom: 28rpx;
+.checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
 
-  .item-title {
-    font-size: 28rpx;
+.checklist-row {
+  gap: 24rpx;
+}
+
+.bullet-dot {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background-color: rgba(185, 148, 95, 0.16);
+  border: 2rpx solid rgba(185, 148, 95, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .dot-num {
+    font-size: 22rpx;
+    color: #B9945F;
     font-weight: 700;
-    color: #153F33;
-    margin-bottom: 12rpx;
   }
+}
 
-  .item-body {
-    font-size: 26rpx;
-    color: #665B4E;
-    line-height: 1.7;
-    white-space: pre-wrap;
-  }
+.checklist-title {
+  font-size: 28rpx;
+  color: #241F19;
+  font-weight: 700;
 }
 
 .action-buttons {
-  margin: 32rpx 0 40rpx;
+  margin-top: 16rpx;
+  margin-bottom: 40rpx;
+}
+
+.gx-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 120rpx 48rpx;
+  box-sizing: border-box;
+
+  .empty-icon {
+    font-size: 100rpx;
+    margin-bottom: 24rpx;
+    opacity: 0.3;
+  }
+
+  .empty-text {
+    font-size: 28rpx;
+    color: #665B4E;
+    margin-bottom: 48rpx;
+    line-height: 1.6;
+  }
 }
 </style>
