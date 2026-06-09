@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { RouterPaths } from '@/routerPaths'
 import GxButton from './GxButton.vue'
 
 const props = defineProps<{
@@ -66,6 +67,14 @@ async function handleLogin() {
     // toast handled by api
   }
 }
+
+function openServiceAgreement() {
+  uni.navigateTo({ url: RouterPaths.legalService })
+}
+
+function openPrivacyAgreement() {
+  uni.navigateTo({ url: RouterPaths.legalPrivacy })
+}
 </script>
 
 <template>
@@ -116,8 +125,8 @@ async function handleLogin() {
           </view>
           <view class="agreement-text">
             我已阅读并同意
-            <text class="link-text" @tap.stop>《用户协议》</text>与
-            <text class="link-text" @tap.stop>《隐私政策》</text>
+            <text class="link-text" @tap.stop="openServiceAgreement">《用户协议》</text>与
+            <text class="link-text" @tap.stop="openPrivacyAgreement">《隐私协议》</text>
           </view>
         </view>
 

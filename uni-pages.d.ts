@@ -11,6 +11,8 @@ type _LocationUrl =
   "/pages/jiedu/processing" |
   "/pages/jiedu/records" |
   "/pages/jiedu/setup" |
+  "/pages/legal/privacy" |
+  "/pages/legal/service" |
   "/pages/profile/create" |
   "/pages/profile/list";
 

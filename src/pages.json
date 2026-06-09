@@ -57,6 +57,22 @@
       "layout": "guoxinChat"
     },
     {
+      "path": "pages/legal/privacy",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "隐私协议"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/legal/service",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "用户服务协议"
+      },
+      "layout": "guoxin"
+    },
+    {
       "path": "pages/profile/create",
       "type": "page",
       "style": {
