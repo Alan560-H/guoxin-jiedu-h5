@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { CREDIT_PACKAGES, CREDITS_PAYWALL_TEXT } from '@/constants/guoxin'
 import type { CreditPackageId } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
@@ -9,6 +9,11 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 
 const store = useGuoxinStore()
 const selectedId = ref<CreditPackageId>('standard')
+
+onMounted(async () => {
+  if (store.isLoggedIn)
+    await store.fetchCredits()
+})
 
 function selectPkg(id: CreditPackageId) {
   selectedId.value = id
@@ -24,10 +29,6 @@ async function purchase() {
 }
 function goBack() {
   uni.navigateBack()
-}
-function freeAdd() {
-  store.addCredits(10)
-  uni.showToast({ title: '已免费赠送10次', icon: 'success' })
 }
 </script>
 
@@ -82,9 +83,6 @@ function freeAdd() {
       <view class="gx-btn-group action-buttons">
         <GxButton type="primary" @click="purchase">
           立即开通权益
-        </GxButton>
-        <GxButton type="secondary" @click="freeAdd">
-          【测试演示】免费增加 10 次
         </GxButton>
         <GxButton type="outline" @click="goBack">
           稍后再说

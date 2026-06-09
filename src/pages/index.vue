@@ -13,36 +13,41 @@ const store = useGuoxinStore()
 const showLogin = ref(false)
 const showProfileSelect = ref(false)
 
+const pendingAfterLogin = ref<'start' | 'profiles' | 'credits' | null>(null)
+
 onMounted(() => {
-  store.initSeedData()
-  // Trigger login modal immediately if not logged in
-  if (!store.isLoggedIn) {
-    showLogin.value = true
-  }
+  store.tryRestoreSession()
 })
 
-const latestRecord = computed(() => store.latestRecord)
+const latestRecord = computed(() => store.isLoggedIn ? store.latestRecord : null)
 const profiles = computed(() => store.profiles)
 
-function handleStartJiedu() {
-  if (!store.isLoggedIn) {
+async function runAuthGate(): Promise<boolean> {
+  let step = await store.ensureAuth()
+  if (step === 'need_wx_auth')
+    step = await store.mockWxAuthorize()
+  if (step === 'need_phone') {
     showLogin.value = true
-    return
+    return false
   }
+  return store.isLoggedIn
+}
 
-  // Directly redirect to paywall/purchase if credits are 0
+async function handleStartJiedu() {
+  pendingAfterLogin.value = 'start'
+  if (!(await runAuthGate()))
+    return
+
   if (store.credits <= 0) {
     uni.navigateTo({ url: RouterPaths.credits })
     return
   }
 
-  // Go to profile creation if no profiles exist
   if (profiles.value.length === 0) {
     uni.navigateTo({ url: RouterPaths.profileCreate })
     return
   }
 
-  // Open the custom choose profile modal
   showProfileSelect.value = true
 }
 
@@ -57,19 +62,17 @@ function handleCreateProfileFromModal() {
   uni.navigateTo({ url: RouterPaths.profileCreate })
 }
 
-function goProfiles() {
-  if (!store.isLoggedIn) {
-    showLogin.value = true
+async function goProfiles() {
+  pendingAfterLogin.value = 'profiles'
+  if (!(await runAuthGate()))
     return
-  }
   uni.navigateTo({ url: RouterPaths.profileList })
 }
 
-function goCredits() {
-  if (!store.isLoggedIn) {
-    showLogin.value = true
+async function goCredits() {
+  pendingAfterLogin.value = 'credits'
+  if (!(await runAuthGate()))
     return
-  }
   uni.navigateTo({ url: RouterPaths.credits })
 }
 
@@ -83,13 +86,26 @@ function setScale(scale: FontScale) {
   store.setFontScale(scale)
 }
 
-function handleLoginSuccess() {
-  // If login is successful, we can optionally open the profile select popup directly
+async function handleLoginSuccess() {
+  const action = pendingAfterLogin.value
+  pendingAfterLogin.value = null
+  if (action === 'profiles') {
+    uni.navigateTo({ url: RouterPaths.profileList })
+    return
+  }
+  if (action === 'credits') {
+    uni.navigateTo({ url: RouterPaths.credits })
+    return
+  }
   if (store.credits <= 0) {
     uni.navigateTo({ url: RouterPaths.credits })
-  } else {
-    showProfileSelect.value = true
+    return
   }
+  if (store.profiles.length === 0) {
+    uni.navigateTo({ url: RouterPaths.profileCreate })
+    return
+  }
+  showProfileSelect.value = true
 }
 </script>
 
@@ -116,7 +132,7 @@ function handleLoginSuccess() {
 
           <!-- Remaining credits badge -->
           <view class="credit-badge" @tap.stop="goCredits">
-            剩余解读次数：<text class="credit-count">{{ store.credits }}</text>次
+            剩余解读次数：<text class="credit-count">{{ store.isLoggedIn ? store.credits : '--' }}</text>次
           </view>
         </view>
       </view>
@@ -365,6 +381,7 @@ function handleLoginSuccess() {
 
 .record-meta {
   flex: 1;
+  min-width: 0;
   margin-right: 20rpx;
 }
 
@@ -372,6 +389,7 @@ function handleLoginSuccess() {
   font-size: 28rpx;
   font-weight: 700;
   color: #241F19;
+  line-height: 1.5;
 }
 
 .record-time {

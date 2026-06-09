@@ -12,6 +12,7 @@ import UniPlatformModifier from '@uni-helper/vite-plugin-uni-platform-modifier'
 import UniRoot from '@uni-ku/root'
 import UnoCSS from 'unocss/vite'
 import { defineConfig } from 'vite'
+import { guoxinMockPlugin } from './mock/guoxin/vitePlugin'
 
 export default defineConfig({
   resolve: {
@@ -49,6 +50,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    guoxinMockPlugin(),
     // https://uni-helper.js.org/vite-plugin-uni-components
     Components({
       dts: true,

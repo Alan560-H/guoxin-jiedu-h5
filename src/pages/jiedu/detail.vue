@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import type { RecordVo } from '@/models/guoxin/record'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
@@ -8,21 +9,22 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 
 const store = useGuoxinStore()
 const recordId = ref('')
+const record = ref<RecordVo | null>(null)
 
 onLoad((query) => {
   if (query?.recordId)
     recordId.value = String(query.recordId)
 })
 
-onMounted(() => {
-  store.initSeedData()
-  if (recordId.value)
-    store.activeRecordId = recordId.value
-})
-
-const record = computed(() => {
+onMounted(async () => {
   const id = recordId.value || store.activeRecordId
-  return id ? store.getRecordById(id) : null
+  if (!id)
+    return
+  store.activeRecordId = id
+  if (store.isLoggedIn) {
+    await store.fetchProfiles()
+    record.value = await store.fetchReport(id)
+  }
 })
 
 const profile = computed(() => {

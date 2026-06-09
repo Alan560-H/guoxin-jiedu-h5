@@ -30,10 +30,11 @@ function handleClick() {
 
 <style scoped lang="scss">
 .gx-btn-wrap {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  width: auto;
+  flex-shrink: 0;
   min-width: 0;
   border-radius: 999rpx;
   font-family: "Noto Serif SC", Georgia, serif;

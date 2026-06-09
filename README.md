@@ -14,24 +14,28 @@ pnpm build:h5
 
 - **首页**：开始解读、档案入口、上次解读、字号调节、充值
 - **心语档案**：列表、创建（Chip + 下拉表单）
-- **解读流程**：选方向 → 模拟整理（~10s）→ 完成概览 → 详情报告
+- **解读流程**：选方向 → SSE 流式整理 → 完成概览 → 详情报告
 - **解读记录**：按档案查看历史
-- **解读权益**：三档套餐 + 微信支付（失败时 mock 演示）
-- **数据**：Pinia + `localStorage` 持久化（前端闭环，无后端依赖）
+- **解读权益**：三档套餐（Mock 模式直连接口加次）
+- **数据**：开发环境走 Vite Mock HTTP（`VITE_USE_MOCK=true`），业务数据不再写入 `localStorage`
 
 ## V1 边界说明
 
 ### 当前不做
 
-- 真实 AI / 后端档案与解读 API（见 [`src/api/guoxin.ts`](src/api/guoxin.ts) V2 预留）
-- 档案编辑、删除
-- 强制登录门禁（国心业务不依赖 `userInfoStore`，OAuth 仅静默换 token）
+- 真实 Java / Dify 联调（契约见 [`docs/guoxin-api.md`](docs/guoxin-api.md)）
+- 真实短信、真实微信 OAuth 跳转（Mock 模拟 openid + 绑手机）
+
+### 登录
+
+- **注册登录一体**：`wx-session` →（可选微信授权）→ `bind-phone`
+- **触发时机**：点击「开始我的专属解读」等需身份操作时再弹绑手机，不进首页就弹
 
 ### 次数与支付
 
-- **扣次时机**：整理完成（`completeJiedu`）时扣 1 次；整理中途离开**不扣次**
-- **微信支付**：微信内支付成功才加次；用户**取消支付不加次**
-- **演示兜底**：非微信环境或支付接口失败时，弹窗模拟加次（便于本地调试）
+- **扣次时机**：SSE `done` 时扣 1 次；中途离开 processing **不扣次**
+- **Mock 充值**：`VITE_USE_MOCK=true` 时走 `POST /app/guoxin/credits/purchase`
+- **微信支付**：非 Mock 环境支付成功后再调 purchase 确认
 
 ### 微信 OAuth
 

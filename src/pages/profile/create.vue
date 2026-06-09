@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import {
   BIRTH_HOUR_OPTIONS,
@@ -35,9 +35,9 @@ const yearOptions = Array.from({ length: new Date().getFullYear() - 1930 + 1 }, 
 const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
 const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1)
 
-onMounted(() => store.initSeedData())
-
-onLoad((options: any) => {
+onLoad(async (options: any) => {
+  if (store.isLoggedIn)
+    await store.fetchProfiles()
   if (options && options.id) {
     profileId.value = options.id
     isEditMode.value = true
@@ -118,21 +118,24 @@ function buildDto() {
   }
 }
 
-function save(startImmediately: boolean) {
+async function save(startImmediately: boolean) {
   if (!validate())
     return
   const dto = buildDto()
   if (isEditMode.value && profileId.value) {
-    store.updateProfile(profileId.value, dto)
+    await store.updateProfile(profileId.value, dto)
     uni.showToast({ title: '修改成功', icon: 'success' })
-  } else {
-    store.createProfile(dto)
+  }
+  else {
+    const created = await store.createProfile(dto)
+    profileId.value = created.id
     uni.showToast({ title: '创建成功', icon: 'success' })
   }
   if (startImmediately) {
     store.setActiveProfile(profileId.value || store.activeProfileId)
     store.navigateToSetup()
-  } else {
+  }
+  else {
     uni.navigateTo({ url: RouterPaths.profileList })
   }
 }

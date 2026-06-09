@@ -109,7 +109,10 @@
   },
   "pnpm": {
     "overrides": {
-      "unconfig": "7.3.2"
+      "unconfig": "7.3.2",
+      "@intlify/core-base": "9.6.2",
+      "@intlify/message-compiler": "9.6.2",
+      "@intlify/shared": "9.6.2"
     },
     "onlyBuiltDependencies": [
       "@uni-helper/unocss-preset-uni",
@@ -119,9 +122,15 @@
     ]
   },
   "overrides": {
-    "unconfig": "7.3.2"
+    "unconfig": "7.3.2",
+    "@intlify/core-base": "9.6.2",
+    "@intlify/message-compiler": "9.6.2",
+    "@intlify/shared": "9.6.2"
   },
   "resolutions": {
-    "unconfig": "7.3.2"
+    "unconfig": "7.3.2",
+    "@intlify/core-base": "9.6.2",
+    "@intlify/message-compiler": "9.6.2",
+    "@intlify/shared": "9.6.2"
   }
 }

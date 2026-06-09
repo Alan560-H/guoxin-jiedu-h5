@@ -11,8 +11,9 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 const { t } = useI18n()
 const store = useGuoxinStore()
 const step = ref(1)
-let timer: ReturnType<typeof setInterval> | null = null
 const completed = ref(false)
+const previewText = ref('')
+let abortController: AbortController | null = null
 
 const steps = computed(() => [
   { title: t('jiedu.processing.steps.s1Title'), desc: t('jiedu.processing.steps.s1Desc') },
@@ -21,63 +22,47 @@ const steps = computed(() => [
   { title: t('jiedu.processing.steps.s4Title'), desc: t('jiedu.processing.steps.s4Desc') },
 ])
 
-function finishAndGoComplete() {
-  if (completed.value)
-    return
-  if (timer) {
-    clearInterval(timer)
-    timer = null
+async function startStream() {
+  abortController = new AbortController()
+  const recordId = await store.runJieduStream((index) => {
+    step.value = index
+  }, abortController.signal, (text) => {
+    previewText.value += text
+  })
+
+  if (recordId) {
+    completed.value = true
+    uni.redirectTo({ url: RouterPaths.jieduComplete })
   }
-  const record = store.completeJiedu()
-  if (!record)
-    return
-  completed.value = true
-  uni.redirectTo({ url: RouterPaths.jieduComplete })
 }
 
-function startSimulation() {
-  step.value = 1
-  timer = setInterval(() => {
-    step.value += 1
-    if (step.value >= 4) {
-      if (timer)
-        clearInterval(timer)
-      setTimeout(finishAndGoComplete, 800)
-    }
-  }, 2500)
-}
-
-onMounted(() => {
-  store.initSeedData()
-  if (!store.activeProfile || !store.selectedDirections.length) {
+onMounted(async () => {
+  const resume = await store.resumeProcessingTask()
+  if (resume === 'setup' || !resume) {
     uni.redirectTo({ url: RouterPaths.jieduSetup })
     return
   }
-  startSimulation()
+  if (resume === 'complete') {
+    uni.redirectTo({ url: RouterPaths.jieduComplete })
+    return
+  }
+  startStream()
 })
 
 onUnload(() => {
   if (!completed.value) {
+    abortController?.abort()
     uni.showToast({ title: t('jiedu.processing.interrupted'), icon: 'none' })
   }
-  if (timer)
-    clearInterval(timer)
 })
 
 function completeAndGoHome() {
-  if (!completed.value) {
-    const record = store.completeJiedu()
-    if (!record)
-      return
-    completed.value = true
-  }
-  if (timer) {
-    clearInterval(timer)
-    timer = null
-  }
+  abortController?.abort()
   uni.reLaunch({ url: RouterPaths.home })
 }
+
 function goRecords() {
+  abortController?.abort()
   uni.navigateTo({ url: RouterPaths.jieduRecords })
 }
 </script>
@@ -87,25 +72,22 @@ function goRecords() {
     <GxNavBar :title="t('jiedu.processing.title')" />
 
     <scroll-view scroll-y class="gx-scroll">
-      <!-- Loading Banner -->
       <view class="loading-banner">
-        <view class="loading-circle"></view>
+        <view class="loading-circle" />
         <view class="banner-title">{{ t('jiedu.processing.bannerTitle') }}</view>
         <view class="banner-desc">{{ t('jiedu.processing.bannerDesc') }}</view>
       </view>
 
-      <!-- Preview card -->
       <GxCard class="preview-card">
         <view class="gx-form-label section-label">
           {{ t('jiedu.processing.previewLabel') }}
         </view>
         <view class="preview-text">
-          <text>{{ t('jiedu.processing.previewText') }}</text>
+          <text>{{ previewText || t('jiedu.processing.previewText') }}</text>
           <text class="preview-highlight">{{ t('jiedu.processing.previewHighlight') }}</text>
         </view>
       </GxCard>
 
-      <!-- Vertical timeline checklist -->
       <view class="progress-timeline">
         <view
           v-for="(s, idx) in steps"
@@ -131,7 +113,6 @@ function goRecords() {
         </view>
       </view>
 
-      <!-- Action buttons -->
       <view class="gx-btn-group action-buttons">
         <GxButton type="secondary" @click="completeAndGoHome">
           {{ t('jiedu.processing.later') }}
@@ -219,7 +200,6 @@ function goRecords() {
   }
 }
 
-/* Timeline vertical checklists */
 .progress-timeline {
   display: flex;
   flex-direction: column;
@@ -274,7 +254,7 @@ function goRecords() {
   font-size: 28rpx;
   color: #958878;
   font-weight: 500;
-  line-height: 52rpx; /* Align with center of icon */
+  line-height: 52rpx;
 }
 
 .step-desc {
@@ -283,7 +263,6 @@ function goRecords() {
   margin-top: 8rpx;
 }
 
-/* Timeline Active / Completed status */
 .timeline-step.completed {
   .timeline-icon {
     background-color: #153F33;

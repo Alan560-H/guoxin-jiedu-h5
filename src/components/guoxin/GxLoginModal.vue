@@ -20,23 +20,29 @@ const agreed = ref(false)
 const countdown = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
 
-function sendCode() {
+async function sendCode() {
   if (!phone.value.match(/^1[3-9]\d{9}$/)) {
     uni.showToast({ title: '请输入正确的手机号码', icon: 'none' })
     return
   }
-  countdown.value = 60
-  timer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0 && timer) {
-      clearInterval(timer)
-      timer = null
-    }
-  }, 1000)
-  uni.showToast({ title: '验证码已发送', icon: 'success' })
+  try {
+    await store.sendSmsCode(phone.value)
+    countdown.value = 60
+    timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0 && timer) {
+        clearInterval(timer)
+        timer = null
+      }
+    }, 1000)
+    uni.showToast({ title: '验证码已发送', icon: 'success' })
+  }
+  catch {
+    // toast handled by api
+  }
 }
 
-function handleLogin() {
+async function handleLogin() {
   if (!phone.value.match(/^1[3-9]\d{9}$/)) {
     uni.showToast({ title: '请输入正确的手机号码', icon: 'none' })
     return
@@ -50,11 +56,15 @@ function handleLogin() {
     return
   }
 
-  // Set store state to logged in
-  store.isLoggedIn = true
-  uni.showToast({ title: '登录成功', icon: 'success' })
-  emit('success')
-  emit('close')
+  try {
+    await store.bindPhone(phone.value, code.value)
+    uni.showToast({ title: '绑定成功', icon: 'success' })
+    emit('success')
+    emit('close')
+  }
+  catch {
+    // toast handled by api
+  }
 }
 </script>
 
@@ -66,7 +76,7 @@ function handleLogin() {
 
       <view class="login-header">
         <view class="login-logo">国心解读</view>
-        <view class="login-welcome">欢迎登录心语小助手</view>
+        <view class="login-welcome">绑定手机号，开启专属解读</view>
       </view>
 
       <view class="login-form">
@@ -114,7 +124,7 @@ function handleLogin() {
         <!-- Submit button -->
         <view class="submit-wrap">
           <GxButton type="primary" @click="handleLogin">
-            立即登录
+            绑定并继续
           </GxButton>
         </view>
       </view>

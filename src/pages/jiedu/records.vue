@@ -8,14 +8,15 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 
 const store = useGuoxinStore()
 
-onMounted(() => store.initSeedData())
+onMounted(async () => {
+  if (!store.activeProfileId && store.isLoggedIn)
+    await store.fetchProfiles()
+  if (store.activeProfileId)
+    await store.fetchRecords(store.activeProfileId)
+})
 
 const profile = computed(() => store.activeProfile)
-const list = computed(() => {
-  if (!profile.value)
-    return []
-  return store.getRecordsByProfileId(profile.value.id)
-})
+const list = computed(() => store.records)
 
 function goDetail(id: string) {
   uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${id}` })

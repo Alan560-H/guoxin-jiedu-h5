@@ -299,6 +299,10 @@ page {
   display: flex;
   flex-direction: column;
   gap: 20rpx;
+
+  .gx-btn-wrap {
+    width: 100%;
+  }
 }
 
 .gx-btn-row {

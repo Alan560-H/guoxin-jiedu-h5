@@ -10,7 +10,10 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 const { t } = useI18n()
 const store = useGuoxinStore()
 
-onMounted(() => store.initSeedData())
+onMounted(async () => {
+  if (store.isLoggedIn)
+    await store.fetchProfiles()
+})
 
 const profiles = computed(() => store.profiles)
 
@@ -46,8 +49,9 @@ function confirmDelete(id: string) {
     confirmColor: '#B7654A',
     success: (res) => {
       if (res.confirm) {
-        store.deleteProfile(id)
-        uni.showToast({ title: t('profile.list.deleted'), icon: 'success' })
+        void store.deleteProfile(id).then(() => {
+          uni.showToast({ title: t('profile.list.deleted'), icon: 'success' })
+        })
       }
     },
   })

@@ -1,7 +1,7 @@
 import { defineManifestConfig } from '@uni-helper/vite-plugin-uni-manifest'
 
 export default defineManifestConfig({
-  'name': '易朴工具箱',
+  'name': '国心解读',
   'appid': '__UNI__1414495',
   'description': '',
   'versionName': '1.0.0',
