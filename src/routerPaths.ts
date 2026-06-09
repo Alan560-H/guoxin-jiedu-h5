@@ -8,4 +8,6 @@ export class RouterPaths {
   public static readonly jieduDetail = '/pages/jiedu/detail'
   public static readonly jieduRecords = '/pages/jiedu/records'
   public static readonly credits = '/pages/credits/index'
+  public static readonly legalService = '/pages/legal/service'
+  public static readonly legalPrivacy = '/pages/legal/privacy'
 }

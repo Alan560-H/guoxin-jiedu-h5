@@ -23,6 +23,8 @@ export default defineUniPages({
     guoxinPage('pages/jiedu/detail', '专属解读详情'),
     guoxinPage('pages/jiedu/records', '解读记录'),
     guoxinPage('pages/credits/index', '解读权益'),
+    guoxinPage('pages/legal/service', '用户服务协议'),
+    guoxinPage('pages/legal/privacy', '隐私协议'),
   ],
   globalStyle: {
     backgroundColor: '#FAF6EF',
