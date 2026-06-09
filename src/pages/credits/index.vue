@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { CREDIT_PACKAGES, CREDITS_PAYWALL_TEXT } from '@/constants/guoxin'
 import type { CreditPackageId } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
@@ -9,12 +9,43 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 
 const store = useGuoxinStore()
 const selectedId = ref<CreditPackageId>('standard')
+const selectedProductId = ref<number | null>(null)
 
-function selectPkg(id: CreditPackageId) {
-  selectedId.value = id
+// 远程商品列表（从后端加载）
+const displayProducts = computed(() => {
+  if (store.useRemoteApi && store.serverProducts.length > 0) {
+    return store.serverProducts.map((p: any) => ({
+      id: String(p.id),
+      productId: p.id,
+      name: p.productName,
+      amount: p.generateCount,
+      price: p.salePrice,
+      originPrice: p.originalPrice,
+      desc: p.promotionText || `包含 ${p.generateCount} 次解读`,
+      hot: p.promotionStatus === 1,
+    }))
+  }
+  // 本地模式使用硬编码套餐
+  return CREDIT_PACKAGES.map(p => ({ ...p, productId: null }))
+})
+
+onMounted(() => {
+  if (store.useRemoteApi && store.serverProducts.length === 0) {
+    store.loadProducts()
+  }
+})
+
+function selectPkg(id: string, productId?: number) {
+  selectedId.value = id as CreditPackageId
+  selectedProductId.value = productId || null
 }
 
 async function purchase() {
+  if (store.useRemoteApi && selectedProductId.value) {
+    // 远程模式：直接调用后端生成报告接口（相当于购买+使用）
+    uni.showToast({ title: '功能开发中，请先联系客服购买', icon: 'none' })
+    return
+  }
   const ok = await store.purchaseCredits(selectedId.value)
   if (ok) {
     setTimeout(() => {
@@ -49,11 +80,11 @@ function freeAdd() {
 
       <!-- Package Cards -->
       <view
-        v-for="pkg in CREDIT_PACKAGES"
+        v-for="pkg in displayProducts"
         :key="pkg.id"
         class="paywall-card"
         :class="{ selected: selectedId === pkg.id }"
-        @tap="selectPkg(pkg.id)"
+        @tap="selectPkg(pkg.id, pkg.productId)"
       >
         <!-- Recommended badge -->
         <view v-if="'hot' in pkg && pkg.hot" class="recommended-badge">推荐</view>

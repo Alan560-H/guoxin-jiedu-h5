@@ -11,6 +11,8 @@ const store = useGuoxinStore()
 const step = ref(1)
 let timer: ReturnType<typeof setInterval> | null = null
 const completed = ref(false)
+const remoteTaskId = ref<number | null>(null)
+const remoteReportId = ref<number | null>(null)
 
 const steps = [
   { title: '已确认档案信息', desc: '档案与关注方向已记录' },
@@ -26,11 +28,14 @@ function finishAndGoComplete() {
     clearInterval(timer)
     timer = null
   }
-  const record = store.completeJiedu()
-  if (!record)
-    return
+  // 本地模式
+  if (!store.useRemoteApi) {
+    const record = store.completeJiedu()
+    if (!record)
+      return
+  }
   completed.value = true
-  uni.redirectTo({ url: RouterPaths.jieduComplete })
+  uni.redirectTo({ url: `${RouterPaths.jieduComplete}?reportId=${remoteReportId.value || ''}` })
 }
 
 function startSimulation() {
@@ -40,16 +45,54 @@ function startSimulation() {
     if (step.value >= 4) {
       if (timer)
         clearInterval(timer)
-      setTimeout(finishAndGoComplete, 800)
+      // 远程模式下，等待后端任务完成
+      if (store.useRemoteApi && remoteTaskId.value) {
+        pollRemoteTask()
+      } else {
+        setTimeout(finishAndGoComplete, 800)
+      }
     }
   }, 2500)
 }
 
-onMounted(() => {
+async function pollRemoteTask() {
+  if (!remoteTaskId.value) return
+  const result = await store.pollTaskStatus(remoteTaskId.value, 60, 3000)
+  if (result && result.status === 'success') {
+    remoteReportId.value = result.reportId
+    // 刷新报告列表
+    await store.loadReports()
+    await store.refreshAvailableCount()
+    finishAndGoComplete()
+  } else {
+    uni.showToast({ title: '报告生成超时，请稍后查看', icon: 'none' })
+    uni.redirectTo({ url: RouterPaths.jieduRecords })
+  }
+}
+
+onMounted(async () => {
   store.initSeedData()
   if (!store.activeProfile || !store.selectedDirections.length) {
     uni.redirectTo({ url: RouterPaths.jieduSetup })
     return
+  }
+  // 远程模式：提交生成请求
+  if (store.useRemoteApi && store.userId && store.serverProducts.length > 0) {
+    const productId = store.serverProducts[0].id
+    const inputJson = JSON.stringify({
+      profileId: store.activeProfileId,
+      directions: store.selectedDirections,
+      profileName: store.activeProfile?.name,
+    })
+    const result = await store.doGenerateReport(productId, inputJson)
+    if (result && result.taskId) {
+      remoteTaskId.value = result.taskId
+      remoteReportId.value = result.reportId
+    } else {
+      uni.showToast({ title: '提交失败，请重试', icon: 'none' })
+      uni.navigateBack()
+      return
+    }
   }
   startSimulation()
 })

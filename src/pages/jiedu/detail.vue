@@ -8,19 +8,48 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 
 const store = useGuoxinStore()
 const recordId = ref('')
+const serverDetail = ref<any>(null)
+const loading = ref(true)
 
 onLoad((query) => {
   if (query?.recordId)
     recordId.value = String(query.recordId)
 })
 
-onMounted(() => {
+onMounted(async () => {
   store.initSeedData()
   if (recordId.value)
     store.activeRecordId = recordId.value
+
+  // 远程模式：从后端加载报告详情
+  if (store.useRemoteApi && recordId.value) {
+    const id = Number(recordId.value)
+    if (!isNaN(id)) {
+      serverDetail.value = await store.loadReportDetail(id)
+    }
+  }
+  loading.value = false
 })
 
 const record = computed(() => {
+  // 远程模式：从服务器详情构建
+  if (store.useRemoteApi && serverDetail.value) {
+    const report = serverDetail.value.report
+    const version = serverDetail.value.currentVersion
+    if (report) {
+      return {
+        id: String(report.id),
+        profileId: 'server',
+        profileName: report.reportName || '命理报告',
+        title: report.reportName || '命理报告',
+        time: report.createTime || '',
+        directions: [] as string[],
+        content: version?.htmlContent ? [{ title: '完整报告', body: version.htmlContent }] : null,
+        status: report.status,
+      }
+    }
+  }
+  // 本地模式
   const id = recordId.value || store.activeRecordId
   return id ? store.getRecordById(id) : null
 })
@@ -28,6 +57,9 @@ const record = computed(() => {
 const profile = computed(() => {
   if (!record.value)
     return null
+  if (store.useRemoteApi) {
+    return { name: record.value.profileName, relationText: '' } as any
+  }
   return store.getProfileById(record.value.profileId)
 })
 

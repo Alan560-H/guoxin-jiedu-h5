@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
@@ -7,10 +8,28 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
 const store = useGuoxinStore()
+const reportIdParam = ref('')
+
+onLoad((query) => {
+  if (query?.reportId)
+    reportIdParam.value = String(query.reportId)
+})
 
 onMounted(() => store.initSeedData())
 
-const record = computed(() => store.getRecordById(store.activeRecordId))
+const record = computed(() => {
+  // 远程模式：从服务器报告列表获取
+  if (store.useRemoteApi && store.serverReports.length > 0) {
+    const report = reportIdParam.value
+      ? store.serverReports.find((r: any) => String(r.id) === reportIdParam.value)
+      : store.serverReports[0]
+    if (report) {
+      return store.mapServerReportToRecord(report)
+    }
+  }
+  // 本地模式
+  return store.getRecordById(store.activeRecordId)
+})
 
 function goDetail() {
   if (!record.value)

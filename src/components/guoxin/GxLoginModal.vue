@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import GxButton from './GxButton.vue'
 
 const props = defineProps<{
   show: boolean
+  /** 模式：smsLogin=短信登录, bindMobile=绑定手机号 */
+  mode?: 'smsLogin' | 'bindMobile'
 }>()
 
 const emit = defineEmits<{
@@ -20,11 +22,21 @@ const agreed = ref(false)
 const countdown = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
 
-function sendCode() {
+const isBindMode = computed(() => props.mode === 'bindMobile')
+const titleText = computed(() => isBindMode.value ? '绑定手机号' : '欢迎登录心语小助手')
+const subtitleText = computed(() => isBindMode.value ? '请绑定手机号以继续使用' : '输入手机号和验证码即可登录')
+const btnText = computed(() => isBindMode.value ? '确认绑定' : '立即登录')
+
+async function sendCode() {
   if (!phone.value.match(/^1[3-9]\d{9}$/)) {
     uni.showToast({ title: '请输入正确的手机号码', icon: 'none' })
     return
   }
+  uni.showLoading({ title: '发送中...' })
+  const ok = await store.doSendSmsCode(phone.value)
+  uni.hideLoading()
+  if (!ok) return
+  // 开始倒计时
   countdown.value = 60
   timer = setInterval(() => {
     countdown.value--
@@ -33,10 +45,10 @@ function sendCode() {
       timer = null
     }
   }, 1000)
-  uni.showToast({ title: '验证码已发送（模拟）', icon: 'success' })
+  uni.showToast({ title: '验证码已发送', icon: 'success' })
 }
 
-function handleLogin() {
+async function handleSubmit() {
   if (!phone.value.match(/^1[3-9]\d{9}$/)) {
     uni.showToast({ title: '请输入正确的手机号码', icon: 'none' })
     return
@@ -50,11 +62,31 @@ function handleLogin() {
     return
   }
 
-  // Set store state to logged in
-  store.isLoggedIn = true
-  uni.showToast({ title: '登录成功', icon: 'success' })
-  emit('success')
-  emit('close')
+  uni.showLoading({ title: isBindMode.value ? '绑定中...' : '登录中...' })
+  try {
+    if (isBindMode.value) {
+      // 绑定手机号模式
+      await store.doBindMobileWithSms(phone.value, code.value)
+      uni.hideLoading()
+      uni.showToast({ title: '绑定成功', icon: 'success' })
+    } else {
+      // 短信登录模式
+      if (store.useRemoteApi) {
+        await store.doLoginBySms(phone.value, code.value)
+        await store.initRemoteData()
+      } else {
+        store.isLoggedIn = true
+      }
+      uni.hideLoading()
+      uni.showToast({ title: '登录成功', icon: 'success' })
+    }
+    emit('success')
+    emit('close')
+  } catch (e: any) {
+    uni.hideLoading()
+    console.error(isBindMode.value ? '绑定失败' : '登录失败', e)
+    uni.showToast({ title: e?.message || '操作失败，请重试', icon: 'none' })
+  }
 }
 </script>
 
@@ -66,7 +98,8 @@ function handleLogin() {
 
       <view class="login-header">
         <view class="login-logo">国心解读</view>
-        <view class="login-welcome">欢迎登录心语小助手</view>
+        <view class="login-welcome">{{ titleText }}</view>
+        <view class="login-subtitle">{{ subtitleText }}</view>
       </view>
 
       <view class="login-form">
@@ -113,8 +146,8 @@ function handleLogin() {
 
         <!-- Submit button -->
         <view class="submit-wrap">
-          <GxButton type="primary" @click="handleLogin">
-            立即登录
+          <GxButton type="primary" @click="handleSubmit">
+            {{ btnText }}
           </GxButton>
         </view>
       </view>
@@ -179,6 +212,12 @@ function handleLogin() {
   .login-welcome {
     font-size: 26rpx;
     color: #665B4E;
+  }
+
+  .login-subtitle {
+    font-size: 24rpx;
+    color: #958878;
+    margin-top: 4rpx;
   }
 }
 

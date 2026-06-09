@@ -13,4 +13,5 @@ export interface RecordVo {
   time: string
   directions: DirectionValue[]
   content: ReportSection[] | null
+  status?: string
 }

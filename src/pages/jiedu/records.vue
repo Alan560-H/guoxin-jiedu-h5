@@ -8,10 +8,21 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 
 const store = useGuoxinStore()
 
-onMounted(() => store.initSeedData())
+onMounted(async () => {
+  store.initSeedData()
+  // 远程模式：加载服务器报告列表
+  if (store.useRemoteApi && store.userId) {
+    await store.loadReports()
+  }
+})
 
 const profile = computed(() => store.activeProfile)
 const list = computed(() => {
+  if (store.useRemoteApi && store.serverReports.length > 0) {
+    // 远程模式：映射服务器报告为本地格式
+    return store.serverReports.map((r: any) => store.mapServerReportToRecord(r))
+  }
+  // 本地模式
   if (!profile.value)
     return []
   return store.getRecordsByProfileId(profile.value.id)

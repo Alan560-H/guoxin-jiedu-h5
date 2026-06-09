@@ -28,6 +28,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/prod-api/api/yiqixue/app/guoxin': {
+        target: 'http://127.0.0.1:8082',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/prod-api/, ''),
+      },
       '/prod-api': {
         // target: 'https://care.yipuwenhua.com',
 		// target: 'https://test-app.yipuwh.com',

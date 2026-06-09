@@ -7,15 +7,65 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
+import { isWeChatBrowser, getOAuthCodeFromUrl, clearOAuthParamsFromUrl } from '@/utils/weixin/env'
+import { redirectToWxOAuth } from '@/utils/weixin/oauth'
 
 const store = useGuoxinStore()
 
 const showLogin = ref(false)
+const loginMode = ref<'smsLogin' | 'bindMobile'>('smsLogin')
 const showProfileSelect = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
   store.initSeedData()
-  // Trigger login modal immediately if not logged in
+
+  // 如果已登录且启用远程API，刷新远程数据
+  if (store.isLoggedIn && store.useRemoteApi && store.userId) {
+    await store.initRemoteData()
+    return
+  }
+
+  // 远程模式：处理微信 OAuth 流程
+  if (store.useRemoteApi) {
+    const code = getOAuthCodeFromUrl()
+    if (code) {
+      // URL 中有 code，是微信授权回调
+      clearOAuthParamsFromUrl()
+      try {
+        uni.showLoading({ title: '登录中...' })
+        const result = await store.doWxLogin(code)
+        uni.hideLoading()
+        if (result.needBindMobile) {
+          // 用户未绑定手机号，弹出绑定手机号弹窗
+          loginMode.value = 'bindMobile'
+          showLogin.value = true
+        } else {
+          // 已绑定手机号，直接初始化数据
+          await store.initRemoteData()
+        }
+      } catch (e: any) {
+        uni.hideLoading()
+        console.error('微信登录失败', e)
+        // 微信登录失败，降级为短信登录
+        loginMode.value = 'smsLogin'
+        showLogin.value = true
+      }
+      return
+    }
+
+    // 没有 code，如果在微信浏览器中，跳转微信授权
+    if (isWeChatBrowser()) {
+      redirectToWxOAuth('GUOXIN_LOGIN')
+      return
+    }
+
+    // 非微信浏览器，显示短信登录弹窗
+    loginMode.value = 'smsLogin'
+    showLogin.value = true
+    return
+  }
+
+  // 本地演示模式
   if (!store.isLoggedIn) {
     showLogin.value = true
   }
@@ -83,9 +133,16 @@ function setScale(scale: FontScale) {
   store.setFontScale(scale)
 }
 
-function handleLoginSuccess() {
-  // If login is successful, we can optionally open the profile select popup directly
-  if (store.credits <= 0) {
+async function handleLoginSuccess() {
+  // 登录/绑定成功后刷新远程数据
+  if (store.useRemoteApi) {
+    await store.initRemoteData()
+  }
+  // 绑定手机号模式成功后，直接进入主页
+  if (loginMode.value === 'bindMobile') {
+    return
+  }
+  if (store.credits <= 0 && store.totalAvailableCount <= 0) {
     uni.navigateTo({ url: RouterPaths.credits })
   } else {
     showProfileSelect.value = true
@@ -178,6 +235,7 @@ function handleLoginSuccess() {
     <!-- Immediate Login Dialog Modal -->
     <GxLoginModal
       :show="showLogin"
+      :mode="loginMode"
       @close="showLogin = false"
       @success="handleLoginSuccess"
     />
