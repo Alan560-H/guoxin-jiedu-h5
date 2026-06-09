@@ -11,11 +11,22 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 const { t } = useI18n()
 const store = useGuoxinStore()
 const record = ref<RecordVo | null>(null)
+const loading = ref(true)
 
 onMounted(async () => {
-  if (!store.activeRecordId)
+  if (!store.activeRecordId) {
+    loading.value = false
     return
-  record.value = await store.fetchReport(store.activeRecordId)
+  }
+  try {
+    record.value = await store.fetchReport(store.activeRecordId)
+  }
+  catch {
+    record.value = null
+  }
+  finally {
+    loading.value = false
+  }
 })
 
 function goRecords() {
@@ -28,10 +39,14 @@ function goHome() {
 </script>
 
 <template>
-  <view v-if="record" class="gx-page flex_column page-container">
+  <view class="gx-page flex_column page-container">
     <GxNavBar :title="t('jiedu.complete.title')" />
 
-    <scroll-view scroll-y class="gx-scroll">
+    <view v-if="loading" class="gx-empty-state">
+      <view class="empty-text">加载中...</view>
+    </view>
+
+    <scroll-view v-else-if="record" scroll-y class="gx-scroll">
       <view class="complete-banner">
         <view class="success-mark">✓</view>
         <view class="banner-title">{{ t('jiedu.complete.bannerTitle') }}</view>
@@ -63,6 +78,14 @@ function goHome() {
 
       <view class="gx-safe-bottom" />
     </scroll-view>
+
+    <view v-else class="gx-empty-state">
+      <view class="empty-icon">📋</view>
+      <view class="empty-text">{{ t('jiedu.complete.emptyText') }}</view>
+      <GxButton type="primary" @click="goHome">
+        {{ t('jiedu.complete.backHome') }}
+      </GxButton>
+    </view>
   </view>
 </template>
 

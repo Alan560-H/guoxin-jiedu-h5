@@ -9,7 +9,11 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 const store = useGuoxinStore()
 
 onMounted(async () => {
-  if (!store.activeProfileId && store.isLoggedIn)
+  if (!(await store.requireAuthForPage())) {
+    uni.reLaunch({ url: RouterPaths.home })
+    return
+  }
+  if (!store.activeProfileId)
     await store.fetchProfiles()
   if (store.activeProfileId)
     await store.fetchRecords(store.activeProfileId)

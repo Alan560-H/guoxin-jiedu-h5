@@ -11,8 +11,11 @@ const { t } = useI18n()
 const store = useGuoxinStore()
 
 onMounted(async () => {
-  if (store.isLoggedIn)
-    await store.fetchProfiles()
+  if (!(await store.requireAuthForPage())) {
+    uni.reLaunch({ url: RouterPaths.home })
+    return
+  }
+  await store.fetchProfiles()
 })
 
 const profiles = computed(() => store.profiles)

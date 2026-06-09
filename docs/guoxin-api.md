@@ -69,7 +69,7 @@ Mock 固定验证码：`1234`
 | GET | `/app/guoxin/records?profileId=` | 记录列表 |
 | GET | `/app/guoxin/records/latest` | 上次解读 |
 | GET | `/app/guoxin/credits` | 剩余次数 |
-| POST | `/app/guoxin/credits/purchase` | 购买加次 `{ packageId }` |
+| POST | `/app/guoxin/credits/purchase` | 购买加次 `{ packageId }`（trial→1, standard→10, family→20） |
 | POST | `/app/guoxin/jiedu/create` | 创建任务 |
 | GET | `/app/guoxin/jiedu/task/:taskId` | 任务状态 |
 | GET | `/app/guoxin/jiedu/stream?taskId=` | SSE |

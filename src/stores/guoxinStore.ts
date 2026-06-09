@@ -29,6 +29,16 @@ import { computed, ref } from 'vue'
 
 const GUOXIN_OPENID_KEY = 'guoxin-openid'
 const GUOXIN_TASK_KEY = 'guoxin-task-id'
+const LEGACY_STORE_KEY = 'guoxin-store'
+
+function clearLegacyStorage() {
+  try {
+    uni.removeStorageSync(LEGACY_STORE_KEY)
+  }
+  catch {
+    // ignore
+  }
+}
 
 export const useGuoxinStore = defineStore('guoxin', () => {
   const profiles = ref<ProfileVo[]>([])
@@ -66,7 +76,13 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     latestRecord.value = null
   }
 
+  function clearPendingTask() {
+    taskId.value = ''
+    uni.removeStorageSync(GUOXIN_TASK_KEY)
+  }
+
   async function tryRestoreSession() {
+    clearLegacyStorage()
     const token = getGuoxinToken()
     const oid = uni.getStorageSync(GUOXIN_OPENID_KEY) || ''
     if (!token || !oid)
@@ -86,6 +102,14 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       clearAuth()
       return false
     }
+  }
+
+  /** 业务子页门禁：未登录返回 false */
+  async function requireAuthForPage(): Promise<boolean> {
+    let step = await ensureAuth()
+    if (step === 'need_wx_auth')
+      step = await mockWxAuthorize()
+    return step === 'ready'
   }
 
   async function initWxSession(oid?: string) {
@@ -148,6 +172,11 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       latestRecord.value = lRes.data
       if (!activeProfileId.value && profiles.value.length)
         activeProfileId.value = profiles.value[0].id
+    }
+    catch (err: unknown) {
+      if (err && typeof err === 'object' && 'needAuth' in err)
+        clearAuth()
+      throw err
     }
     finally {
       loading.value = false
@@ -254,12 +283,14 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       subscribeJieduStream(tid, {
         onStep: (data) => onStep(data.index),
         onDelta: (data) => onDelta?.(data.text),
-        onDone: async (data) => {
-          activeRecordId.value = data.recordId
-          uni.removeStorageSync(GUOXIN_TASK_KEY)
-          await fetchCredits()
-          await bootstrap()
-          resolve(data.recordId)
+        onDone: (data) => {
+          void (async () => {
+            activeRecordId.value = data.recordId
+            clearPendingTask()
+            await fetchCredits()
+            await bootstrap()
+            resolve(data.recordId)
+          })()
         },
         onError: (data) => {
           uni.showToast({ title: data.msg, icon: 'none' })
@@ -278,7 +309,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       const res = await getJieduTaskStatus(tid)
       if (res.data.status === 'done' && res.data.recordId) {
         activeRecordId.value = res.data.recordId
-        uni.removeStorageSync(GUOXIN_TASK_KEY)
+        clearPendingTask()
         return 'complete'
       }
       if (res.data.status === 'streaming' || res.data.status === 'pending')
@@ -372,6 +403,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     purchaseCredits,
     setFontScale,
     clearAuth,
+    clearPendingTask,
+    requireAuthForPage,
   }
 }, {
   persist: {

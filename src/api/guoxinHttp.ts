@@ -46,12 +46,30 @@ async function guoxinRequest<T>(path: string, options: GuoxinRequestOptions = {}
     if (token)
       headers.Authorization = `Bearer ${token}`
 
-    const res = await fetch(buildUrl(path, params), {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    const rawData = await res.json() as ResponseData<T>
+    let res: Response
+    try {
+      res = await fetch(buildUrl(path, params), {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      })
+    }
+    catch {
+      if (toast)
+        uni.showToast({ title: '网络错误，请稍后重试', icon: 'none' })
+      return Promise.reject(new Error('network'))
+    }
+
+    let rawData: ResponseData<T>
+    try {
+      rawData = await res.json() as ResponseData<T>
+    }
+    catch {
+      if (toast)
+        uni.showToast({ title: '服务响应异常', icon: 'none' })
+      return Promise.reject(new Error('invalid_json'))
+    }
+
     const { code, msg = '请求错误' } = rawData
 
     if (code === 4002)

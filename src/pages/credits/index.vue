@@ -11,8 +11,11 @@ const store = useGuoxinStore()
 const selectedId = ref<CreditPackageId>('standard')
 
 onMounted(async () => {
-  if (store.isLoggedIn)
-    await store.fetchCredits()
+  if (!(await store.requireAuthForPage())) {
+    uni.reLaunch({ url: RouterPaths.home })
+    return
+  }
+  await store.fetchCredits()
 })
 
 function selectPkg(id: CreditPackageId) {

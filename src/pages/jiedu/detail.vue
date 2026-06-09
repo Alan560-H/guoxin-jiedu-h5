@@ -10,6 +10,7 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 const store = useGuoxinStore()
 const recordId = ref('')
 const record = ref<RecordVo | null>(null)
+const loading = ref(true)
 
 onLoad((query) => {
   if (query?.recordId)
@@ -18,12 +19,24 @@ onLoad((query) => {
 
 onMounted(async () => {
   const id = recordId.value || store.activeRecordId
-  if (!id)
+  if (!id) {
+    loading.value = false
     return
+  }
   store.activeRecordId = id
-  if (store.isLoggedIn) {
+  if (!(await store.requireAuthForPage())) {
+    loading.value = false
+    return
+  }
+  try {
     await store.fetchProfiles()
     record.value = await store.fetchReport(id)
+  }
+  catch {
+    record.value = null
+  }
+  finally {
+    loading.value = false
   }
 })
 
@@ -113,7 +126,7 @@ function goSetupAgain() {
     <GxNavBar title="专属解读详情" />
     <view class="gx-empty-state">
       <view class="empty-icon">📋</view>
-      <view class="empty-text">解读记录不存在或已失效。</view>
+      <view class="empty-text">{{ loading ? '加载中...' : '解读记录不存在或已失效。' }}</view>
       <GxButton type="primary" @click="goHome">
         返回首页
       </GxButton>

@@ -36,8 +36,11 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
 const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1)
 
 onLoad(async (options: any) => {
-  if (store.isLoggedIn)
-    await store.fetchProfiles()
+  if (!(await store.requireAuthForPage())) {
+    uni.reLaunch({ url: RouterPaths.home })
+    return
+  }
+  await store.fetchProfiles()
   if (options && options.id) {
     profileId.value = options.id
     isEditMode.value = true

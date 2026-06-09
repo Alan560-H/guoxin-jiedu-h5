@@ -26,11 +26,24 @@ export function handleJieduStream(res: ServerResponse, db: MockDb, taskId: strin
     return
   }
 
-  task.status = 'streaming'
   res.statusCode = 200
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
+
+  if (task.status === 'done' && task.recordId) {
+    writeEvent(res, 'done', { recordId: task.recordId })
+    res.end()
+    return
+  }
+
+  if (task.status === 'streaming') {
+    writeEvent(res, 'error', { msg: '任务正在进行中，请勿重复连接' })
+    res.end()
+    return
+  }
+
+  task.status = 'streaming'
 
   let stepIdx = 0
   let deltaIdx = 0

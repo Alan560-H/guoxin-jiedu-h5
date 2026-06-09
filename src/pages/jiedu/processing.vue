@@ -49,20 +49,26 @@ onMounted(async () => {
   startStream()
 })
 
+function leaveProcessing() {
+  abortController?.abort()
+  if (!completed.value)
+    store.clearPendingTask()
+}
+
 onUnload(() => {
   if (!completed.value) {
-    abortController?.abort()
+    leaveProcessing()
     uni.showToast({ title: t('jiedu.processing.interrupted'), icon: 'none' })
   }
 })
 
 function completeAndGoHome() {
-  abortController?.abort()
+  leaveProcessing()
   uni.reLaunch({ url: RouterPaths.home })
 }
 
 function goRecords() {
-  abortController?.abort()
+  leaveProcessing()
   uni.navigateTo({ url: RouterPaths.jieduRecords })
 }
 </script>

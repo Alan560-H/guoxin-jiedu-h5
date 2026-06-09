@@ -6,6 +6,7 @@ import {
   maskPhone,
   parseTokenOpenid,
 } from './db'
+import { CREDIT_PACKAGE_AMOUNTS } from './constants'
 import { fail, ok } from './response'
 import { handleJieduStream } from './stream'
 
@@ -190,8 +191,11 @@ export async function handleGuoxinMock(
 
   if (method === 'POST' && pathname === '/app/guoxin/credits/purchase') {
     const body = parseJson<{ packageId: string }>(await readBody(req))
-    const amounts: Record<string, number> = { basic: 5, standard: 15, premium: 30 }
-    const add = amounts[body.packageId] ?? 10
+    const add = CREDIT_PACKAGE_AMOUNTS[body.packageId] ?? 0
+    if (add <= 0) {
+      sendJson(res, fail(4004, '套餐不存在'))
+      return true
+    }
     db.credits += add
     sendJson(res, ok({ credits: db.credits }))
     return true
