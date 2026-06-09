@@ -19,11 +19,8 @@ const showProfileSelect = ref(false)
 onMounted(async () => {
   store.initSeedData()
 
-  // 如果已登录且启用远程API，刷新远程数据
-  if (store.isLoggedIn && store.useRemoteApi && store.userId) {
-    await store.initRemoteData()
+  if (await store.tryRestoreSession())
     return
-  }
 
   // 远程模式：处理微信 OAuth 流程
   if (store.useRemoteApi) {
@@ -74,25 +71,13 @@ onMounted(async () => {
 const latestRecord = computed(() => store.latestRecord)
 const profiles = computed(() => store.profiles)
 
-const displayCredits = computed(() => {
-  if (store.useRemoteApi && store.isLoggedIn)
-    return store.totalAvailableCount
-  return store.credits
-})
-
-function hasNoCredits() {
-  if (store.useRemoteApi && store.isLoggedIn)
-    return store.totalAvailableCount <= 0
-  return store.credits <= 0
-}
-
 function handleStartJiedu() {
   if (!store.isLoggedIn) {
     showLogin.value = true
     return
   }
 
-  if (hasNoCredits()) {
+  if (store.hasNoCredits()) {
     uni.navigateTo({ url: RouterPaths.credits })
     return
   }
@@ -153,7 +138,7 @@ async function handleLoginSuccess() {
   if (loginMode.value === 'bindMobile') {
     return
   }
-  if (hasNoCredits()) {
+  if (store.hasNoCredits()) {
     uni.navigateTo({ url: RouterPaths.credits })
   }
   else if (store.profiles.length === 0) {
@@ -188,7 +173,7 @@ async function handleLoginSuccess() {
 
           <!-- Remaining credits badge -->
           <view class="credit-badge" @tap.stop="goCredits">
-            剩余解读次数：<text class="credit-count">{{ store.isLoggedIn ? displayCredits : '--' }}</text>次
+            剩余解读次数：<text class="credit-count">{{ store.isLoggedIn ? store.displayCredits : '--' }}</text>次
           </view>
         </view>
       </view>

@@ -29,13 +29,29 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const serverProducts = ref<any[]>([])
   const serverReports = ref<any[]>([])
   const totalAvailableCount = ref<number>(0)
+  const activeProductId = ref<number | null>(null)
   const useRemoteApi = ref(true) // 是否启用远程API
 
   const activeProfile = computed(() =>
     profiles.value.find(p => p.id === activeProfileId.value) ?? null,
   )
 
-  const latestRecord = computed(() => records.value[0] ?? null)
+  const displayCredits = computed(() =>
+    useRemoteApi.value && isLoggedIn.value ? totalAvailableCount.value : credits.value,
+  )
+
+  const latestRecord = computed(() => {
+    if (useRemoteApi.value && isLoggedIn.value && serverReports.value.length > 0) {
+      return mapServerReportToRecord(serverReports.value[0])
+    }
+    return records.value[0] ?? null
+  })
+
+  function hasNoCredits() {
+    if (useRemoteApi.value && isLoggedIn.value)
+      return totalAvailableCount.value <= 0
+    return credits.value <= 0
+  }
 
   function initSeedData() {
     if (profiles.value.length === 0) {
@@ -46,10 +62,70 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     else if (!activeProfileId.value || !profiles.value.some(p => p.id === activeProfileId.value)) {
       activeProfileId.value = profiles.value[0]?.id ?? ''
     }
-    if (credits.value <= 0) {
+    // 远程模式次数由 refreshAvailableCount 同步，勿本地补 99
+    if (!useRemoteApi.value && credits.value <= 0) {
       credits.value = 99
     }
     setFontScale(fontScale.value)
+  }
+
+  /** 401 或登出时清空远程会话（与 apph5Token 同步） */
+  function clearSession() {
+    isLoggedIn.value = false
+    userId.value = null
+    mobile.value = ''
+    bindStatus.value = 0
+    token.value = ''
+    serverProducts.value = []
+    serverReports.value = []
+    totalAvailableCount.value = 0
+    activeProductId.value = null
+    try {
+      uni.removeStorageSync('apph5Token')
+    }
+    catch {
+      // ignore
+    }
+  }
+
+  /** 用 apph5Token 恢复登录并拉取远程数据 */
+  async function tryRestoreSession(): Promise<boolean> {
+    if (!useRemoteApi.value)
+      return isLoggedIn.value
+
+    const savedToken = uni.getStorageSync('apph5Token')
+    if (!savedToken) {
+      if (isLoggedIn.value)
+        clearSession()
+      return false
+    }
+
+    token.value = savedToken
+    if (!isLoggedIn.value || !userId.value) {
+      try {
+        const res = await getUserInfo()
+        if (res.code !== 200 || !res.data) {
+          clearSession()
+          return false
+        }
+        userId.value = res.data.userId ?? userId.value
+        mobile.value = res.data.mobile || ''
+        bindStatus.value = res.data.bindStatus ?? 0
+        isLoggedIn.value = true
+      }
+      catch {
+        clearSession()
+        return false
+      }
+    }
+
+    try {
+      await initRemoteData()
+      return true
+    }
+    catch {
+      return false
+    }
   }
 
   function getProfileById(id: string) {
@@ -152,18 +228,31 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       navigateToSetup(id)
   }
 
-  function confirmJiedu(directions: DirectionValue[], question?: string): boolean {
+  async function confirmJiedu(directions: DirectionValue[], question?: string): Promise<boolean> {
     if (directions.length === 0) {
       uni.showToast({ title: '请至少选择一个关注方向', icon: 'none' })
       return false
     }
     if (useRemoteApi.value) {
-      // 远程模式：检查后端可用次数
-      if (totalAvailableCount.value <= 0 && serverProducts.value.length > 0) {
+      if (!isLoggedIn.value) {
+        uni.showToast({ title: '请先登录', icon: 'none' })
+        return false
+      }
+      if (serverProducts.value.length === 0)
+        await loadProducts()
+      if (serverProducts.value.length === 0) {
+        uni.showToast({ title: '商品加载失败，请稍后重试', icon: 'none' })
+        return false
+      }
+      if (!activeProductId.value)
+        activeProductId.value = serverProducts.value[0].id
+      await refreshAvailableCount(activeProductId.value)
+      if (totalAvailableCount.value <= 0) {
         uni.navigateTo({ url: RouterPaths.credits })
         return false
       }
-    } else if (credits.value <= 0) {
+    }
+    else if (credits.value <= 0) {
       uni.navigateTo({ url: RouterPaths.credits })
       return false
     }
@@ -500,21 +589,51 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     if (!useRemoteApi.value) return
     await loadProducts()
     if (serverProducts.value.length > 0) {
-      await refreshAvailableCount(serverProducts.value[0].id)
+      activeProductId.value = serverProducts.value[0].id
+      await refreshAvailableCount(activeProductId.value)
     }
     await loadReports()
   }
 
+  const COMPLETE_PLACEHOLDER_SECTIONS: ReportVo['content'] = [
+    { title: '一、整体状态', body: '结合您的关注方向整理的阶段状态与情绪脉络。' },
+    { title: '二、家庭关系', body: '围绕家人互动与相处节奏的参考建议。' },
+    { title: '三、行动建议', body: '可执行的生活调整与自我照护提示。' },
+  ]
+
   /** 将后端报告映射为本地 RecordVo 格式 */
   function mapServerReportToRecord(report: any): RecordVo {
+    const title = report.reportName || '专属解读报告'
     return {
       id: String(report.id),
       profileId: activeProfileId.value || 'server',
-      profileName: report.reportName || '命理报告',
-      title: report.reportName || '命理报告',
+      profileName: report.profileName || activeProfile.value?.name || '心语档案',
+      title,
       time: report.createTime || '',
-      directions: [],
-      content: report._content || [],
+      directions: selectedDirections.value.length ? [...selectedDirections.value] : [],
+      content: (report._content?.length ? report._content : COMPLETE_PLACEHOLDER_SECTIONS),
+      status: report.status,
+    }
+  }
+
+  /** 报告详情接口 → RecordVo */
+  function mapServerDetailToRecord(detail: any): RecordVo | null {
+    const report = detail?.report
+    if (!report)
+      return null
+    const version = detail?.currentVersion
+    const html = version?.htmlContent
+    const sections = html
+      ? [{ title: '完整报告', body: html }]
+      : COMPLETE_PLACEHOLDER_SECTIONS
+    return {
+      id: String(report.id),
+      profileId: activeProfileId.value || 'server',
+      profileName: report.reportName || activeProfile.value?.name || '心语档案',
+      title: report.reportName || '专属解读报告',
+      time: report.createTime || '',
+      directions: selectedDirections.value.length ? [...selectedDirections.value] : [],
+      content: sections,
       status: report.status,
     }
   }
@@ -545,7 +664,11 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     isLoggedIn,
     activeProfile,
     latestRecord,
+    displayCredits,
+    hasNoCredits,
     initSeedData,
+    clearSession,
+    tryRestoreSession,
     getProfileById,
     getRecordsByProfileId,
     getRecordById,
@@ -569,6 +692,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     serverProducts,
     serverReports,
     totalAvailableCount,
+    activeProductId,
     useRemoteApi,
     enableRemoteApi,
     doSendSmsCode,
@@ -585,6 +709,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     loadUserInfo,
     initRemoteData,
     mapServerReportToRecord,
+    mapServerDetailToRecord,
     loadReportDetail,
   }
 }, {

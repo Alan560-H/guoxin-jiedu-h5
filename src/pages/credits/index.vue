@@ -11,7 +11,6 @@ const store = useGuoxinStore()
 const selectedId = ref<CreditPackageId>('standard')
 const selectedProductId = ref<number | null>(null)
 
-// 远程商品列表（从后端加载）
 const displayProducts = computed(() => {
   if (store.useRemoteApi && store.serverProducts.length > 0) {
     return store.serverProducts.map((p: any) => ({
@@ -25,24 +24,31 @@ const displayProducts = computed(() => {
       hot: p.promotionStatus === 1,
     }))
   }
-  // 本地模式使用硬编码套餐
   return CREDIT_PACKAGES.map(p => ({ ...p, productId: null }))
 })
 
-onMounted(() => {
-  if (store.useRemoteApi && store.serverProducts.length === 0) {
-    store.loadProducts()
+onMounted(async () => {
+  if (!store.isLoggedIn) {
+    uni.reLaunch({ url: RouterPaths.home })
+    return
+  }
+  if (store.useRemoteApi) {
+    if (store.serverProducts.length === 0)
+      await store.loadProducts()
+    if (store.activeProductId)
+      await store.refreshAvailableCount(store.activeProductId)
   }
 })
 
 function selectPkg(id: string, productId?: number) {
   selectedId.value = id as CreditPackageId
-  selectedProductId.value = productId || null
+  selectedProductId.value = productId ?? null
+  if (productId)
+    store.activeProductId = productId
 }
 
 async function purchase() {
   if (store.useRemoteApi && selectedProductId.value) {
-    // 远程模式：直接调用后端生成报告接口（相当于购买+使用）
     uni.showToast({ title: '功能开发中，请先联系客服购买', icon: 'none' })
     return
   }
@@ -53,9 +59,11 @@ async function purchase() {
     }, 600)
   }
 }
+
 function goBack() {
   uni.navigateBack()
 }
+
 function freeAdd() {
   store.addCredits(10)
   uni.showToast({ title: '已免费赠送10次', icon: 'success' })
@@ -67,18 +75,16 @@ function freeAdd() {
     <GxNavBar title="解读权益" />
 
     <scroll-view scroll-y class="gx-scroll">
-      <!-- Paywall Intro Banner -->
       <view class="paywall-intro">
         <view class="intro-icon">🌸</view>
         <view class="intro-title">
-          {{ store.credits <= 0 ? '您的解读次数已用完' : '开通更多解读权益' }}
+          {{ store.hasNoCredits() ? '您的解读次数已用完' : '开通更多解读权益' }}
         </view>
         <view class="intro-subtitle">
           继续让心语老师为您整理专属生活与心理建议
         </view>
       </view>
 
-      <!-- Package Cards -->
       <view
         v-for="pkg in displayProducts"
         :key="pkg.id"
@@ -86,12 +92,10 @@ function freeAdd() {
         :class="{ selected: selectedId === pkg.id }"
         @tap="selectPkg(pkg.id, pkg.productId)"
       >
-        <!-- Recommended badge -->
         <view v-if="'hot' in pkg && pkg.hot" class="recommended-badge">推荐</view>
 
         <view class="flex_row f_j_sb f_a_center card-header">
           <text class="package-name">{{ pkg.name }}</text>
-          <!-- Custom circular radio selector -->
           <view class="custom-radio" :class="{ checked: selectedId === pkg.id }">
             <view class="radio-inner" />
           </view>
@@ -109,12 +113,11 @@ function freeAdd() {
         </view>
       </view>
 
-      <!-- Action Buttons -->
       <view class="gx-btn-group action-buttons">
         <GxButton type="primary" @click="purchase">
           立即开通权益
         </GxButton>
-        <GxButton type="secondary" @click="freeAdd">
+        <GxButton v-if="!store.useRemoteApi" type="secondary" @click="freeAdd">
           【测试演示】免费增加 10 次
         </GxButton>
         <GxButton type="outline" @click="goBack">
@@ -122,7 +125,6 @@ function freeAdd() {
         </GxButton>
       </view>
 
-      <!-- Disclaimer info -->
       <view class="gx-disclaimer paywall-disclaimer">
         {{ CREDITS_PAYWALL_TEXT }}<br>
         购买即代表您已同意《用户使用协议》与《隐私权政策》

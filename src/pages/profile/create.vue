@@ -36,6 +36,10 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
 const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1)
 
 onLoad((options: any) => {
+  if (!store.isLoggedIn) {
+    uni.reLaunch({ url: RouterPaths.home })
+    return
+  }
   store.initSeedData()
   if (options && options.id) {
     profileId.value = options.id

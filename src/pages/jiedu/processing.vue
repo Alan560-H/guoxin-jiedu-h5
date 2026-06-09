@@ -78,7 +78,7 @@ onMounted(async () => {
   }
   // 远程模式：提交生成请求
   if (store.useRemoteApi && store.userId && store.serverProducts.length > 0) {
-    const productId = store.serverProducts[0].id
+    const productId = store.activeProductId || store.serverProducts[0].id
     const inputJson = JSON.stringify({
       profileId: store.activeProfileId,
       directions: store.selectedDirections,
@@ -107,6 +107,10 @@ onUnload(() => {
 })
 
 function skipNow() {
+  if (store.useRemoteApi) {
+    uni.showToast({ title: '报告生成中，请稍候', icon: 'none' })
+    return
+  }
   finishAndGoComplete()
 }
 function goRecords() {
@@ -164,7 +168,7 @@ function goRecords() {
 
       <!-- Action buttons -->
       <view class="gx-btn-group action-buttons">
-        <GxButton type="secondary" @click="skipNow">
+        <GxButton v-if="!store.useRemoteApi" type="secondary" @click="skipNow">
           解读完成，立即查看
         </GxButton>
         <GxButton type="outline" @click="goRecords">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import type { RecordVo } from '@/models/guoxin/record'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
@@ -9,26 +10,39 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 
 const store = useGuoxinStore()
 const reportIdParam = ref('')
+const record = ref<RecordVo | null>(null)
+const loading = ref(true)
 
 onLoad((query) => {
   if (query?.reportId)
     reportIdParam.value = String(query.reportId)
 })
 
-onMounted(() => store.initSeedData())
-
-const record = computed(() => {
-  // 远程模式：从服务器报告列表获取
-  if (store.useRemoteApi && store.serverReports.length > 0) {
-    const report = reportIdParam.value
-      ? store.serverReports.find((r: any) => String(r.id) === reportIdParam.value)
-      : store.serverReports[0]
-    if (report) {
-      return store.mapServerReportToRecord(report)
+onMounted(async () => {
+  store.initSeedData()
+  try {
+    if (store.useRemoteApi && reportIdParam.value) {
+      const id = Number(reportIdParam.value)
+      if (!isNaN(id)) {
+        const detail = await store.loadReportDetail(id)
+        if (detail)
+          record.value = store.mapServerDetailToRecord(detail)
+      }
+      if (!record.value) {
+        await store.loadReports()
+        const found = store.serverReports.find((r: { id: number }) => String(r.id) === reportIdParam.value)
+        if (found)
+          record.value = store.mapServerReportToRecord(found)
+      }
+    }
+    else {
+      const id = reportIdParam.value || store.activeRecordId
+      record.value = id ? store.getRecordById(id) : null
     }
   }
-  // 本地模式
-  return store.getRecordById(store.activeRecordId)
+  finally {
+    loading.value = false
+  }
 })
 
 function goDetail() {
@@ -36,6 +50,7 @@ function goDetail() {
     return
   uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${record.value.id}` })
 }
+
 function goRecords() {
   uni.navigateTo({ url: RouterPaths.jieduRecords })
 }
@@ -46,18 +61,23 @@ function goHome() {
 </script>
 
 <template>
-  <view v-if="record" class="gx-page flex_column page-container">
+  <view v-if="loading" class="gx-page flex_column page-container">
+    <GxNavBar title="解读已完成" />
+    <view class="gx-empty-state">
+      <view class="empty-text">加载中...</view>
+    </view>
+  </view>
+
+  <view v-else-if="record" class="gx-page flex_column page-container">
     <GxNavBar title="解读已完成" />
 
     <scroll-view scroll-y class="gx-scroll">
-      <!-- Complete Banner -->
       <view class="complete-banner">
         <view class="success-mark">✓</view>
         <view class="banner-title">本次专属解读已整理完成</view>
         <view class="banner-subtitle">心语老师已根据您的档案信息和关注方向，为您整理了本次专属解读建议。</view>
       </view>
 
-      <!-- Content Checklist Card -->
       <GxCard class="content-checklist-card">
         <view class="gx-form-label section-label">
           解读报告包含以下内容：
@@ -77,7 +97,6 @@ function goHome() {
         </view>
       </GxCard>
 
-      <!-- Action Buttons -->
       <view class="gx-btn-group action-buttons">
         <GxButton type="primary" @click="goDetail">
           查看完整解读

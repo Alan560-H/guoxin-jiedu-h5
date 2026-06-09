@@ -14,28 +14,28 @@ pnpm build:h5
 
 - **首页**：开始解读、档案入口、上次解读、字号调节、充值
 - **心语档案**：列表、创建（Chip + 下拉表单）
-- **解读流程**：选方向 → SSE 流式整理 → 完成概览 → 详情报告
-- **解读记录**：按档案查看历史
-- **解读权益**：三档套餐（Mock 模式直连接口加次）
-- **数据**：开发环境走 Vite Mock HTTP（`VITE_USE_MOCK=true`），业务数据不再写入 `localStorage`
+- **解读流程**：选方向 → 整理页轮询任务 → 完成概览 → 详情报告
+- **解读记录**：远程模式走后端 `reports`；档案仍为本地 seed（待接 Java profiles）
+- **解读权益**：远程商品来自 `getProducts`；购买接口待接
+- **数据**：登录/商品/次数/报告走 Java `/api/yiqixue/app/guoxin`；档案 persist 在 `guoxin-store`
 
 ## V1 边界说明
 
-### 当前不做
+### 当前不做 / 待接
 
-- 真实 Java / Dify 联调（契约见 [`docs/guoxin-api.md`](docs/guoxin-api.md)）
-- 真实短信、真实微信 OAuth 跳转（Mock 模拟 openid + 绑手机）
+- 档案 CRUD 后端化（`profiles` 接口为 V2 预留）
+- 远程权益购买（订单/支付）
+- Dify 流式 SSE（当前为 `report/generate` + 轮询）
 
 ### 登录
 
-- **注册登录一体**：`wx-session` →（可选微信授权）→ `bind-phone`
-- **触发时机**：点击「开始我的专属解读」等需身份操作时再弹绑手机，不进首页就弹
+- 微信 OAuth（`wxLogin`）或短信（`loginBySms`）→ `apph5Token`
+- 首页远程模式：微信内自动 OAuth；非微信弹短信登录
 
 ### 次数与支付
 
-- **扣次时机**：SSE `done` 时扣 1 次；中途离开 processing **不扣次**
-- **Mock 充值**：`VITE_USE_MOCK=true` 时走 `POST /app/guoxin/credits/purchase`
-- **微信支付**：非 Mock 环境支付成功后再调 purchase 确认
+- **次数来源**：`availableCount`（按商品 `productId`）
+- **扣次**：后端 `report/generate` 成功后由服务端扣减
 
 ### 微信 OAuth
 

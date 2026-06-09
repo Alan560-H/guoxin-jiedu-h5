@@ -33,22 +33,8 @@ onMounted(async () => {
 
 const record = computed(() => {
   // 远程模式：从服务器详情构建
-  if (store.useRemoteApi && serverDetail.value) {
-    const report = serverDetail.value.report
-    const version = serverDetail.value.currentVersion
-    if (report) {
-      return {
-        id: String(report.id),
-        profileId: 'server',
-        profileName: report.reportName || '命理报告',
-        title: report.reportName || '命理报告',
-        time: report.createTime || '',
-        directions: [] as string[],
-        content: version?.htmlContent ? [{ title: '完整报告', body: version.htmlContent }] : null,
-        status: report.status,
-      }
-    }
-  }
+  if (store.useRemoteApi && serverDetail.value)
+    return store.mapServerDetailToRecord(serverDetail.value)
   // 本地模式
   const id = recordId.value || store.activeRecordId
   return id ? store.getRecordById(id) : null
@@ -72,7 +58,11 @@ function goHome() {
 }
 
 function goSetupAgain() {
-  if (profile.value) {
+  if (store.useRemoteApi) {
+    store.navigateToSetup(store.activeProfileId || undefined)
+    return
+  }
+  if (profile.value && 'id' in profile.value && profile.value.id) {
     store.navigateToSetup(profile.value.id)
   }
 }

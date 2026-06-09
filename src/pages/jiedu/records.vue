@@ -9,11 +9,13 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 const store = useGuoxinStore()
 
 onMounted(async () => {
-  store.initSeedData()
-  // 远程模式：加载服务器报告列表
-  if (store.useRemoteApi && store.userId) {
-    await store.loadReports()
+  if (!store.isLoggedIn) {
+    uni.reLaunch({ url: RouterPaths.home })
+    return
   }
+  store.initSeedData()
+  if (store.useRemoteApi && store.userId)
+    await store.loadReports()
 })
 
 const profile = computed(() => store.activeProfile)

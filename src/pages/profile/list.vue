@@ -11,6 +11,10 @@ const { t } = useI18n()
 const store = useGuoxinStore()
 
 onMounted(() => {
+  if (!store.isLoggedIn) {
+    uni.reLaunch({ url: RouterPaths.home })
+    return
+  }
   store.initSeedData()
 })
 

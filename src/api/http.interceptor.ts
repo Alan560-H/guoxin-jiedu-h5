@@ -2,13 +2,13 @@ import type { RequestConfig, RequestInterceptor, RequestMeta } from 'uview-pro'
 import type { ResponseData } from "@/models/responseData";
 import { dev, prod } from "@/api/env";
 import { userInfoStore } from "@/stores/userInfoStore"
+import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import { isAppEmbeddedWebView } from '@/utils/appWebView'
 // 示例：演示如何使用token
 const isDevelopment = process.env.NODE_ENV === 'development';
 const baseUrl = isDevelopment ? dev.baseUrl : prod.baseUrl;
 
-console.log(baseUrl, isDevelopment, "急促url")
 // 全局配置
 const httpRequestConfig : RequestConfig = {
 	baseUrl,
@@ -71,12 +71,11 @@ const httpInterceptor : RequestInterceptor = {
 		// 这里仅为演示，根据实际业务确定
 		const { code, msg = '请求错误：未知' } = rawData as any
 		if (code === 403 || code === 401) {
-			// Token失效，清除本地存储的token
 			uni.removeStorageSync('apph5Token')
+			useGuoxinStore().clearSession()
 			meta.toast && showToast('登录已过期，请重新登录', 'error')
-			let userInfo = userInfoStore();
-			userInfo.loginOut();
-		
+			const userInfo = userInfoStore()
+			userInfo.loginOut()
 			throw new Error(rawData)
 		}
 		else if (!(code >= 200 && code < 300)) {

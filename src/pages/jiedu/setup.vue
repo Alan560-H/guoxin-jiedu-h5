@@ -31,6 +31,10 @@ function handleSend() {
 }
 
 onMounted(() => {
+  if (!store.isLoggedIn) {
+    uni.reLaunch({ url: RouterPaths.home })
+    return
+  }
   store.initSeedData()
   if (!store.activeProfile) {
     uni.redirectTo({ url: RouterPaths.profileList })
@@ -70,8 +74,8 @@ function handleBack() {
   }
 }
 
-function confirm() {
-  void store.confirmJiedu(selected.value, userQuestion.value || undefined)
+async function confirm() {
+  await store.confirmJiedu(selected.value, userQuestion.value || undefined)
 }
 
 function goProfiles() {
