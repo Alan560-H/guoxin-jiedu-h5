@@ -37,7 +37,7 @@ const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1)
 
 onLoad(async (options: any) => {
   if (!(await store.requireAuthForPage())) {
-    uni.reLaunch({ url: RouterPaths.home })
+    store.redirectToBindPhone()
     return
   }
   await store.fetchProfiles()

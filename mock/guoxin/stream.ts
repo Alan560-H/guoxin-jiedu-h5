@@ -1,4 +1,4 @@
-import type { ServerResponse } from 'node:http'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { MockDb } from './db'
 import { formatNowTime, formatRecordTitle, generateReportContent } from './report'
 
@@ -16,7 +16,12 @@ const STEPS = [
 
 const DELTAS = ['根据您选择的关注方向，', '心语老师正在为您整理', '适合当前阶段的生活建议…']
 
-export function handleJieduStream(res: ServerResponse, db: MockDb, taskId: string): void {
+export function handleJieduStream(
+  res: ServerResponse,
+  db: MockDb,
+  taskId: string,
+  req: IncomingMessage,
+): void {
   const task = db.tasks.get(taskId)
   if (!task) {
     res.statusCode = 200
@@ -37,32 +42,57 @@ export function handleJieduStream(res: ServerResponse, db: MockDb, taskId: strin
     return
   }
 
-  if (task.status === 'streaming') {
-    writeEvent(res, 'error', { msg: '任务正在进行中，请勿重复连接' })
-    res.end()
-    return
-  }
+  // 页面刷新等会导致旧连接断开但状态仍为 streaming，允许重新连接
+  if (task.status === 'streaming')
+    task.status = 'pending'
 
   task.status = 'streaming'
+  let finished = false
+  let stepTimer: ReturnType<typeof setInterval> | null = null
+  let deltaTimer: ReturnType<typeof setInterval> | null = null
+
+  const cleanupTimers = () => {
+    if (stepTimer) {
+      clearInterval(stepTimer)
+      stepTimer = null
+    }
+    if (deltaTimer) {
+      clearInterval(deltaTimer)
+      deltaTimer = null
+    }
+  }
+
+  const onClientClose = () => {
+    if (finished)
+      return
+    cleanupTimers()
+    if (task.status === 'streaming')
+      task.status = 'pending'
+  }
+
+  req.on('close', onClientClose)
 
   let stepIdx = 0
   let deltaIdx = 0
 
-  const stepTimer = setInterval(() => {
+  stepTimer = setInterval(() => {
     if (stepIdx < STEPS.length) {
       writeEvent(res, 'step', STEPS[stepIdx])
       stepIdx += 1
       return
     }
-    clearInterval(stepTimer)
+    cleanupTimers()
 
-    const deltaTimer = setInterval(() => {
+    deltaTimer = setInterval(() => {
       if (deltaIdx < DELTAS.length) {
         writeEvent(res, 'delta', { text: DELTAS[deltaIdx] })
         deltaIdx += 1
         return
       }
-      clearInterval(deltaTimer)
+      if (deltaTimer) {
+        clearInterval(deltaTimer)
+        deltaTimer = null
+      }
 
       const profile = db.profiles.find(p => p.id === task.profileId)
       if (!profile) {
@@ -91,6 +121,7 @@ export function handleJieduStream(res: ServerResponse, db: MockDb, taskId: strin
       if (db.credits > 0)
         db.credits -= 1
 
+      finished = true
       task.status = 'done'
       task.recordId = recordId
       writeEvent(res, 'done', { recordId })

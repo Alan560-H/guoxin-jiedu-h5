@@ -26,6 +26,7 @@ onMounted(async () => {
   store.activeRecordId = id
   if (!(await store.requireAuthForPage())) {
     loading.value = false
+    store.redirectToBindPhone()
     return
   }
   try {

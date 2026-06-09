@@ -46,10 +46,6 @@ function getUserByOpenid(db: MockDb, openid: string) {
   return db.users.find(u => u.openid === openid)
 }
 
-function resolveOpenid(body: { openid?: string }): string {
-  return body.openid || getDefaultMockOpenId()
-}
-
 function sendJson(res: ServerResponse, payload: object, status = 200) {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -68,7 +64,13 @@ export async function handleGuoxinMock(
   // --- Auth ---
   if (method === 'POST' && pathname === '/app/guoxin/auth/wx-session') {
     const body = parseJson<{ openid?: string, wxCode?: string }>(await readBody(req))
-    const openid = resolveOpenid(body)
+    let openid = body.openid
+    if (!openid && body.wxCode)
+      openid = getDefaultMockOpenId()
+    if (!openid) {
+      sendJson(res, ok({ step: 'need_wx_auth', openid: '' }))
+      return true
+    }
     const user = getUserByOpenid(db, openid)
     if (!user) {
       sendJson(res, ok({ step: 'need_phone', openid }))
@@ -236,7 +238,7 @@ export async function handleGuoxinMock(
 
   if (method === 'GET' && pathname === '/app/guoxin/jiedu/stream') {
     const taskId = searchParams.get('taskId') || ''
-    handleJieduStream(res, db, taskId)
+    handleJieduStream(res, db, taskId, req)
     return true
   }
 

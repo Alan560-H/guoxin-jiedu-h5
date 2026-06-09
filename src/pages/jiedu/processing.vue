@@ -14,6 +14,8 @@ const step = ref(1)
 const completed = ref(false)
 const previewText = ref('')
 let abortController: AbortController | null = null
+let streamRetry = 0
+const MAX_STREAM_RETRY = 2
 
 const steps = computed(() => [
   { title: t('jiedu.processing.steps.s1Title'), desc: t('jiedu.processing.steps.s1Desc') },
@@ -33,6 +35,19 @@ async function startStream() {
   if (recordId) {
     completed.value = true
     uni.redirectTo({ url: RouterPaths.jieduComplete })
+    return
+  }
+  const next = await store.recoverFromStreamFailure()
+  if (next === 'complete') {
+    completed.value = true
+    uni.redirectTo({ url: RouterPaths.jieduComplete })
+  }
+  else if (next === 'stream' && streamRetry < MAX_STREAM_RETRY) {
+    streamRetry += 1
+    startStream()
+  }
+  else {
+    uni.redirectTo({ url: RouterPaths.jieduSetup })
   }
 }
 

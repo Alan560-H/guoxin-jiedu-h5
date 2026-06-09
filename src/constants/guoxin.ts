@@ -53,6 +53,7 @@ export const BIRTH_HOUR_OPTIONS = [
 
 export type FontScale = 'standard' | 'large' | 'xlarge'
 
+/** 套餐次数同步维护：mock/guoxin/constants.ts CREDIT_PACKAGE_AMOUNTS */
 export const CREDIT_PACKAGES = [
   { id: 'trial', name: '心语解读体验包', amount: 1, price: 19.9, originPrice: 39, desc: '适合首次体验，了解国心解读服务' },
   { id: 'standard', name: '心语解读权益包', amount: 10, price: 99, originPrice: 199, hot: true, desc: '可为多位家庭成员分别解读' },

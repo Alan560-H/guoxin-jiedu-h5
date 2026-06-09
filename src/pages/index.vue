@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import type { FontScale } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
@@ -14,6 +15,14 @@ const showLogin = ref(false)
 const showProfileSelect = ref(false)
 
 const pendingAfterLogin = ref<'start' | 'profiles' | 'credits' | null>(null)
+const pendingReturnUrl = ref('')
+
+onLoad((query) => {
+  if (query?.bindPhone === '1')
+    showLogin.value = true
+  if (query?.returnUrl)
+    pendingReturnUrl.value = decodeURIComponent(String(query.returnUrl))
+})
 
 onMounted(() => {
   store.tryRestoreSession()
@@ -87,6 +96,13 @@ function setScale(scale: FontScale) {
 }
 
 async function handleLoginSuccess() {
+  const returnUrl = pendingReturnUrl.value
+  pendingReturnUrl.value = ''
+  if (returnUrl) {
+    uni.reLaunch({ url: returnUrl })
+    return
+  }
+
   const action = pendingAfterLogin.value
   pendingAfterLogin.value = null
   if (action === 'profiles') {

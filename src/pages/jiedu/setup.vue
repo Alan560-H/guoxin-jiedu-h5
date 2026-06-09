@@ -31,8 +31,11 @@ function handleSend() {
 }
 
 onMounted(async () => {
-  if (store.isLoggedIn)
-    await store.fetchProfiles()
+  if (!(await store.requireAuthForPage())) {
+    store.redirectToBindPhone()
+    return
+  }
+  await store.fetchProfiles()
   if (!store.activeProfile) {
     uni.redirectTo({ url: RouterPaths.profileList })
   }

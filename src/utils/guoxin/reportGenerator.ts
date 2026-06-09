@@ -1,3 +1,4 @@
+/** @deprecated 业务报告改由 mock/guoxin/report.ts 生成，此文件仅作参考保留 */
 import type { DirectionValue } from '@/constants/guoxin'
 import type { ProfileVo } from '@/models/guoxin/profile'
 import type { ReportSection } from '@/models/guoxin/record'

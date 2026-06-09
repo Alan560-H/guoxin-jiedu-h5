@@ -104,12 +104,37 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  /** 业务子页门禁：未登录返回 false */
+  /** 业务子页门禁：未登录返回 false（调用方应 redirectToBindPhone） */
   async function requireAuthForPage(): Promise<boolean> {
     let step = await ensureAuth()
     if (step === 'need_wx_auth')
       step = await mockWxAuthorize()
     return step === 'ready'
+  }
+
+  function buildPageReturnUrl(): string {
+    const pages = getCurrentPages()
+    const page = pages[pages.length - 1] as { route?: string, options?: Record<string, string> } | undefined
+    if (!page?.route)
+      return ''
+    let url = `/${page.route}`
+    const opts = page.options
+    if (opts && Object.keys(opts).length > 0) {
+      const qs = Object.entries(opts)
+        .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
+        .join('&')
+      url += `?${qs}`
+    }
+    return url
+  }
+
+  /** 未登录时跳首页绑手机；可选 returnUrl，默认取当前页路径（含 query） */
+  function redirectToBindPhone(returnUrl?: string) {
+    const target = returnUrl || buildPageReturnUrl()
+    const url = target
+      ? `${RouterPaths.home}?bindPhone=1&returnUrl=${encodeURIComponent(target)}`
+      : RouterPaths.homeBindPhone
+    uni.reLaunch({ url })
   }
 
   async function initWxSession(oid?: string) {
@@ -300,6 +325,27 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     })
   }
 
+  /** SSE 失败或中断后根据任务状态兜底跳转 */
+  async function recoverFromStreamFailure(): Promise<'complete' | 'stream' | 'setup'> {
+    const tid = getTaskIdFromStorage()
+    if (!tid)
+      return 'setup'
+    try {
+      const res = await getJieduTaskStatus(tid)
+      if (res.data.status === 'done' && res.data.recordId) {
+        activeRecordId.value = res.data.recordId
+        clearPendingTask()
+        return 'complete'
+      }
+      if (res.data.status === 'pending' || res.data.status === 'streaming')
+        return 'stream'
+    }
+    catch {
+      // ignore
+    }
+    return 'setup'
+  }
+
   async function resumeProcessingTask(): Promise<'complete' | 'stream' | 'setup' | null> {
     const tid = getTaskIdFromStorage()
     if (!tid)
@@ -400,11 +446,13 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     fetchReport,
     runJieduStream,
     resumeProcessingTask,
+    recoverFromStreamFailure,
     purchaseCredits,
     setFontScale,
     clearAuth,
     clearPendingTask,
     requireAuthForPage,
+    redirectToBindPhone,
   }
 }, {
   persist: {

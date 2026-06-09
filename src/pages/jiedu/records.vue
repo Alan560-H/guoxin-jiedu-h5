@@ -10,7 +10,7 @@ const store = useGuoxinStore()
 
 onMounted(async () => {
   if (!(await store.requireAuthForPage())) {
-    uni.reLaunch({ url: RouterPaths.home })
+    store.redirectToBindPhone()
     return
   }
   if (!store.activeProfileId)

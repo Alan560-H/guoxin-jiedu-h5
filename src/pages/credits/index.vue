@@ -12,7 +12,7 @@ const selectedId = ref<CreditPackageId>('standard')
 
 onMounted(async () => {
   if (!(await store.requireAuthForPage())) {
-    uni.reLaunch({ url: RouterPaths.home })
+    store.redirectToBindPhone()
     return
   }
   await store.fetchCredits()

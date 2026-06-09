@@ -14,6 +14,10 @@ const record = ref<RecordVo | null>(null)
 const loading = ref(true)
 
 onMounted(async () => {
+  if (!(await store.requireAuthForPage())) {
+    store.redirectToBindPhone()
+    return
+  }
   if (!store.activeRecordId) {
     loading.value = false
     return

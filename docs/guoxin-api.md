@@ -25,7 +25,7 @@ Base URL：`/prod-api`
 }
 ```
 
-`step`：`ready` | `need_phone` | `need_wx_auth`
+`step`：`ready` | `need_phone` | `need_wx_auth`（无 openid/wxCode 时返回，需先调 `wx-authorize`）
 
 ### POST `/app/guoxin/auth/wx-authorize`
 
@@ -111,6 +111,8 @@ data: {"recordId":"r_1710000000000"}
 
 - `POST /jiedu/create`：仅校验 `credits > 0`，不扣次
 - SSE `done`：写记录并 `credits -= 1`
+- 客户端断开 SSE 且未完成：Mock 将任务重置为 `pending`，**不扣次**
+- 页面刷新后重连：若任务仍为 `streaming`，Mock 视为旧连接失效并允许重新连接
 
 ## 开发 Mock
 
