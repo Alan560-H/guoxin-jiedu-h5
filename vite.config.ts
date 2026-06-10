@@ -29,7 +29,7 @@ export default defineConfig({
         secure: false,
       },
       '/prod-api/api/yiqixue/app/guoxin': {
-        target: 'http://172.16.140.87:8082',
+        target: 'https://im.whhongyi.com.cn/',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/prod-api/, ''),

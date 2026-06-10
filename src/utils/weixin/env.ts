@@ -14,7 +14,7 @@ export function getJssdkSignUrl(): string {
   return window.location.href.split('#')[0]
 }
 
-/** OAuth 回调地址：优先 env 配置，否则取当前 origin + pathname */
+/** OAuth 回调地址：env 非空时覆盖，否则取当前页地址栏 origin + pathname */
 export function getOAuthRedirectUri(): string {
   if (wxOAuthRedirectUri)
     return wxOAuthRedirectUri

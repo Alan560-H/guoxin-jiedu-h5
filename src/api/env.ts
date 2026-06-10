@@ -21,7 +21,7 @@ interface AppConfig {
 
 const appConfig: AppConfig = {
   wxAppId: 'wx845946f84bcc1745',
-  /** 授权回调地址，须与公众号「网页授权域名」一致；部署后请改为正式 H5 域名 */
+  /** 留空则取当前页 origin + pathname（地址栏）；非空时覆盖，须与公众号授权域名一致 */
   wxOAuthRedirectUri: '',
   /** 静默授权仅拿 openid，用户信息由 Java wxLogin 返回 */
   wxOAuthScope: 'snsapi_base',

@@ -13,9 +13,9 @@ export const sendSmsCode = (data: { mobile: string }): Promise<ResponseData<any>
 export const loginBySms = (data: { mobile: string; smsCode: string }): Promise<ResponseData<any>> =>
   http.post(`${BASE}/loginBySms`, data)
 
-/** 微信网页授权登录（code换用户信息） */
+/** 微信网页授权登录（GET，code 拼在 query） */
 export const wxLogin = (data: { code: string }): Promise<ResponseData<any>> =>
-  http.post(`${BASE}/wxLogin`, data)
+  http.get(`${BASE}/wxLogin`, { code: data.code })
 
 /** 用户登录（微信openid） */
 export const login = (data: { openid: string; unionid?: string; nickname?: string; avatarUrl?: string }): Promise<ResponseData<any>> =>
