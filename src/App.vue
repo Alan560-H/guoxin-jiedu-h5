@@ -2,8 +2,6 @@
 import { onLaunch, onShow } from '@dcloudio/uni-app'
 import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
 import { fixWeixinFontsizeByWxOS } from '@/utils/weixin/font'
-import { handleOAuthOnLaunch } from '@/utils/weixin/oauth'
-import { initWxJssdk } from '@/utils/weixin/jssdk'
 
 function applyWebViewLayout() {
   // #ifdef H5
@@ -11,11 +9,9 @@ function applyWebViewLayout() {
   // #endif
 }
 
-async function initWeixinOnH5() {
+function initWeixinOnH5() {
   // #ifdef H5
   fixWeixinFontsizeByWxOS()
-  await handleOAuthOnLaunch()
-  await initWxJssdk(['chooseWXPay']).catch(() => {})
   // #endif
 }
 

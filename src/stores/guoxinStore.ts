@@ -84,6 +84,29 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     setFontScale(fontScale.value)
   }
 
+  /** 写入登录/用户信息接口返回的会话（token 由登录接口写入；用户信息里含 openid） */
+  function applySessionFromLoginData(data: {
+    userId?: number
+    mobile?: string
+    bindStatus?: number
+    token?: string
+    openId?: string
+    openid?: string
+  }) {
+    if (data.userId != null)
+      userId.value = data.userId
+    mobile.value = data.mobile || ''
+    bindStatus.value = data.bindStatus ?? 0
+    if (data.token) {
+      token.value = data.token
+      uni.setStorageSync('apph5Token', data.token)
+    }
+    const oid = data.openId ?? data.openid
+    if (oid)
+      openId.value = oid
+    isLoggedIn.value = true
+  }
+
   /** 401 或登出时清空远程会话（与 apph5Token 同步） */
   function clearSession() {
     isLoggedIn.value = false
@@ -91,8 +114,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     mobile.value = ''
     bindStatus.value = 0
     token.value = ''
+    openId.value = ''
     serverProducts.value = []
     serverReports.value = []
+    readingRecords.value = []
     totalAvailableCount.value = 0
     activeProductId.value = null
     try {
@@ -103,7 +128,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  /** 用 apph5Token 恢复登录并拉取远程数据 */
+  /**
+   * 再次进入：本地 token → getUserInfo 拉用户信息（含 openid 字段）。
+   * 微信授权回调（URL 带 code）由首页 wxLogin 处理，不在此函数内。
+   */
   async function tryRestoreSession(): Promise<boolean> {
     if (!useRemoteApi.value)
       return isLoggedIn.value
@@ -116,31 +144,25 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
 
     token.value = savedToken
-    if (!isLoggedIn.value || !userId.value) {
-      try {
-        const res = await getUserInfo()
-        if (res.code !== 200 || !res.data) {
-          clearSession()
-          return false
-        }
-        userId.value = res.data.userId ?? userId.value
-        mobile.value = res.data.mobile || ''
-        bindStatus.value = res.data.bindStatus ?? 0
-        isLoggedIn.value = true
-      }
-      catch {
-        clearSession()
-        return false
-      }
-    }
-
     try {
-      await initRemoteData()
-      return true
+      const res = await getUserInfo()
+      if (res.code === 200 && res.data) {
+        applySessionFromLoginData({
+          userId: res.data.userId,
+          mobile: res.data.mobile,
+          bindStatus: res.data.bindStatus,
+          openId: res.data.openId ?? res.data.openid,
+        })
+        await initRemoteData()
+        return true
+      }
     }
     catch {
-      return false
+      // token 失效
     }
+
+    clearSession()
+    return false
   }
 
   function getProfileById(id: string) {
@@ -457,23 +479,23 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     try {
       const res = await apiLogin({ openid, unionid, nickname, avatarUrl })
       if (res.code === 200 && res.data) {
-        userId.value = res.data.userId
-        mobile.value = res.data.mobile || ''
-        bindStatus.value = res.data.bindStatus || 0
-        // 存储JWT Token
-        if (res.data.token) {
-          token.value = res.data.token
-          uni.setStorageSync('apph5Token', res.data.token)
-        }
-        isLoggedIn.value = true
+        applySessionFromLoginData({
+          userId: res.data.userId,
+          mobile: res.data.mobile,
+          bindStatus: res.data.bindStatus,
+          token: res.data.token,
+          openId: res.data.openId ?? openid,
+        })
+        return
       }
+      throw new Error(res.msg || '登录失败')
     } catch (e) {
       console.error('登录失败', e)
       throw e
     }
   }
 
-  /** 微信网页授权登录（code换用户信息） */
+  /** 微信网页授权：code 交 Java 换 openid 与会话（见微信网页授权文档第四步） */
   async function doWxLogin(code: string): Promise<{ needBindMobile: boolean }> {
     if (!useRemoteApi.value) {
       // 本地演示模式
@@ -484,19 +506,13 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     try {
       const res = await apiWxLogin({ code })
       if (res.code === 200 && res.data) {
-        userId.value = res.data.userId
-        mobile.value = res.data.mobile || ''
-        bindStatus.value = res.data.bindStatus || 0
-        // 存储JWT Token
-        if (res.data.token) {
-          token.value = res.data.token
-          uni.setStorageSync('apph5Token', res.data.token)
-        }
-        // 存储openId（支付需要）
-        if (res.data.openId) {
-          openId.value = res.data.openId
-        }
-        isLoggedIn.value = true
+        applySessionFromLoginData({
+          userId: res.data.userId,
+          mobile: res.data.mobile,
+          bindStatus: res.data.bindStatus,
+          token: res.data.token,
+          openId: res.data.openId ?? res.data.openid,
+        })
         return { needBindMobile: !!res.data.needBindMobile }
       } else {
         throw new Error(res.msg || '微信登录失败')
@@ -711,7 +727,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  /** 初始化远程数据（登录后调用） */
+  /** 登录/恢复会话后拉取首页所需数据（报告列表进记录页再拉） */
   async function initRemoteData() {
     if (!useRemoteApi.value) return
     await loadProducts()
@@ -721,8 +737,6 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
     await loadProfiles()
     await loadReadingRecords()
-    await loadCredits()
-    await loadReports()
   }
 
   const COMPLETE_PLACEHOLDER_SECTIONS: ReportVo['content'] = [
@@ -852,6 +866,6 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   persist: {
     key: 'guoxin-store',
     storage: localStorage,
-    pick: ['profiles', 'records', 'activeProfileId', 'selectedDirections', 'fontScale', 'isLoggedIn', 'userId', 'mobile', 'token', 'useRemoteApi'],
+    pick: ['profiles', 'records', 'activeProfileId', 'selectedDirections', 'fontScale', 'isLoggedIn', 'userId', 'mobile', 'useRemoteApi'],
   },
 })

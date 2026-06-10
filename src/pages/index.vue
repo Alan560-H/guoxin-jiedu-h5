@@ -7,8 +7,15 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
-import { isWeChatBrowser, getOAuthCodeFromUrl, clearOAuthParamsFromUrl } from '@/utils/weixin/env'
-import { redirectToWxOAuth, markOAuthPendingStart, consumeOAuthPendingStart } from '@/utils/weixin/oauth'
+import { isWeChatBrowser } from '@/utils/weixin/env'
+import {
+  redirectToWxOAuth,
+  markOAuthPendingStart,
+  consumeOAuthPendingStart,
+  getGuoxinOAuthCode,
+  clearOAuthParamsFromUrl,
+  GUOXIN_OAUTH_STATE,
+} from '@/utils/weixin/oauth'
 
 const store = useGuoxinStore()
 
@@ -32,7 +39,7 @@ function continueJieduAfterLogin() {
   showProfileSelect.value = true
 }
 
-/** 处理微信 OAuth 回调（仅在有 code 时） */
+/** 微信授权回调：code 交 Java wxLogin，返回 token（及用户信息含 openid） */
 async function handleOAuthCallback(code: string) {
   try {
     uni.showLoading({ title: '登录中...' })
@@ -58,19 +65,28 @@ async function handleOAuthCallback(code: string) {
 onMounted(async () => {
   store.initSeedData()
 
+  if (!store.useRemoteApi)
+    return
+
+  // ① 本地有 token → getUserInfo 换用户信息（响应里含 openid）
   if (await store.tryRestoreSession())
     return
 
-  if (store.useRemoteApi) {
-    const code = getOAuthCodeFromUrl()
-    if (code) {
-      await handleOAuthCallback(code)
-    }
+  // ② URL 有 code（微信授权 redirect_uri?code=CODE&state=STATE）→ wxLogin 换 token
+  const code = getGuoxinOAuthCode()
+  if (code) {
+    await handleOAuthCallback(code)
+    return
   }
+
+  // ③ 无 token、无 code → 正常展示首页（未登录）
 })
 
-function promptLoginForStart() {
-  loginIntent.value = 'start'
+/**
+ * 未登录时弹登录选择：微信内可选「网页授权」或「短信验证码」；非微信仅短信。
+ */
+function promptLogin(intent: 'none' | 'start' = 'none') {
+  loginIntent.value = intent
   if (store.useRemoteApi && isWeChatBrowser()) {
     showWxAuth.value = true
     return
@@ -79,10 +95,14 @@ function promptLoginForStart() {
   showLogin.value = true
 }
 
+function promptLoginForStart() {
+  promptLogin('start')
+}
+
 function confirmWxAuth() {
   showWxAuth.value = false
   markOAuthPendingStart()
-  redirectToWxOAuth('GUOXIN_LOGIN')
+  redirectToWxOAuth(GUOXIN_OAUTH_STATE)
 }
 
 function switchToSmsLogin() {
@@ -128,9 +148,7 @@ function handleCreateProfileFromModal() {
 
 function goProfiles() {
   if (!store.isLoggedIn) {
-    loginIntent.value = 'none'
-    loginMode.value = 'smsLogin'
-    showLogin.value = true
+    promptLogin('none')
     return
   }
   uni.navigateTo({ url: RouterPaths.profileList })
@@ -138,9 +156,7 @@ function goProfiles() {
 
 function goCredits() {
   if (!store.isLoggedIn) {
-    loginIntent.value = 'none'
-    loginMode.value = 'smsLogin'
-    showLogin.value = true
+    promptLogin('none')
     return
   }
   uni.navigateTo({ url: RouterPaths.credits })
@@ -271,7 +287,7 @@ async function handleLoginSuccess() {
             微信授权登录
           </GxButton>
           <GxButton type="outline" @click="switchToSmsLogin">
-            使用短信验证码登录
+            短信验证码登录
           </GxButton>
         </view>
       </view>

@@ -25,7 +25,9 @@ let timer: ReturnType<typeof setInterval> | null = null
 
 const isBindMode = computed(() => props.mode === 'bindMobile')
 const titleText = computed(() => isBindMode.value ? '绑定手机号' : '欢迎登录心语小助手')
-const subtitleText = computed(() => isBindMode.value ? '请绑定手机号以继续使用' : '输入手机号和验证码即可登录')
+const subtitleText = computed(() =>
+  isBindMode.value ? '请绑定手机号以继续使用' : '输入手机号和验证码即可登录',
+)
 const btnText = computed(() => isBindMode.value ? '确认绑定' : '立即登录')
 
 async function sendCode() {
@@ -71,10 +73,9 @@ async function handleSubmit() {
       uni.hideLoading()
       uni.showToast({ title: '绑定成功', icon: 'success' })
     } else {
-      // 短信登录模式
+      // 短信登录模式（远程数据由父页 handleLoginSuccess 统一拉取，避免重复请求）
       if (store.useRemoteApi) {
         await store.doLoginBySms(phone.value, code.value)
-        await store.initRemoteData()
       } else {
         store.isLoggedIn = true
       }
