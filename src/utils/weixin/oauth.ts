@@ -17,6 +17,33 @@ export function redirectToWxOAuth(state = 'STATE'): void {
   window.location.href = buildOAuthUrl(state)
 }
 
+const OAUTH_PENDING_START_KEY = 'guoxin-oauth-pending-start'
+
+/** 标记：授权完成后继续「开始解读」流程 */
+export function markOAuthPendingStart() {
+  try {
+    uni.setStorageSync(OAUTH_PENDING_START_KEY, '1')
+  }
+  catch {
+    // ignore
+  }
+}
+
+/** 读取并清除「开始解读」待续标记 */
+export function consumeOAuthPendingStart(): boolean {
+  try {
+    const v = uni.getStorageSync(OAUTH_PENDING_START_KEY)
+    if (v) {
+      uni.removeStorageSync(OAUTH_PENDING_START_KEY)
+      return true
+    }
+  }
+  catch {
+    // ignore
+  }
+  return false
+}
+
 /** 应用启动时处理 OAuth：仅静默用 URL 中的 code 换 token，不自动跳转授权页 */
 export async function handleOAuthOnLaunch(): Promise<void> {
   // #ifndef H5

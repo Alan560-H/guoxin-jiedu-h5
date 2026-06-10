@@ -8,13 +8,52 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 import { isWeChatBrowser, getOAuthCodeFromUrl, clearOAuthParamsFromUrl } from '@/utils/weixin/env'
-import { redirectToWxOAuth } from '@/utils/weixin/oauth'
+import { redirectToWxOAuth, markOAuthPendingStart, consumeOAuthPendingStart } from '@/utils/weixin/oauth'
 
 const store = useGuoxinStore()
 
 const showLogin = ref(false)
+const showWxAuth = ref(false)
 const loginMode = ref<'smsLogin' | 'bindMobile'>('smsLogin')
 const showProfileSelect = ref(false)
+/** 登录完成后是否继续「开始解读」流程 */
+const loginIntent = ref<'none' | 'start'>('none')
+
+/** 登录/授权成功后，继续「开始解读」后续步骤 */
+function continueJieduAfterLogin() {
+  if (store.hasNoCredits()) {
+    uni.navigateTo({ url: RouterPaths.credits })
+    return
+  }
+  if (store.profiles.length === 0) {
+    uni.navigateTo({ url: RouterPaths.profileCreate })
+    return
+  }
+  showProfileSelect.value = true
+}
+
+/** 处理微信 OAuth 回调（仅在有 code 时） */
+async function handleOAuthCallback(code: string) {
+  try {
+    uni.showLoading({ title: '登录中...' })
+    const result = await store.doWxLogin(code)
+    clearOAuthParamsFromUrl()
+    uni.hideLoading()
+    if (result.needBindMobile) {
+      loginMode.value = 'bindMobile'
+      showLogin.value = true
+      return
+    }
+    await store.initRemoteData()
+    if (consumeOAuthPendingStart())
+      continueJieduAfterLogin()
+  }
+  catch (e: unknown) {
+    uni.hideLoading()
+    console.error('微信登录失败', e)
+    uni.showToast({ title: '微信授权失败，请重试', icon: 'none' })
+  }
+}
 
 onMounted(async () => {
   store.initSeedData()
@@ -25,58 +64,42 @@ onMounted(async () => {
     return
   }
 
-  // 远程模式：处理微信 OAuth 流程
   if (store.useRemoteApi) {
     const code = getOAuthCodeFromUrl()
     if (code) {
-      // URL 中有 code，是微信授权回调
-      clearOAuthParamsFromUrl()
-      try {
-        uni.showLoading({ title: '登录中...' })
-        const result = await store.doWxLogin(code)
-        uni.hideLoading()
-        if (result.needBindMobile) {
-          // 用户未绑定手机号，弹出绑定手机号弹窗
-          loginMode.value = 'bindMobile'
-          showLogin.value = true
-        } else {
-          // 已绑定手机号，直接初始化数据
-          await store.initRemoteData()
-        }
-      } catch (e: any) {
-        uni.hideLoading()
-        console.error('微信登录失败', e)
-        // 微信登录失败，降级为短信登录
-        loginMode.value = 'smsLogin'
-        showLogin.value = true
-      }
-      return
+      await handleOAuthCallback(code)
     }
-
-    // 没有 code，如果在微信浏览器中，跳转微信授权
-    if (isWeChatBrowser()) {
-      redirectToWxOAuth('GUOXIN_LOGIN')
-      return
-    }
-
-    // 非微信浏览器，显示短信登录弹窗
-    loginMode.value = 'smsLogin'
-    showLogin.value = true
-    return
-  }
-
-  // 本地演示模式
-  if (!store.isLoggedIn) {
-    showLogin.value = true
   }
 })
+
+function promptLoginForStart() {
+  loginIntent.value = 'start'
+  if (store.useRemoteApi && isWeChatBrowser()) {
+    showWxAuth.value = true
+    return
+  }
+  loginMode.value = 'smsLogin'
+  showLogin.value = true
+}
+
+function confirmWxAuth() {
+  showWxAuth.value = false
+  markOAuthPendingStart()
+  redirectToWxOAuth('GUOXIN_LOGIN')
+}
+
+function switchToSmsLogin() {
+  showWxAuth.value = false
+  loginMode.value = 'smsLogin'
+  showLogin.value = true
+}
 
 const latestRecord = computed(() => store.latestRecord)
 const profiles = computed(() => store.profiles)
 
 function handleStartJiedu() {
   if (!store.isLoggedIn) {
-    showLogin.value = true
+    promptLoginForStart()
     return
   }
 
@@ -109,6 +132,8 @@ function handleCreateProfileFromModal() {
 
 function goProfiles() {
   if (!store.isLoggedIn) {
+    loginIntent.value = 'none'
+    loginMode.value = 'smsLogin'
     showLogin.value = true
     return
   }
@@ -117,6 +142,8 @@ function goProfiles() {
 
 function goCredits() {
   if (!store.isLoggedIn) {
+    loginIntent.value = 'none'
+    loginMode.value = 'smsLogin'
     showLogin.value = true
     return
   }
@@ -134,19 +161,14 @@ function setScale(scale: FontScale) {
 }
 
 async function handleLoginSuccess() {
-  // 登录/绑定成功后刷新远程数据
   if (store.useRemoteApi) {
     await store.initRemoteData()
   }
-  // 绑定手机号模式成功后，直接进入主页
-  if (loginMode.value === 'bindMobile') {
-    return
-  }
-  if (store.credits <= 0 && store.totalAvailableCount <= 0) {
-    uni.navigateTo({ url: RouterPaths.credits })
-  } else {
-    showProfileSelect.value = true
-  }
+
+  const shouldContinue = loginIntent.value === 'start' || consumeOAuthPendingStart()
+  loginIntent.value = 'none'
+  if (shouldContinue)
+    continueJieduAfterLogin()
 }
 </script>
 
@@ -237,7 +259,27 @@ async function handleLoginSuccess() {
       <view class="gx-safe-bottom" />
     </scroll-view>
 
-    <!-- Immediate Login Dialog Modal -->
+    <!-- 微信授权登录弹窗（点击「开始解读」时） -->
+    <view v-if="showWxAuth" class="modal-overlay">
+      <view class="modal-card wx-auth-card">
+        <view class="close-x" @tap="showWxAuth = false">×</view>
+        <view class="wx-auth-header">
+          <view class="wx-auth-icon">微</view>
+          <view class="wx-auth-title">微信授权登录</view>
+          <view class="wx-auth-desc">使用微信账号登录后，即可开始专属解读</view>
+        </view>
+        <view class="gx-btn-group wx-auth-actions">
+          <GxButton type="primary" @click="confirmWxAuth">
+            微信授权登录
+          </GxButton>
+          <GxButton type="outline" @click="switchToSmsLogin">
+            使用短信验证码登录
+          </GxButton>
+        </view>
+      </view>
+    </view>
+
+    <!-- 短信 / 绑手机弹窗 -->
     <GxLoginModal
       :show="showLogin"
       :mode="loginMode"
@@ -494,6 +536,46 @@ async function handleLoginSuccess() {
   cursor: pointer;
   line-height: 1;
   z-index: 10;
+}
+
+.wx-auth-card {
+  text-align: center;
+}
+
+.wx-auth-header {
+  margin-bottom: 40rpx;
+}
+
+.wx-auth-icon {
+  width: 96rpx;
+  height: 96rpx;
+  margin: 0 auto 24rpx;
+  border-radius: 50%;
+  background: #07C160;
+  color: #fff;
+  font-size: 44rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wx-auth-title {
+  font-family: "Noto Serif SC", Georgia, serif;
+  font-size: 36rpx;
+  font-weight: 900;
+  color: #153F33;
+  margin-bottom: 12rpx;
+}
+
+.wx-auth-desc {
+  font-size: 26rpx;
+  color: #665B4E;
+  line-height: 1.6;
+}
+
+.wx-auth-actions {
+  gap: 20rpx;
 }
 
 /* Custom Profile Select Dialog styles */
