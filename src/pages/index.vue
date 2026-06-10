@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import type { FontScale } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
@@ -82,6 +83,32 @@ onMounted(async () => {
   // ③ 无 token、无 code → 正常展示首页（未登录）
 })
 
+/** 回到首页时刷新剩余次数与上次解读 */
+onShow(() => {
+  if (!store.useRemoteApi || !store.isLoggedIn)
+    return
+  void store.refreshDisplayCredits()
+  void store.loadReadingRecords()
+})
+
+function promptBindMobile(intent: 'none' | 'start' = 'none') {
+  loginIntent.value = intent
+  loginMode.value = 'bindMobile'
+  showLogin.value = true
+}
+
+function requireLoggedInAndBound(intent: 'none' | 'start' = 'none'): boolean {
+  if (!store.isLoggedIn) {
+    promptLogin(intent)
+    return false
+  }
+  if (store.needsBindMobile()) {
+    promptBindMobile(intent)
+    return false
+  }
+  return true
+}
+
 /**
  * 未登录时弹登录选择：微信内可选「网页授权」或「短信验证码」；非微信仅短信。
  */
@@ -120,6 +147,11 @@ function handleStartJiedu() {
     return
   }
 
+  if (store.needsBindMobile()) {
+    promptBindMobile('start')
+    return
+  }
+
   if (store.hasNoCredits()) {
     uni.navigateTo({ url: RouterPaths.credits })
     return
@@ -147,18 +179,14 @@ function handleCreateProfileFromModal() {
 }
 
 function goProfiles() {
-  if (!store.isLoggedIn) {
-    promptLogin('none')
+  if (!requireLoggedInAndBound('none'))
     return
-  }
   uni.navigateTo({ url: RouterPaths.profileList })
 }
 
 function goCredits() {
-  if (!store.isLoggedIn) {
-    promptLogin('none')
+  if (!requireLoggedInAndBound('none'))
     return
-  }
   uni.navigateTo({ url: RouterPaths.credits })
 }
 
@@ -176,9 +204,6 @@ async function handleLoginSuccess() {
   if (store.useRemoteApi) {
     await store.initRemoteData()
   }
-  if (loginMode.value === 'bindMobile')
-    return
-
   const shouldContinue = loginIntent.value === 'start' || consumeOAuthPendingStart()
   loginIntent.value = 'none'
   if (shouldContinue)

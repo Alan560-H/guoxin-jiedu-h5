@@ -54,9 +54,8 @@ function confirmDelete(id: string) {
     confirmColor: '#B7654A',
     success: (res) => {
       if (res.confirm) {
-        void store.deleteProfile(id).then(() => {
-          uni.showToast({ title: t('profile.list.deleted'), icon: 'success' })
-        })
+        store.deleteProfile(id)
+        uni.showToast({ title: t('profile.list.deleted'), icon: 'success' })
       }
     },
   })

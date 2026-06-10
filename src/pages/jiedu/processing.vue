@@ -6,6 +6,7 @@ import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
+import { toTaskIdNumber } from '@/utils/guoxin/reportGenerate'
 
 const store = useGuoxinStore()
 const step = ref(1)
@@ -13,6 +14,12 @@ let timer: ReturnType<typeof setInterval> | null = null
 const completed = ref(false)
 const remoteTaskId = ref<number | null>(null)
 const remoteReportId = ref<number | null>(null)
+const animationComplete = ref(false)
+const pollDone = ref(false)
+const pollSuccess = ref(false)
+const pollErrorMsg = ref('')
+/** 页面仍在前台时继续轮询；离开整理页则取消轮询（后端任务继续，报告进列表） */
+const pageActive = ref(true)
 
 const steps = [
   { title: '已确认档案信息', desc: '档案与关注方向已记录' },
@@ -21,56 +28,133 @@ const steps = [
   { title: '完成后通知您查看', desc: '' },
 ]
 
-function finishAndGoComplete() {
-  if (completed.value)
-    return
+function clearSimulationTimer() {
   if (timer) {
     clearInterval(timer)
     timer = null
   }
-  // 本地模式
+}
+
+/** 轮询先完成时快进动画，避免空等 */
+function fastForwardAnimation() {
+  if (animationComplete.value)
+    return
+  clearSimulationTimer()
+  step.value = 4
+  animationComplete.value = true
+}
+
+function finishAndGoComplete() {
+  if (completed.value)
+    return
+  clearSimulationTimer()
   if (!store.useRemoteApi) {
     const record = store.completeJiedu()
     if (!record)
       return
   }
   completed.value = true
+  if (store.useRemoteApi)
+    store.clearJieduSession()
   uni.redirectTo({ url: `${RouterPaths.jieduComplete}?reportId=${remoteReportId.value || ''}` })
+}
+
+function handlePollFailure(msg: string) {
+  if (!pageActive.value)
+    return
+  pollErrorMsg.value = msg
+  if (animationComplete.value) {
+    uni.showToast({ title: msg, icon: 'none' })
+    uni.redirectTo({ url: RouterPaths.jieduRecords })
+  }
+}
+
+/** 动画与轮询都结束后：成功进完成页，失败进记录页 */
+function tryFinishWhenReady() {
+  if (!pageActive.value || !animationComplete.value || !pollDone.value || completed.value)
+    return
+  if (pollSuccess.value)
+    finishAndGoComplete()
+  else
+    handlePollFailure(pollErrorMsg.value || '报告生成失败，请稍后查看')
+}
+
+async function pollRemoteTask() {
+  if (!remoteTaskId.value)
+    return
+  const result = await store.pollTaskStatus(
+    remoteTaskId.value,
+    60,
+    3000,
+    () => !pageActive.value,
+  )
+  if (!pageActive.value || result?.cancelled)
+    return
+  pollDone.value = true
+  if (result?.success) {
+    pollSuccess.value = true
+    if (result.reportId)
+      remoteReportId.value = result.reportId
+    await store.loadReports()
+    await store.loadReadingRecords()
+    await store.refreshDisplayCredits()
+    fastForwardAnimation()
+  }
+  else {
+    pollSuccess.value = false
+    pollErrorMsg.value = result?.msg || result?.message || '报告生成失败，请稍后查看'
+    if (result?.failed) {
+      clearSimulationTimer()
+      step.value = 4
+      animationComplete.value = true
+    }
+  }
+  tryFinishWhenReady()
 }
 
 function startSimulation() {
   step.value = 1
   timer = setInterval(() => {
+    if (!pageActive.value) {
+      clearSimulationTimer()
+      return
+    }
     step.value += 1
     if (step.value >= 4) {
-      if (timer)
-        clearInterval(timer)
-      // 远程模式下，等待后端任务完成
-      if (store.useRemoteApi) {
-        if (remoteTaskId.value)
-          pollRemoteTask()
-        else
-          uni.showToast({ title: '报告提交失败，请重试', icon: 'none' })
-      } else {
-        setTimeout(finishAndGoComplete, 800)
-      }
+      clearSimulationTimer()
+      animationComplete.value = true
+      tryFinishWhenReady()
     }
   }, 2500)
 }
 
-async function pollRemoteTask() {
-  if (!remoteTaskId.value) return
-  const result = await store.pollTaskStatus(remoteTaskId.value, 60, 3000)
-  if (result && result.status === 'success') {
-    remoteReportId.value = result.reportId
-    // 刷新报告列表
-    await store.loadReports()
-    await store.refreshAvailableCount()
-    finishAndGoComplete()
-  } else {
-    uni.showToast({ title: '报告生成超时，请稍后查看', icon: 'none' })
-    uni.redirectTo({ url: RouterPaths.jieduRecords })
+async function submitGenerateRequest(): Promise<boolean> {
+  if (!store.isLoggedIn) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    uni.redirectTo({ url: RouterPaths.home })
+    return false
   }
+  if (store.serverProducts.length === 0)
+    await store.loadProducts()
+  if (store.serverProducts.length === 0) {
+    uni.showToast({ title: '商品加载失败，请稍后重试', icon: 'none' })
+    return false
+  }
+  const inputJson = store.buildActiveReportInputJson()
+  if (!inputJson) {
+    uni.showToast({ title: '档案或关注方向缺失', icon: 'none' })
+    return false
+  }
+  const productId = store.activeProductId || store.serverProducts[0].id
+  const result = await store.doGenerateReport(productId, inputJson)
+  if (!result?.taskId) {
+    uni.showToast({ title: '提交失败，请重试', icon: 'none' })
+    return false
+  }
+  remoteTaskId.value = toTaskIdNumber(result.taskId)
+  const initialReportId = result.reportId != null ? Number(result.reportId) : null
+  remoteReportId.value = initialReportId != null && !Number.isNaN(initialReportId) ? initialReportId : null
+  return true
 }
 
 onMounted(async () => {
@@ -79,53 +163,30 @@ onMounted(async () => {
     uni.redirectTo({ url: RouterPaths.jieduSetup })
     return
   }
-  // 远程模式：进入整理页即提交 report/generate（userId 由后端从 JWT 解析，不依赖 store.userId）
   if (store.useRemoteApi) {
-    if (!store.isLoggedIn) {
-      uni.showToast({ title: '请先登录', icon: 'none' })
-      uni.redirectTo({ url: RouterPaths.home })
-      return
-    }
-    if (store.serverProducts.length === 0)
-      await store.loadProducts()
-    if (store.serverProducts.length === 0) {
-      uni.showToast({ title: '商品加载失败，请稍后重试', icon: 'none' })
+    const ok = await submitGenerateRequest()
+    if (!ok) {
       uni.navigateBack()
       return
     }
-    const productId = store.activeProductId || store.serverProducts[0].id
-    const inputJson = JSON.stringify({
-      profileId: store.activeProfileId,
-      directions: store.selectedDirections,
-      profileName: store.activeProfile?.name,
-      userQuestion: store.userQuestion || undefined,
-    })
-    const result = await store.doGenerateReport(productId, inputJson)
-    if (result?.taskId) {
-      remoteTaskId.value = result.taskId
-      remoteReportId.value = result.reportId ?? null
-    } else {
-      uni.showToast({ title: '提交失败，请重试', icon: 'none' })
-      uni.navigateBack()
-      return
-    }
+    void pollRemoteTask()
   }
   startSimulation()
 })
 
 onUnload(() => {
-  if (!completed.value) {
-    uni.showToast({ title: '整理已中断，可重新解读', icon: 'none' })
-  }
-  if (timer)
-    clearInterval(timer)
+  pageActive.value = false
+  clearSimulationTimer()
 })
 
 function skipNow() {
   if (store.useRemoteApi) {
-    uni.showToast({ title: '报告生成中，请稍候', icon: 'none' })
+    goRecords()
     return
   }
+  animationComplete.value = true
+  pollDone.value = true
+  pollSuccess.value = true
   finishAndGoComplete()
 }
 function goRecords() {
@@ -181,13 +242,17 @@ function goRecords() {
         </view>
       </view>
 
+      <view v-if="store.useRemoteApi && animationComplete && !pollDone" class="polling-hint">
+        报告仍在生成中，请稍候…
+      </view>
+
       <!-- Action buttons -->
       <view class="gx-btn-group action-buttons">
         <GxButton v-if="!store.useRemoteApi" type="secondary" @click="skipNow">
           解读完成，立即查看
         </GxButton>
-        <GxButton type="outline" @click="goRecords">
-          查看解读记录
+        <GxButton :type="store.useRemoteApi ? 'secondary' : 'outline'" @click="goRecords">
+          {{ store.useRemoteApi ? '先去解读记录，稍后查看' : '查看解读记录' }}
         </GxButton>
       </view>
 
@@ -265,6 +330,14 @@ function goRecords() {
   }
 }
 
+.polling-hint {
+  margin: 0 32rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #153F33;
+  font-weight: 700;
+}
+
 /* Timeline vertical checklists */
 .progress-timeline {
   display: flex;
@@ -320,7 +393,7 @@ function goRecords() {
   font-size: 28rpx;
   color: #958878;
   font-weight: 500;
-  line-height: 52rpx; /* Align with center of icon */
+  line-height: 52rpx;
 }
 
 .step-desc {
@@ -329,7 +402,6 @@ function goRecords() {
   margin-top: 8rpx;
 }
 
-/* Timeline Active / Completed status */
 .timeline-step.completed {
   .timeline-icon {
     background-color: #153F33;

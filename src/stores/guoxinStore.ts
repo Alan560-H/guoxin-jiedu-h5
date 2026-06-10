@@ -7,6 +7,15 @@ import { wxChoosePay } from '@/utils/weixin/pay'
 import { DEFAULT_PROFILES, DEFAULT_RECORDS, normalizeSeedProfile } from '@/utils/guoxin/seedData'
 import { formatNowTime, formatRecordTitle, generateDynamicReportContent } from '@/utils/guoxin/reportGenerator'
 import {
+  buildReportInputJson,
+  extractReportIdFromTask,
+  isReportTaskFailed,
+  isReportTaskSuccess,
+  isReportTaskTerminal,
+  normalizeGenerateResult,
+  toTaskIdNumber,
+} from '@/utils/guoxin/reportGenerate'
+import {
   login as apiLogin,
   wxLogin as apiWxLogin,
   loginBySms as apiLoginBySms,
@@ -93,6 +102,19 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     if (useRemoteApi.value && isLoggedIn.value)
       return totalAvailableCount.value <= 0
     return credits.value <= 0
+  }
+
+  /** 已登录但未绑定手机号（远程模式） */
+  function needsBindMobile() {
+    if (!useRemoteApi.value || !isLoggedIn.value)
+      return false
+    return bindStatus.value !== 1
+  }
+
+  /** 解读流程结束后清理本次方向与自定义问题 */
+  function clearJieduSession() {
+    selectedDirections.value = []
+    userQuestion.value = ''
   }
 
   function initSeedData() {
@@ -390,34 +412,47 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return null
   }
 
-  async function purchaseCredits(pkgId: CreditPackageId): Promise<boolean> {
-    const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId)
-    if (!pkg)
+  /** 远程：微信 JSAPI 购买商品套餐 */
+  async function purchaseRemoteProduct(productId: number): Promise<boolean> {
+    if (!useRemoteApi.value)
       return false
-
+    if (!openId.value) {
+      uni.showToast({ title: '请在微信内完成授权后再购买', icon: 'none' })
+      return false
+    }
     try {
-      await wxChoosePay({ orderId: pkg.id, amount: Math.round(pkg.price * 100), description: pkg.name })
-      credits.value += pkg.amount
+      await wxChoosePay({ productId, openId: openId.value })
+      await refreshDisplayCredits()
+      await loadOrders()
       uni.showToast({ title: '开通成功', icon: 'success' })
       return true
     }
     catch (err) {
       const code = err instanceof Error ? err.message : ''
-      if (code === 'cancel')
+      if (code === 'cancel' || code === 'not_wechat')
         return false
-
-      await new Promise<void>((resolve) => {
-        uni.showModal({
-          title: '模拟支付',
-          content: `【演示】已成功购买：${pkg.name}\n解读次数 +${pkg.amount}`,
-          showCancel: false,
-          success: () => resolve(),
-        })
-      })
-      credits.value += pkg.amount
-      uni.showToast({ title: '开通成功', icon: 'success' })
-      return true
+      console.error('远程购买失败', err)
+      uni.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
+      return false
     }
+  }
+
+  async function purchaseCredits(pkgId: CreditPackageId): Promise<boolean> {
+    const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId)
+    if (!pkg)
+      return false
+
+    await new Promise<void>((resolve) => {
+      uni.showModal({
+        title: '模拟支付',
+        content: `【演示】已成功购买：${pkg.name}\n解读次数 +${pkg.amount}`,
+        showCancel: false,
+        success: () => resolve(),
+      })
+    })
+    credits.value += pkg.amount
+    uni.showToast({ title: '开通成功', icon: 'success' })
+    return true
   }
 
   function setFontScale(scale: FontScale) {
@@ -565,8 +600,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   async function doBindMobileWithSms(mobileStr: string, smsCode: string) {
     const res = await apiBindMobile({ userId: userId.value || 0, mobile: mobileStr, smsCode })
     if (res.code === 200) {
-      mobile.value = mobileStr
-      bindStatus.value = 1
+      mobile.value = res.data?.mobile || mobileStr
+      bindStatus.value = res.data?.bindStatus ?? 1
       // 绑定成功后更新Token（后端会返回新token）
       if (res.data && res.data.token) {
         token.value = res.data.token
@@ -714,19 +749,30 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  /** 加载用户总可用次数 */
+  /** 加载用户总可用次数（仅作兜底，展示以 refreshDisplayCredits 为准） */
   async function loadCredits() {
     if (!useRemoteApi.value) return
     try {
       const res = await getCredits()
       if (res.code === 200 && res.data) {
-        const n = res.data.credits ?? res.data.availableCount ?? 0
-        credits.value = n
-        totalAvailableCount.value = n
+        credits.value = res.data.credits ?? res.data.availableCount ?? 0
       }
     } catch (e) {
       console.error('加载可用次数失败', e)
     }
+  }
+
+  /** 按当前商品刷新剩余解读次数（远程展示统一入口） */
+  async function refreshDisplayCredits() {
+    if (!useRemoteApi.value || !isLoggedIn.value)
+      return
+    if (serverProducts.value.length === 0)
+      await loadProducts()
+    const productId = activeProductId.value ?? serverProducts.value[0]?.id
+    if (!productId)
+      return
+    activeProductId.value = productId
+    await refreshAvailableCount(productId)
   }
 
   /** 加载用户订单列表 */
@@ -768,39 +814,89 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
+  /** 当前解读上下文 → report/generate 的 inputJson */
+  function buildActiveReportInputJson(): string | null {
+    const profile = activeProfile.value
+    if (!profile || selectedDirections.value.length === 0)
+      return null
+    return buildReportInputJson(profile, selectedDirections.value, userQuestion.value)
+  }
+
   /** 提交报告生成 */
   async function doGenerateReport(productId: number, inputJson?: string) {
     if (!useRemoteApi.value) return null
     try {
       const res = await apiGenerateReport({ productId, inputJson })
       if (res.code === 200 && res.data) {
-        return res.data
-      } else {
-        uni.showToast({ title: res.msg || '生成失败', icon: 'none' })
+        return normalizeGenerateResult(res.data as Record<string, unknown>)
       }
+      uni.showToast({ title: res.msg || '生成失败', icon: 'none' })
     } catch (e) {
       console.error('生成报告失败', e)
     }
     return null
   }
 
-  /** 轮询任务状态 */
-  async function pollTaskStatus(taskId: number, maxRetries = 30, interval = 3000): Promise<any> {
+  /** 轮询任务状态（兼容 success/done/completed 与 failed/error）；离开页面时传 shouldAbort 取消轮询 */
+  async function pollTaskStatus(
+    taskId: number | string,
+    maxRetries = 60,
+    interval = 3000,
+    shouldAbort?: () => boolean,
+  ) {
+    const id = toTaskIdNumber(taskId)
+    if (!id)
+      return null
     for (let i = 0; i < maxRetries; i++) {
+      if (shouldAbort?.())
+        return { cancelled: true as const }
       try {
-        const res = await getTaskStatus(taskId)
+        const res = await getTaskStatus(id)
+        if (shouldAbort?.())
+          return { cancelled: true as const }
         if (res.code === 200 && res.data) {
-          const status = res.data.status
-          if (status === 'success' || status === 'failed') {
-            return res.data
+          const data = res.data as Record<string, unknown>
+          const status = data.status
+          if (isReportTaskTerminal(status)) {
+            return {
+              ...data,
+              status,
+              success: isReportTaskSuccess(status),
+              failed: isReportTaskFailed(status),
+              reportId: extractReportIdFromTask(data),
+              msg: typeof data.msg === 'string' ? data.msg : undefined,
+              message: typeof data.message === 'string' ? data.message : undefined,
+            }
           }
         }
       } catch (e) {
         console.error('查询任务状态失败', e)
       }
-      await new Promise(resolve => setTimeout(resolve, interval))
+      if (i < maxRetries - 1) {
+        const slept = await sleepUntil(interval, shouldAbort)
+        if (!slept)
+          return { cancelled: true as const }
+      }
     }
     return null
+  }
+
+  function sleepUntil(ms: number, shouldAbort?: () => boolean): Promise<boolean> {
+    return new Promise((resolve) => {
+      const start = Date.now()
+      const tick = () => {
+        if (shouldAbort?.()) {
+          resolve(false)
+          return
+        }
+        if (Date.now() - start >= ms) {
+          resolve(true)
+          return
+        }
+        setTimeout(tick, 200)
+      }
+      tick()
+    })
   }
 
   /** 加载用户信息 */
@@ -825,12 +921,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       activeProductId.value = serverProducts.value[0].id
       await refreshAvailableCount(activeProductId.value)
     }
-    await loadCredits()
+    await refreshDisplayCredits()
     await loadProfiles()
     await loadReadingRecords()
   }
 
-  const COMPLETE_PLACEHOLDER_SECTIONS: ReportVo['content'] = [
+  const COMPLETE_PLACEHOLDER_SECTIONS: RecordVo['content'] = [
     { title: '一、整体状态', body: '结合您的关注方向整理的阶段状态与情绪脉络。' },
     { title: '二、家庭关系', body: '围绕家人互动与相处节奏的参考建议。' },
     { title: '三、行动建议', body: '可执行的生活调整与自我照护提示。' },
@@ -838,14 +934,17 @@ export const useGuoxinStore = defineStore('guoxin', () => {
 
   /** 将后端报告映射为本地 RecordVo 格式 */
   function mapServerReportToRecord(report: any): RecordVo {
-    const title = report.reportName || '专属解读报告'
+    const title = report.reportName || report.title || '专属解读报告'
+    const serverDirections = report.directions ?? report.focusDirections
     return {
       id: String(report.id),
-      profileId: activeProfileId.value || 'server',
+      profileId: report.profileId != null ? String(report.profileId) : (activeProfileId.value || 'server'),
       profileName: report.profileName || activeProfile.value?.name || '心语档案',
       title,
-      time: report.createTime || '',
-      directions: selectedDirections.value.length ? [...selectedDirections.value] : [],
+      time: report.createTime || report.time || '',
+      directions: Array.isArray(serverDirections) && serverDirections.length > 0
+        ? serverDirections
+        : [],
       content: (report._content?.length ? report._content : COMPLETE_PLACEHOLDER_SECTIONS),
       status: report.status,
     }
@@ -861,13 +960,16 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     const sections = html
       ? [{ title: '完整报告', body: html }]
       : COMPLETE_PLACEHOLDER_SECTIONS
+    const serverDirections = report.directions ?? report.focusDirections
     return {
       id: String(report.id),
-      profileId: activeProfileId.value || 'server',
-      profileName: report.reportName || activeProfile.value?.name || '心语档案',
+      profileId: report.profileId != null ? String(report.profileId) : (activeProfileId.value || 'server'),
+      profileName: report.profileName || activeProfile.value?.name || '心语档案',
       title: report.reportName || '专属解读报告',
       time: report.createTime || '',
-      directions: selectedDirections.value.length ? [...selectedDirections.value] : [],
+      directions: Array.isArray(serverDirections) && serverDirections.length > 0
+        ? serverDirections
+        : [],
       content: sections,
       status: report.status,
     }
@@ -901,6 +1003,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     latestRecord,
     displayCredits,
     hasNoCredits,
+    needsBindMobile,
+    clearJieduSession,
     initSeedData,
     clearSession,
     tryRestoreSession,
@@ -917,6 +1021,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     confirmJiedu,
     completeJiedu,
     purchaseCredits,
+    purchaseRemoteProduct,
+    refreshDisplayCredits,
     setFontScale,
     addCredits,
     // 后端集成
@@ -952,6 +1058,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     loadOrders,
     loadConsumeRecords,
     loadJieduRecords,
+    buildActiveReportInputJson,
     doGenerateReport,
     pollTaskStatus,
     loadUserInfo,

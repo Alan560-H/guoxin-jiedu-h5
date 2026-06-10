@@ -62,7 +62,7 @@ export const generateReport = (data: { productId: number; inputJson?: string }):
   http.post(`${BASE}/report/generate`, data)
 
 /** 查询任务状态 */
-export const getTaskStatus = (taskId: number): Promise<ResponseData<any>> =>
+export const getTaskStatus = (taskId: number | string): Promise<ResponseData<any>> =>
   http.get(`${BASE}/task/status`, { taskId })
 
 /** 获取消费记录（userId由后端从JWT解析） */

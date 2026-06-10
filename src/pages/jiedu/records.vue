@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
+import { isReportRecordPending, isReportRecordReady, isReportTaskFailed } from '@/utils/guoxin/reportGenerate'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
 const store = useGuoxinStore()
+
+async function refreshRemoteRecords() {
+  if (!store.useRemoteApi)
+    return
+  await store.loadReports()
+  await store.loadReadingRecords()
+  if (store.activeProfile?.id)
+    await store.loadJieduRecords(store.activeProfile.id)
+}
 
 onMounted(async () => {
   if (!store.isLoggedIn) {
@@ -14,29 +25,60 @@ onMounted(async () => {
     return
   }
   store.initSeedData()
-  if (store.useRemoteApi) {
-    await store.loadReports()
-    if (store.activeProfile?.id)
-      await store.loadJieduRecords(store.activeProfile.id)
-  }
+  await refreshRemoteRecords()
+})
+
+/** 从整理页离开或生成完成后返回，拉最新报告列表 */
+onShow(() => {
+  if (store.isLoggedIn)
+    void refreshRemoteRecords()
 })
 
 const profile = computed(() => store.activeProfile)
 const list = computed(() => {
   if (store.useRemoteApi) {
-    if (store.jieduRecords.length > 0)
-      return store.jieduRecords
-    if (store.serverReports.length > 0)
-      return store.serverReports.map((r: any) => store.mapServerReportToRecord(r))
-    return []
+    const profileId = profile.value?.id
+    const merged = new Map<string, ReturnType<typeof store.mapServerReportToRecord>>()
+    for (const r of store.serverReports) {
+      const item = store.mapServerReportToRecord(r)
+      if (profileId && item.profileId !== profileId && item.profileId !== 'server')
+        continue
+      merged.set(item.id, item)
+    }
+    for (const r of store.jieduRecords) {
+      if (profileId && r.profileId !== profileId)
+        continue
+      merged.set(r.id, r)
+    }
+    return Array.from(merged.values())
   }
   if (!profile.value)
     return []
   return store.getRecordsByProfileId(profile.value.id)
 })
 
-function goDetail(id: string) {
-  uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${id}` })
+function recordStatusText(rec: { status?: string }) {
+  if (isReportRecordPending(rec.status))
+    return '生成中'
+  if (isReportTaskFailed(rec.status))
+    return '生成失败'
+  return '已整理'
+}
+
+function recordStatusClass(rec: { status?: string }) {
+  if (isReportRecordPending(rec.status))
+    return 'gx-badge-gold'
+  if (isReportTaskFailed(rec.status))
+    return 'gx-badge-muted'
+  return 'gx-badge-green'
+}
+
+function goDetail(rec: { id: string; status?: string }) {
+  if (!isReportRecordReady(rec.status) && rec.status) {
+    uni.showToast({ title: '报告生成中，请稍后再查看', icon: 'none' })
+    return
+  }
+  uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${rec.id}` })
 }
 </script>
 
@@ -72,22 +114,27 @@ function goDetail(id: string) {
       </view>
 
       <!-- Record Cards -->
-      <GxCard v-slot v-for="rec in list" :key="rec.id" class="record-item-card">
+      <GxCard v-slot v-for="rec in list" :key="rec.id" class="record-item-card" :class="{ pending: isReportRecordPending(rec.status) }">
         <view class="flex_row f_j_sb f_a_center card-header">
           <text class="record-title">{{ rec.title }}</text>
-          <view class="gx-badge gx-badge-green">
-            已整理
+          <view class="gx-badge" :class="recordStatusClass(rec)">
+            {{ recordStatusText(rec) }}
           </view>
         </view>
 
         <view class="record-meta-details">
-          <view class="meta-item">时间：<strong>{{ rec.time }}</strong></view>
-          <view class="meta-item">关注：<strong class="highlight-green">{{ rec.directions.join('、') }}</strong></view>
+          <view class="meta-item">时间：<strong>{{ rec.time || '—' }}</strong></view>
+          <view class="meta-item">关注：<strong class="highlight-green">{{ rec.directions.length ? rec.directions.join('、') : '—' }}</strong></view>
         </view>
 
         <view class="card-actions">
-          <GxButton type="secondary" size="sm" @click="goDetail(rec.id)">
-            查看详情
+          <GxButton
+            type="secondary"
+            size="sm"
+            :disabled="!!rec.status && !isReportRecordReady(rec.status)"
+            @click="goDetail(rec)"
+          >
+            {{ isReportRecordPending(rec.status) ? '生成中' : '查看详情' }}
           </GxButton>
         </view>
       </GxCard>
@@ -138,8 +185,17 @@ function goDetail(id: string) {
   }
 }
 
+.gx-badge-muted {
+  background: rgba(149, 136, 120, 0.2);
+  color: #665B4E;
+}
+
 .record-item-card {
-  border-left: 8rpx solid #153F33; /* Mark as completed with solid green line */
+  border-left: 8rpx solid #153F33;
+
+  &.pending {
+    border-left-color: #B9945F;
+  }
 
   .card-header {
     border-bottom: 2rpx solid rgba(185, 148, 95, 0.15);

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { CREDIT_PACKAGES, CREDITS_PAYWALL_TEXT } from '@/constants/guoxin'
 import type { CreditPackageId } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
@@ -33,16 +34,17 @@ onMounted(async () => {
     return
   }
   if (store.useRemoteApi) {
-    if (store.serverProducts.length === 0)
-      await store.loadProducts()
-    if (store.activeProductId)
-      await store.refreshAvailableCount(store.activeProductId)
+    await store.refreshDisplayCredits()
     await Promise.all([
-      store.loadCredits(),
       store.loadOrders(),
       store.loadConsumeRecords(),
     ])
   }
+})
+
+onShow(() => {
+  if (store.isLoggedIn && store.useRemoteApi)
+    void store.refreshDisplayCredits()
 })
 
 function selectPkg(id: string, productId?: number) {
@@ -53,8 +55,17 @@ function selectPkg(id: string, productId?: number) {
 }
 
 async function purchase() {
-  if (store.useRemoteApi && selectedProductId.value) {
-    uni.showToast({ title: '功能开发中，请先联系客服购买', icon: 'none' })
+  if (store.useRemoteApi) {
+    if (!selectedProductId.value) {
+      uni.showToast({ title: '请选择套餐', icon: 'none' })
+      return
+    }
+    const ok = await store.purchaseRemoteProduct(selectedProductId.value)
+    if (ok) {
+      setTimeout(() => {
+        uni.reLaunch({ url: RouterPaths.home })
+      }, 600)
+    }
     return
   }
   const ok = await store.purchaseCredits(selectedId.value)
@@ -87,6 +98,9 @@ function freeAdd() {
         </view>
         <view class="intro-subtitle">
           继续让心语老师为您整理专属生活与心理建议
+        </view>
+        <view v-if="store.useRemoteApi" class="intro-credits">
+          当前剩余解读次数：<text class="credit-num">{{ store.displayCredits }}</text> 次
         </view>
       </view>
 
@@ -171,6 +185,19 @@ function freeAdd() {
     opacity: 0.85;
     margin-top: 12rpx;
     line-height: 1.5;
+  }
+
+  .intro-credits {
+    margin-top: 20rpx;
+    font-size: 28rpx;
+    opacity: 0.95;
+
+    .credit-num {
+      color: #EFD9B5;
+      font-weight: 900;
+      font-size: 36rpx;
+      margin: 0 6rpx;
+    }
   }
 }
 
