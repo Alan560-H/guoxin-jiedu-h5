@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import {
   BIRTH_HOUR_OPTIONS,
   CALENDAR_OPTIONS,
   GENDER_OPTIONS,
-  RELATION_OPTIONS,
 } from '@/constants/guoxin'
 import type { CalendarValue, GenderValue, RelationValue } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { RELATION_OPTIONS } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
@@ -16,6 +16,11 @@ import GxChip from '@/components/guoxin/GxChip.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
 const store = useGuoxinStore()
+
+// 关系选项：优先使用字典加载的，否则用本地常量
+const relationOpts = computed(() =>
+  store.relationOptions.length > 0 ? store.relationOptions : RELATION_OPTIONS
+)
 
 const profileId = ref('')
 const isEditMode = ref(false)
@@ -34,6 +39,11 @@ const useTrueSolarTime = ref(false) // True Solar Time checkbox state
 const yearOptions = Array.from({ length: new Date().getFullYear() - 1930 + 1 }, (_, i) => new Date().getFullYear() - i)
 const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
 const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1)
+
+onMounted(async () => {
+  if (store.useRemoteApi)
+    await store.loadRelationOptions()
+})
 
 onLoad((options: any) => {
   if (!store.isLoggedIn) {
@@ -170,11 +180,11 @@ async function save(startImmediately: boolean) {
             </view>
             <view class="chips-flex-row">
               <GxChip
-                v-for="r in RELATION_OPTIONS"
+                v-for="r in relationOpts"
                 :key="r.value"
                 :label="r.label"
                 :selected="relation === r.value"
-                @toggle="toggleRelation(r.value)"
+                @toggle="toggleRelation(r.value as RelationValue)"
               />
             </view>
           </view>

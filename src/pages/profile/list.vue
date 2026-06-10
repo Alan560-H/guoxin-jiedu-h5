@@ -10,12 +10,14 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 const { t } = useI18n()
 const store = useGuoxinStore()
 
-onMounted(() => {
+onMounted(async () => {
   if (!store.isLoggedIn) {
     uni.reLaunch({ url: RouterPaths.home })
     return
   }
   store.initSeedData()
+  if (store.useRemoteApi)
+    await store.loadProfiles()
 })
 
 const profiles = computed(() => store.profiles)

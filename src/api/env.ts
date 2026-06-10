@@ -26,7 +26,7 @@ const appConfig: AppConfig = {
   wxOAuthScope: 'snsapi_userinfo',
   wxJssdkSignPath: '/app/wx/jssdk/sign',
   wxOAuthLoginPath: '/app/wx/oauth/login',
-  wxPayCreatePath: '/app/wx/pay/create',
+  wxPayCreatePath: '/api/yiqixue/app/guoxin/pay/create',
   domain: {
     baseUrl: 'https://test.yipuwenhua.com/app-api',
   },

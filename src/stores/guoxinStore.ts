@@ -6,7 +6,7 @@ import { RouterPaths } from '@/routerPaths'
 import { wxChoosePay } from '@/utils/weixin/pay'
 import { DEFAULT_PROFILES, DEFAULT_RECORDS, normalizeSeedProfile } from '@/utils/guoxin/seedData'
 import { formatNowTime, formatRecordTitle, generateDynamicReportContent } from '@/utils/guoxin/reportGenerator'
-import { login as apiLogin, loginBySms as apiLoginBySms, wxLogin as apiWxLogin, sendSmsCode as apiSendSmsCode, bindMobile as apiBindMobile, getUserInfo, getProducts, getAvailableCount, generateReport as apiGenerateReport, getTaskStatus, getReports, getReportDetail } from '@/api/guoxin'
+import { login as apiLogin, wxLogin as apiWxLogin, sendSmsCode as apiSendSmsCode, bindMobile as apiBindMobile, getUserInfo, getProducts, getAvailableCount, generateReport as apiGenerateReport, getTaskStatus, getReports, getReadingRecords, getCredits, getReportDetail, getProfiles as apiGetProfiles, createProfile as apiCreateProfile, updateProfile as apiUpdateProfile, deleteProfile as apiDeleteProfile, getDictData as apiGetDictData } from '@/api/guoxin'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -26,11 +26,14 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const mobile = ref<string>('')
   const bindStatus = ref<number>(0)
   const token = ref<string>('')
+  const openId = ref<string>('')
   const serverProducts = ref<any[]>([])
   const serverReports = ref<any[]>([])
+  const readingRecords = ref<any[]>([])
   const totalAvailableCount = ref<number>(0)
   const activeProductId = ref<number | null>(null)
   const useRemoteApi = ref(true) // 是否启用远程API
+  const relationOptions = ref<Array<{ value: string; label: string }>>([]) // 关系选项（从字典加载）
 
   const activeProfile = computed(() =>
     profiles.value.find(p => p.id === activeProfileId.value) ?? null,
@@ -41,9 +44,21 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   )
 
   const latestRecord = computed(() => {
-    if (useRemoteApi.value && isLoggedIn.value && serverReports.value.length > 0) {
-      return mapServerReportToRecord(serverReports.value[0])
+    if (useRemoteApi.value && isLoggedIn.value && readingRecords.value.length > 0) {
+      const latest = readingRecords.value[0]
+      return {
+        id: String(latest.id),
+        profileId: latest.profileId ? String(latest.profileId) : '',
+        profileName: latest.profileName || '',
+        title: latest.title || '解读报告',
+        time: latest.time || '',
+        directions: latest.directions || [],
+        content: null,
+        status: latest.status,
+      }
     }
+    if (useRemoteApi.value && isLoggedIn.value && serverReports.value.length > 0)
+      return mapServerReportToRecord(serverReports.value[0])
     return records.value[0] ?? null
   })
 
@@ -54,17 +69,17 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   }
 
   function initSeedData() {
-    if (profiles.value.length === 0) {
-      profiles.value = DEFAULT_PROFILES.map(normalizeSeedProfile)
-      records.value = [...DEFAULT_RECORDS]
-      activeProfileId.value = profiles.value[0]?.id ?? ''
-    }
-    else if (!activeProfileId.value || !profiles.value.some(p => p.id === activeProfileId.value)) {
-      activeProfileId.value = profiles.value[0]?.id ?? ''
-    }
-    // 远程模式次数由 refreshAvailableCount 同步，勿本地补 99
-    if (!useRemoteApi.value && credits.value <= 0) {
-      credits.value = 99
+    if (!useRemoteApi.value) {
+      if (profiles.value.length === 0) {
+        profiles.value = DEFAULT_PROFILES.map(normalizeSeedProfile)
+        records.value = [...DEFAULT_RECORDS]
+        activeProfileId.value = profiles.value[0]?.id ?? ''
+      }
+      else if (!activeProfileId.value || !profiles.value.some(p => p.id === activeProfileId.value)) {
+        activeProfileId.value = profiles.value[0]?.id ?? ''
+      }
+      if (credits.value <= 0)
+        credits.value = 99
     }
     setFontScale(fontScale.value)
   }
@@ -157,6 +172,28 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
     profiles.value.push(profile)
     activeProfileId.value = profile.id
+    // 同步到后端（后端从JWT解析userId）
+    if (useRemoteApi.value) {
+      apiCreateProfile(dto).then(res => {
+        if (res.code === 200 && res.data && res.data.id) {
+          // 用后端真实ID替换本地临时ID
+          const idx = profiles.value.findIndex(p => p.id === profile.id)
+          if (idx !== -1) {
+            profiles.value[idx].id = String(res.data.id)
+            if (activeProfileId.value === profile.id) {
+              activeProfileId.value = String(res.data.id)
+            }
+          }
+        } else {
+          console.warn('创建档案后端返回异常', res)
+        }
+      }).catch(e => {
+        console.error('创建档案后端同步失败', e)
+        uni.showToast({ title: '档案保存失败，请重试', icon: 'none' })
+      })
+    } else {
+      console.warn('创建档案未同步后端: useRemoteApi=', useRemoteApi.value, 'userId=', userId.value)
+    }
     return profile
   }
 
@@ -170,6 +207,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       ...dto,
     }
     profiles.value[idx] = updated
+    // 同步到后端（后端从JWT解析userId）
+    if (useRemoteApi.value && !isNaN(Number(id))) {
+      apiUpdateProfile(Number(id), dto).catch(e => console.error('更新档案后端同步失败', e))
+    }
     return updated
   }
 
@@ -178,6 +219,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     records.value = records.value.filter(r => r.profileId !== id)
     if (activeProfileId.value === id) {
       activeProfileId.value = profiles.value[0]?.id ?? ''
+    }
+    // 同步到后端（后端从JWT解析userId）
+    if (useRemoteApi.value && !isNaN(Number(id))) {
+      apiDeleteProfile(Number(id)).catch(e => console.error('删除档案后端同步失败', e))
     }
   }
 
@@ -370,7 +415,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  /** 短信验证码登录 */
+  /** 绑定手机号（短信验证码登录） */
   async function doLoginBySms(mobileStr: string, smsCode: string) {
     if (!useRemoteApi.value) {
       // 本地演示模式
@@ -381,9 +426,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       return
     }
     try {
-      const res = await apiLoginBySms({ mobile: mobileStr, smsCode })
+      const res = await apiBindMobile({ userId: userId.value || 0, mobile: mobileStr, smsCode })
       if (res.code === 200 && res.data) {
-        userId.value = res.data.userId
+        userId.value = res.data.userId || userId.value
         mobile.value = res.data.mobile || mobileStr
         bindStatus.value = res.data.bindStatus || 1
         // 存储JWT Token
@@ -393,10 +438,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         }
         isLoggedIn.value = true
       } else {
-        throw new Error(res.msg || '登录失败')
+        throw new Error(res.msg || '绑定失败')
       }
     } catch (e) {
-      console.error('登录失败', e)
+      console.error('绑定手机号失败', e)
       throw e
     }
   }
@@ -447,6 +492,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
           token.value = res.data.token
           uni.setStorageSync('apph5Token', res.data.token)
         }
+        // 存储openId（支付需要）
+        if (res.data.openId) {
+          openId.value = res.data.openId
+        }
         isLoggedIn.value = true
         return { needBindMobile: !!res.data.needBindMobile }
       } else {
@@ -460,9 +509,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
 
   /** 绑定手机号（需短信验证码） */
   async function doBindMobile(mobileStr: string) {
-    if (!useRemoteApi.value || !userId.value) return
+    if (!useRemoteApi.value) return
     try {
-      const res = await apiBindMobile({ userId: userId.value, mobile: mobileStr, smsCode: '' })
+      const res = await apiBindMobile({ userId: userId.value || 0, mobile: mobileStr, smsCode: '' })
       if (res.code === 200) {
         mobile.value = mobileStr
         bindStatus.value = 1
@@ -474,10 +523,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
 
   /** 绑定手机号（带短信验证码） */
   async function doBindMobileWithSms(mobileStr: string, smsCode: string) {
-    if (!userId.value) {
-      throw new Error('用户未登录')
-    }
-    const res = await apiBindMobile({ userId: userId.value, mobile: mobileStr, smsCode })
+    const res = await apiBindMobile({ userId: userId.value || 0, mobile: mobileStr, smsCode })
     if (res.code === 200) {
       mobile.value = mobileStr
       bindStatus.value = 1
@@ -506,7 +552,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
 
   /** 刷新可用权益次数 */
   async function refreshAvailableCount(productId?: number) {
-    if (!useRemoteApi.value || !userId.value) return
+    if (!useRemoteApi.value) return
     if (!productId && serverProducts.value.length > 0) {
       productId = serverProducts.value[0].id
     }
@@ -522,9 +568,64 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
+  /** 加载字典数据（关系选项等） */
+  async function loadDictData(dictType: string) {
+    if (!useRemoteApi.value) return
+    try {
+      const res = await apiGetDictData(dictType)
+      if (res.code === 200 && res.data) {
+        return res.data.map((d: any) => ({ value: d.dictValue, label: d.dictLabel }))
+      }
+    } catch (e) {
+      console.error('加载字典数据失败', e)
+    }
+    return null
+  }
+
+  /** 加载关系选项 */
+  async function loadRelationOptions() {
+    const options = await loadDictData('gx_profile_relation')
+    if (options) {
+      relationOptions.value = options
+    }
+  }
+
+  /** 加载用户档案列表 */
+  async function loadProfiles() {
+    if (!useRemoteApi.value) return
+    try {
+      const res = await apiGetProfiles()
+      if (res.code === 200 && res.data && res.data.length > 0) {
+        profiles.value = res.data.map((p: any) => ({
+          id: String(p.id),
+          name: p.name,
+          relation: p.relation,
+          relationText: p.relationText,
+          gender: p.gender,
+          genderText: p.genderText,
+          birthYear: p.birthYear,
+          birthMonth: p.birthMonth,
+          birthDay: p.birthDay,
+          birthHour: p.birthHour,
+          birthPlace: p.birthPlace,
+          calendarType: p.calendarType,
+          calendarTypeText: p.calendarTypeText,
+          useTrueSolarTime: !!p.useTrueSolarTime,
+          jieduCount: p.jieduCount || 0,
+          lastJieduTime: p.lastJieduTime || '无',
+        }))
+        if (profiles.value.length > 0 && !activeProfileId.value) {
+          activeProfileId.value = profiles.value[0].id
+        }
+      }
+    } catch (e) {
+      console.error('加载档案列表失败', e)
+    }
+  }
+
   /** 加载用户报告列表 */
   async function loadReports() {
-    if (!useRemoteApi.value || !userId.value) return
+    if (!useRemoteApi.value) return
     try {
       const res = await getReports()
       if (res.code === 200 && res.data) {
@@ -535,9 +636,35 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
+  /** 加载解读记录列表（含档案信息） */
+  async function loadReadingRecords() {
+    if (!useRemoteApi.value) return
+    try {
+      const res = await getReadingRecords()
+      if (res.code === 200 && res.data) {
+        readingRecords.value = res.data
+      }
+    } catch (e) {
+      console.error('加载解读记录失败', e)
+    }
+  }
+
+  /** 加载用户可用次数 */
+  async function loadCredits() {
+    if (!useRemoteApi.value) return
+    try {
+      const res = await getCredits()
+      if (res.code === 200 && res.data) {
+        credits.value = res.data.credits || 0
+      }
+    } catch (e) {
+      console.error('加载可用次数失败', e)
+    }
+  }
+
   /** 提交报告生成 */
   async function doGenerateReport(productId: number, inputJson?: string) {
-    if (!useRemoteApi.value || !userId.value) return null
+    if (!useRemoteApi.value) return null
     try {
       const res = await apiGenerateReport({ productId, inputJson })
       if (res.code === 200 && res.data) {
@@ -592,6 +719,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       activeProductId.value = serverProducts.value[0].id
       await refreshAvailableCount(activeProductId.value)
     }
+    await loadProfiles()
+    await loadReadingRecords()
+    await loadCredits()
     await loadReports()
   }
 
@@ -691,6 +821,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     token,
     serverProducts,
     serverReports,
+    readingRecords,
     totalAvailableCount,
     activeProductId,
     useRemoteApi,
@@ -701,9 +832,14 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     doLogin,
     doBindMobile,
     doBindMobileWithSms,
+    loadRelationOptions,
+    loadProfiles,
+    relationOptions,
     loadProducts,
     refreshAvailableCount,
     loadReports,
+    loadReadingRecords,
+    loadCredits,
     doGenerateReport,
     pollTaskStatus,
     loadUserInfo,
@@ -716,6 +852,6 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   persist: {
     key: 'guoxin-store',
     storage: localStorage,
-    pick: ['profiles', 'records', 'credits', 'activeProfileId', 'selectedDirections', 'fontScale', 'isLoggedIn', 'userId', 'mobile', 'token', 'useRemoteApi'],
+    pick: ['profiles', 'records', 'activeProfileId', 'selectedDirections', 'fontScale', 'isLoggedIn', 'userId', 'mobile', 'token', 'useRemoteApi'],
   },
 })

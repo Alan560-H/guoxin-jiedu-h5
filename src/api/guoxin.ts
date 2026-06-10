@@ -45,6 +45,14 @@ export const getAvailableCount = (productId: number): Promise<ResponseData<any>>
 export const getReports = (): Promise<ResponseData<any[]>> =>
   http.get(`${BASE}/reports`)
 
+/** 获取解读记录列表（含档案信息，userId由后端从JWT解析） */
+export const getReadingRecords = (): Promise<ResponseData<any[]>> =>
+  http.get(`${BASE}/readingRecords`)
+
+/** 获取用户总可用次数（userId由后端从JWT解析） */
+export const getCredits = (): Promise<ResponseData<any>> =>
+  http.get(`${BASE}/credits`)
+
 /** 获取报告详情 */
 export const getReportDetail = (reportId: number): Promise<ResponseData<any>> =>
   http.get(`${BASE}/report/detail`, { reportId })
@@ -61,18 +69,32 @@ export const getTaskStatus = (taskId: number): Promise<ResponseData<any>> =>
 export const getConsumeRecords = (): Promise<ResponseData<any[]>> =>
   http.get(`${BASE}/consumeRecords`)
 
-/** V2 预留：档案列表 */
-export const getProfiles = (): Promise<ResponseData<ProfileVo[]>> =>
+/** 根据字典类型获取字典数据 */
+export const getDictData = (dictType: string): Promise<ResponseData<any[]>> =>
+  http.get(`${BASE}/dict/${dictType}`)
+
+/** 获取当前用户的档案列表 */
+export const getProfiles = (): Promise<ResponseData<any[]>> =>
   http.get(`${BASE}/profiles`)
+
+/** 获取档案详情 */
+export const getProfileDetail = (id: number): Promise<ResponseData<any>> =>
+  http.get(`${BASE}/profile/${id}`)
+
+/** 创建档案 */
+export const createProfile = (data: any): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/profile`, data)
+
+/** 编辑档案 */
+export const updateProfile = (id: number, data: any): Promise<ResponseData<any>> =>
+  http.put(`${BASE}/profile/${id}`, data)
+
+/** 删除档案 */
+export const deleteProfile = (id: number): Promise<ResponseData<any>> =>
+  http.delete(`${BASE}/profile/${id}`)
 
 /** V2 预留：解读记录 */
 export const getJieduRecords = (profileId: string): Promise<ResponseData<RecordVo[]>> =>
   http.get(`${BASE}/records`, { profileId })
 
-/** V2 预留：创建解读任务 */
-export const createJieduTask = (profileId: string, directions: string[]): Promise<ResponseData<{ taskId: string }>> =>
-  http.post(`${BASE}/jiedu/create`, { profileId, directions })
 
-/** V2 预留：获取解读报告 */
-export const getJieduReport = (recordId: string): Promise<ResponseData<RecordVo>> =>
-  http.get(`${BASE}/jiedu/report`, { recordId })

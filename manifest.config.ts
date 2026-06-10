@@ -2,7 +2,7 @@ import { defineManifestConfig } from '@uni-helper/vite-plugin-uni-manifest'
 
 export default defineManifestConfig({
   'name': '国心解读',
-  'appid': '__UNI__1414495',
+  'appid': '__UNI__CEACC71',
   'description': '',
   'versionName': '1.0.0',
   'versionCode': '100',

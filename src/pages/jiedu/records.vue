@@ -14,7 +14,7 @@ onMounted(async () => {
     return
   }
   store.initSeedData()
-  if (store.useRemoteApi && store.userId)
+  if (store.useRemoteApi)
     await store.loadReports()
 })
 

@@ -12,12 +12,12 @@ export interface WxOAuthLoginVo {
   userInfo?: import('@/models/userInfoVo').UserInfoVo
 }
 
-/** 创建支付订单请求 */
+/** 创建支付订单请求（国心H5） */
 export interface WxPayCreateParam {
-  orderId: string
-  /** 金额（分），按后端约定可选 */
-  amount?: number
-  description?: string
+  /** 商品ID */
+  productId: number
+  /** 用户openid */
+  openId?: string
 }
 
 /** chooseWXPay 所需参数 */
