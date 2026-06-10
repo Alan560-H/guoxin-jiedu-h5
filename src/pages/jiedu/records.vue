@@ -11,7 +11,7 @@ const store = useGuoxinStore()
 onMounted(async () => {
   store.initSeedData()
   // 远程模式：加载服务器报告列表
-  if (store.useRemoteApi && store.userId) {
+  if (store.useRemoteApi) {
     await store.loadReports()
   }
 })

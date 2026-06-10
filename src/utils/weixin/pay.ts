@@ -2,16 +2,25 @@ import type { WxPayCreateParam } from '@/models/weixin'
 import { postWxPayCreate } from '@/api/weixin'
 import { initWxJssdk, wx } from '@/utils/weixin/jssdk'
 import { isWeChatBrowser } from '@/utils/weixin/env'
+import { useGuoxinStore } from '@/stores/guoxinStore'
 
-/** 调起微信支付 */
+/** 调起微信支付（国心H5 JSAPI支付） */
 export async function wxChoosePay(param: WxPayCreateParam): Promise<void> {
   if (!isWeChatBrowser()) {
     uni.showToast({ title: '请在微信内打开', icon: 'none' })
     return Promise.reject(new Error('not_wechat'))
   }
 
+  const store = useGuoxinStore()
+
   await initWxJssdk(['chooseWXPay'])
-  const res = await postWxPayCreate(param)
+
+  // 调用国心支付接口，传入 productId 和 openId
+  const res = await postWxPayCreate({
+    productId: param.productId,
+    openId: param.openId || '',
+  })
+
   const payParams = res.data
 
   return new Promise((resolve, reject) => {

@@ -20,7 +20,7 @@ onMounted(async () => {
   store.initSeedData()
 
   // 如果已登录且启用远程API，刷新远程数据
-  if (store.isLoggedIn && store.useRemoteApi && store.userId) {
+  if (store.isLoggedIn && store.useRemoteApi) {
     await store.initRemoteData()
     return
   }
@@ -196,7 +196,12 @@ async function handleLoginSuccess() {
         <view class="flex_row f_j_sb f_a_center">
           <view class="record-meta">
             <view class="record-title">
-              {{ latestRecord.profileName }} · {{ latestRecord.directions.join('、') }}
+              <template v-if="latestRecord.profileName">
+                {{ latestRecord.profileName }} · {{ latestRecord.directions.join('、') }}
+              </template>
+              <template v-else>
+                {{ latestRecord.title }}
+              </template>
             </view>
             <view class="gx-text-hint record-time">
               {{ latestRecord.time }}

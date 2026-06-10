@@ -77,7 +77,7 @@ onMounted(async () => {
     return
   }
   // 远程模式：提交生成请求
-  if (store.useRemoteApi && store.userId && store.serverProducts.length > 0) {
+  if (store.useRemoteApi && store.serverProducts.length > 0) {
     const productId = store.serverProducts[0].id
     const inputJson = JSON.stringify({
       profileId: store.activeProfileId,

@@ -8,7 +8,13 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 
 const store = useGuoxinStore()
 
-onMounted(() => store.initSeedData())
+onMounted(async () => {
+  store.initSeedData()
+  // 从后端加载档案（后端从JWT解析userId）
+  if (store.useRemoteApi) {
+    await store.loadProfiles()
+  }
+})
 
 const profiles = computed(() => store.profiles)
 
@@ -64,7 +70,7 @@ function confirmDelete(id: string) {
       </view>
 
       <!-- Empty State -->
-      <view v-slot v-if="profiles.length === 0" class="gx-empty-state">
+      <view v-if="profiles.length === 0" class="gx-empty-state">
         <view class="empty-icon">👤</view>
         <view class="empty-text">您还没有创建心语档案，可以先为自己或家人创建一个档案。</view>
         <GxButton type="primary" @click="goCreate">
@@ -73,7 +79,7 @@ function confirmDelete(id: string) {
       </view>
 
       <!-- Profile Cards -->
-      <GxCard v-slot v-for="p in profiles" :key="p.id" class="profile-card">
+      <GxCard v-for="p in profiles" :key="p.id" class="profile-card">
         <view class="flex_row f_j_sb f_a_center card-header">
           <text class="profile-name">{{ p.name }}</text>
           <view class="flex_row f_a_center header-right-actions">
