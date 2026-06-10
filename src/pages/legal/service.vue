@@ -4,7 +4,7 @@ import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 
 <template>
   <view class="gx-page flex_column legal-page">
-    <GxNavBar title="用户服务协议" />
+    <GxNavBar title="用户服务协议" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="legal-content">

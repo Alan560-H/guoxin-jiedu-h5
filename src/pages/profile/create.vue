@@ -172,7 +172,7 @@ async function save(startImmediately: boolean) {
 
 <template>
   <view class="gx-page flex_column page-container">
-    <GxNavBar :title="isEditMode ? '修改心语档案' : '创建心语档案'" />
+    <GxNavBar :show-back="true" :title="isEditMode ? '修改心语档案' : '创建心语档案'" />
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="create-explain">

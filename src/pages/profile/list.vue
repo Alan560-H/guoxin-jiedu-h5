@@ -64,7 +64,7 @@ function confirmDelete(id: string) {
 
 <template>
   <view class="gx-page flex_column page-container">
-    <GxNavBar :title="t('profile.list.title')" :right-text="t('profile.list.new')" @right-click="goCreate" />
+    <GxNavBar :title="t('profile.list.title')" :show-back="true" :right-text="t('profile.list.new')" @right-click="goCreate" />
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="profile-explain">

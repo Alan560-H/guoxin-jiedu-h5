@@ -11,6 +11,7 @@ import UniPlatform from '@uni-helper/vite-plugin-uni-platform'
 import UniPlatformModifier from '@uni-helper/vite-plugin-uni-platform-modifier'
 import UniRoot from '@uni-ku/root'
 import UnoCSS from 'unocss/vite'
+import { guoxinDevProxyTarget } from './src/api/env'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
@@ -29,7 +30,7 @@ export default defineConfig({
         secure: false,
       },
       '/prod-api/api/yiqixue/app/guoxin': {
-        target: 'https://im.whhongyi.com.cn/',
+        target: guoxinDevProxyTarget,
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/prod-api/, ''),

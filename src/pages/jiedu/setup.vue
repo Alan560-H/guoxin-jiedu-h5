@@ -7,6 +7,7 @@ import { ImageConfig } from '@/config/assets'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
+import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 
 const { t } = useI18n()
 const store = useGuoxinStore()
@@ -94,7 +95,7 @@ function handleBack() {
   if (step.value === 2) {
     step.value = 1
   } else {
-    uni.navigateBack({ delta: 1 })
+    navigateBackOrHome(1)
   }
 }
 

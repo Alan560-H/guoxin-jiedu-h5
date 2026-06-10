@@ -88,7 +88,7 @@ function freeAdd() {
 
 <template>
   <view class="gx-page flex_column page-container">
-    <GxNavBar title="解读权益" />
+    <GxNavBar title="解读权益" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="paywall-intro">

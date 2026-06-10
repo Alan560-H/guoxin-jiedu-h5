@@ -62,14 +62,14 @@ function goHome() {
 
 <template>
   <view v-if="loading" class="gx-page flex_column page-container">
-    <GxNavBar title="解读已完成" />
+    <GxNavBar title="解读已完成" :show-back="true" />
     <view class="gx-empty-state">
       <view class="empty-text">加载中...</view>
     </view>
   </view>
 
   <view v-else-if="record" class="gx-page flex_column page-container">
-    <GxNavBar title="解读已完成" />
+    <GxNavBar title="解读已完成" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="complete-banner">
@@ -114,7 +114,7 @@ function goHome() {
   </view>
 
   <view v-else class="gx-page flex_column page-container">
-    <GxNavBar title="解读已完成" />
+    <GxNavBar title="解读已完成" :show-back="true" />
     <view class="gx-empty-state">
       <view class="empty-icon">📋</view>
       <view class="empty-text">未找到本次解读记录，您可以返回首页重新发起。</view>

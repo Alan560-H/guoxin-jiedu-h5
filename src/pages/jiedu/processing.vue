@@ -196,7 +196,7 @@ function goRecords() {
 
 <template>
   <view class="gx-page flex_column page-container">
-    <GxNavBar title="正在为您整理" />
+    <GxNavBar title="正在为您整理" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
       <!-- Loading Banner -->

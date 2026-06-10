@@ -84,7 +84,7 @@ function goDetail(rec: { id: string; status?: string }) {
 
 <template>
   <view class="gx-page flex_column page-container">
-    <GxNavBar title="解读记录" />
+    <GxNavBar title="解读记录" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
       <!-- Active Profile Header Card -->

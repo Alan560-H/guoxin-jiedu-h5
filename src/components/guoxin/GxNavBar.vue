@@ -1,8 +1,13 @@
 <script setup lang="ts">
-defineProps<{
+import { RouterPaths } from '@/routerPaths'
+import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+
+const props = defineProps<{
   title?: string
   showBack?: boolean
   backDelta?: number
+  /** 无法 navigateBack 时的 fallback，默认首页 */
+  fallbackUrl?: string
   dark?: boolean
   rightText?: string
 }>()
@@ -11,8 +16,8 @@ const emit = defineEmits<{
   rightClick: []
 }>()
 
-function goBack(delta = 1) {
-  uni.navigateBack({ delta })
+function goBack() {
+  navigateBackOrHome(props.backDelta || 1, props.fallbackUrl || RouterPaths.home)
 }
 </script>
 
@@ -20,7 +25,7 @@ function goBack(delta = 1) {
   <view class="gx-nav" :class="{ dark }">
     <view class="gx-nav-inner">
       <!-- Standard text-based back button `< 返回` -->
-      <view v-if="showBack !== false" class="gx-nav-back-text" @tap="goBack(backDelta || 1)">
+      <view v-if="showBack !== false" class="gx-nav-back-text" @tap="goBack">
         <text class="arrow">‹</text>
         <text class="label-text">返回</text>
       </view>

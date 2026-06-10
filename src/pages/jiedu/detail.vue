@@ -70,7 +70,7 @@ function goSetupAgain() {
 
 <template>
   <view v-if="record && profile" class="gx-page flex_column page-container">
-    <GxNavBar title="专属解读详情" />
+    <GxNavBar title="专属解读详情" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="report-wrapper">
@@ -130,7 +130,7 @@ function goSetupAgain() {
   </view>
 
   <view v-else class="gx-page flex_column page-container">
-    <GxNavBar title="专属解读详情" />
+    <GxNavBar title="专属解读详情" :show-back="true" />
     <view class="gx-empty-state">
       <view class="empty-icon">📋</view>
       <view class="empty-text">解读记录不存在或已失效。</view>
