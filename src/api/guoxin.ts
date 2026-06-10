@@ -2,6 +2,7 @@ import { http } from 'uview-pro'
 import type { ResponseData } from '@/models/responseData'
 import type { ProfileVo } from '@/models/guoxin/profile'
 import type { RecordVo } from '@/models/guoxin/record'
+import type { WxJssdkSignVo, WxPayCreateParam, WxPayParamsVo } from '@/models/weixin'
 
 const BASE = '/api/yiqixue/app/guoxin'
 
@@ -97,4 +98,10 @@ export const deleteProfile = (id: number): Promise<ResponseData<any>> =>
 export const getJieduRecords = (profileId: string): Promise<ResponseData<RecordVo[]>> =>
   http.get(`${BASE}/records`, { profileId })
 
+/** 微信 JSSDK 签名（url 不含 hash，须与当前页一致） */
+export const getWxJssdkSign = (url: string): Promise<ResponseData<WxJssdkSignVo>> =>
+  http.get(`${BASE}/jssdk/sign`, { url })
 
+/** 创建微信支付订单，返回 chooseWXPay 参数 */
+export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayParamsVo>> =>
+  http.post(`${BASE}/pay/create`, data)

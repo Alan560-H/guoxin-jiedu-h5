@@ -1,5 +1,5 @@
 import wx from 'weixin-js-sdk'
-import { getWxJssdkSign } from '@/api/weixin'
+import { getWxJssdkSign } from '@/api/guoxin'
 import { getJssdkSignUrl, isWeChatBrowser } from '@/utils/weixin/env'
 
 let initPromise: Promise<void> | undefined

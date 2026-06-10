@@ -907,6 +907,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       if (res.code === 200 && res.data) {
         mobile.value = res.data.mobile || ''
         bindStatus.value = res.data.bindStatus || 0
+        const oid = res.data.openId ?? res.data.openid
+        if (oid)
+          openId.value = oid
       }
     } catch (e) {
       console.error('加载用户信息失败', e)
@@ -1030,6 +1033,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     mobile,
     bindStatus,
     token,
+    openId,
     serverProducts,
     serverReports,
     serverOrders,

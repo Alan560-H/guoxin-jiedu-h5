@@ -16,15 +16,14 @@ pnpm build:h5
 - **心语档案**：列表、创建（Chip + 下拉表单）
 - **解读流程**：选方向 → 整理页轮询任务 → 完成概览 → 详情报告
 - **解读记录**：远程模式走后端 `reports`；档案仍为本地 seed（待接 Java profiles）
-- **解读权益**：远程商品来自 `getProducts`；购买接口待接
+- **解读权益**：远程商品来自 `getProducts`；微信内 JSAPI 支付（`pay/create` + `chooseWXPay`），成功后 `getAvailableCount` 刷新次数
 - **数据**：登录/商品/次数/报告走 Java `/api/yiqixue/app/guoxin`；档案 persist 在 `guoxin-store`
 
 ## V1 边界说明
 
 ### 当前不做 / 待接
 
-- 档案 CRUD 后端化（`profiles` 接口为 V2 预留）
-- 远程权益购买（订单/支付）
+- 档案 CRUD 后端化（`profiles` 接口已接，文档待同步）
 - Dify 流式 SSE（当前为 `report/generate` + 轮询）
 
 ### 登录
@@ -36,6 +35,7 @@ pnpm build:h5
 
 - **次数来源**：`availableCount`（按商品 `productId`）
 - **扣次**：后端 `report/generate` 成功后由服务端扣减
+- **购买**：微信内 + 已 OAuth（openId）+ 已绑手机 → `pay/create` → `chooseWXPay`；成功仅调 `getAvailableCount` 刷新，前端不加次
 
 ### 微信 OAuth
 

@@ -91,6 +91,15 @@ async function pollRemoteTask() {
   if (!pageActive.value || result?.cancelled)
     return
   pollDone.value = true
+  if (!result) {
+    pollSuccess.value = false
+    pollErrorMsg.value = '报告仍在生成中，请稍后在解读记录查看'
+    clearSimulationTimer()
+    step.value = 4
+    animationComplete.value = true
+    tryFinishWhenReady()
+    return
+  }
   if (result?.success) {
     pollSuccess.value = true
     if (result.reportId)

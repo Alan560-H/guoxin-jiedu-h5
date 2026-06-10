@@ -1,22 +1,18 @@
 import type { WxPayCreateParam } from '@/models/weixin'
-import { postWxPayCreate } from '@/api/weixin'
-import { initWxJssdk, wx } from '@/utils/weixin/jssdk'
+import { createWxPayOrder } from '@/api/guoxin'
 import { isWeChatBrowser } from '@/utils/weixin/env'
-import { useGuoxinStore } from '@/stores/guoxinStore'
+import { initWxJssdk, wx } from '@/utils/weixin/jssdk'
 
-/** 调起微信支付（国心H5 JSAPI支付） */
+/** 调起微信支付（国心 H5 JSAPI 支付） */
 export async function wxChoosePay(param: WxPayCreateParam): Promise<void> {
   if (!isWeChatBrowser()) {
     uni.showToast({ title: '请在微信内打开', icon: 'none' })
     return Promise.reject(new Error('not_wechat'))
   }
 
-  const store = useGuoxinStore()
-
   await initWxJssdk(['chooseWXPay'])
 
-  // 调用国心支付接口，传入 productId 和 openId
-  const res = await postWxPayCreate({
+  const res = await createWxPayOrder({
     productId: param.productId,
     openId: param.openId || '',
   })
@@ -30,10 +26,7 @@ export async function wxChoosePay(param: WxPayCreateParam): Promise<void> {
       package: payParams.package,
       signType: payParams.signType as any,
       paySign: payParams.paySign,
-      success: () => {
-        uni.showToast({ title: '支付成功', icon: 'success' })
-        resolve()
-      },
+      success: () => resolve(),
       cancel: () => {
         uni.showToast({ title: '已取消支付', icon: 'none' })
         reject(new Error('cancel'))

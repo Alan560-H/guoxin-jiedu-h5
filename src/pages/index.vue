@@ -58,6 +58,7 @@ async function handleOAuthCallback(code: string) {
   }
   catch (e: unknown) {
     uni.hideLoading()
+    clearOAuthParamsFromUrl()
     console.error('微信登录失败', e)
     uni.showToast({ title: '微信授权失败，请重试', icon: 'none' })
   }

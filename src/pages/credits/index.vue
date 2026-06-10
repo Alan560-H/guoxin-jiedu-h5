@@ -7,10 +7,16 @@ import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
+import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
+import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { isWeChatBrowser } from '@/utils/weixin/env'
+import { GUOXIN_OAUTH_STATE, redirectToWxOAuth } from '@/utils/weixin/oauth'
 
 const store = useGuoxinStore()
 const selectedId = ref<CreditPackageId>('standard')
 const selectedProductId = ref<number | null>(null)
+const purchasing = ref(false)
+const showLogin = ref(false)
 
 const displayProducts = computed(() => {
   if (store.useRemoteApi && store.serverProducts.length > 0) {
@@ -54,17 +60,51 @@ function selectPkg(id: string, productId?: number) {
     store.activeProductId = productId
 }
 
+function requireWxPurchaseReady(): boolean {
+  if (!isWeChatBrowser()) {
+    uni.showToast({ title: '请在微信内打开', icon: 'none' })
+    return false
+  }
+  if (!store.openId) {
+    uni.showModal({
+      title: '需要微信授权',
+      content: '微信支付需先完成微信授权登录',
+      confirmText: '去授权',
+      success: (res) => {
+        if (res.confirm)
+          redirectToWxOAuth(GUOXIN_OAUTH_STATE)
+      },
+    })
+    return false
+  }
+  if (store.needsBindMobile()) {
+    showLogin.value = true
+    return false
+  }
+  return true
+}
+
 async function purchase() {
   if (store.useRemoteApi) {
     if (!selectedProductId.value) {
       uni.showToast({ title: '请选择套餐', icon: 'none' })
       return
     }
-    const ok = await store.purchaseRemoteProduct(selectedProductId.value)
-    if (ok) {
-      setTimeout(() => {
-        uni.reLaunch({ url: RouterPaths.home })
-      }, 600)
+    if (!requireWxPurchaseReady())
+      return
+    if (purchasing.value)
+      return
+    purchasing.value = true
+    try {
+      const ok = await store.purchaseRemoteProduct(selectedProductId.value)
+      if (ok) {
+        setTimeout(() => {
+          uni.reLaunch({ url: RouterPaths.home })
+        }, 600)
+      }
+    }
+    finally {
+      purchasing.value = false
     }
     return
   }
@@ -77,7 +117,11 @@ async function purchase() {
 }
 
 function goBack() {
-  uni.navigateBack()
+  navigateBackOrHome(1)
+}
+
+async function handleLoginSuccess() {
+  await store.refreshDisplayCredits()
 }
 
 function freeAdd() {
@@ -133,8 +177,8 @@ function freeAdd() {
       </view>
 
       <view class="gx-btn-group action-buttons">
-        <GxButton type="primary" @click="purchase">
-          立即开通权益
+        <GxButton type="primary" :disabled="purchasing" @click="purchase">
+          {{ purchasing ? '支付中...' : '立即开通权益' }}
         </GxButton>
         <GxButton v-if="!store.useRemoteApi" type="secondary" @click="freeAdd">
           【测试演示】免费增加 10 次
@@ -151,6 +195,13 @@ function freeAdd() {
 
       <view class="gx-safe-bottom" />
     </scroll-view>
+
+    <GxLoginModal
+      :show="showLogin"
+      mode="bindMobile"
+      @close="showLogin = false"
+      @success="handleLoginSuccess"
+    />
   </view>
 </template>
 

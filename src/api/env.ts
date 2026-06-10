@@ -27,9 +27,12 @@ const appConfig: AppConfig = {
   wxOAuthRedirectUri: 'https://im.whhongyi.com.cn/',
   /** 静默授权仅拿 openid，用户信息由 Java wxLogin 返回 */
   wxOAuthScope: 'snsapi_base',
+  /** 本地 Vite 代理国心 Java；勿用 im 域名；换环境请改此地址或后续抽至 .env.local */
   guoxinDevProxyTarget: 'http://172.16.140.87:8082',
-  wxJssdkSignPath: '/app/wx/jssdk/sign',
+  /** @deprecated 请用 guoxin.ts getWxJssdkSign */
+  wxJssdkSignPath: '/api/yiqixue/app/guoxin/jssdk/sign',
   wxOAuthLoginPath: '/app/wx/oauth/login',
+  /** @deprecated 请用 guoxin.ts createWxPayOrder */
   wxPayCreatePath: '/api/yiqixue/app/guoxin/pay/create',
   domain: {
     baseUrl: 'https://test.yipuwenhua.com/app-api',
