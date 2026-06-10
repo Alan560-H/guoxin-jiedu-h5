@@ -164,7 +164,6 @@ async function handleLoginSuccess() {
   if (store.useRemoteApi) {
     await store.initRemoteData()
   }
-
   const shouldContinue = loginIntent.value === 'start' || consumeOAuthPendingStart()
   loginIntent.value = 'none'
   if (shouldContinue)
