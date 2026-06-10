@@ -20,7 +20,7 @@ interface AppConfig {
 }
 
 const appConfig: AppConfig = {
-  wxAppId: 'wx325a13465914e261',
+  wxAppId: 'wx845946f84bcc1745',
   /** 授权回调地址，须与公众号「网页授权域名」一致；部署后请改为正式 H5 域名 */
   wxOAuthRedirectUri: '',
   wxOAuthScope: 'snsapi_userinfo',
