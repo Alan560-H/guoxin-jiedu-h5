@@ -37,6 +37,11 @@ onMounted(async () => {
       await store.loadProducts()
     if (store.activeProductId)
       await store.refreshAvailableCount(store.activeProductId)
+    await Promise.all([
+      store.loadCredits(),
+      store.loadOrders(),
+      store.loadConsumeRecords(),
+    ])
   }
 })
 

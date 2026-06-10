@@ -14,17 +14,22 @@ onMounted(async () => {
     return
   }
   store.initSeedData()
-  if (store.useRemoteApi)
+  if (store.useRemoteApi) {
     await store.loadReports()
+    if (store.activeProfile?.id)
+      await store.loadJieduRecords(store.activeProfile.id)
+  }
 })
 
 const profile = computed(() => store.activeProfile)
 const list = computed(() => {
-  if (store.useRemoteApi && store.serverReports.length > 0) {
-    // 远程模式：映射服务器报告为本地格式
-    return store.serverReports.map((r: any) => store.mapServerReportToRecord(r))
+  if (store.useRemoteApi) {
+    if (store.jieduRecords.length > 0)
+      return store.jieduRecords
+    if (store.serverReports.length > 0)
+      return store.serverReports.map((r: any) => store.mapServerReportToRecord(r))
+    return []
   }
-  // 本地模式
   if (!profile.value)
     return []
   return store.getRecordsByProfileId(profile.value.id)

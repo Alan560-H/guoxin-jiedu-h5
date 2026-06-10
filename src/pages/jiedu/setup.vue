@@ -18,6 +18,18 @@ const userQuestion = ref('')
 const ricePaperBg = ImageConfig.ricePaperBg
 const chatLandscape = ImageConfig.chatLandscape
 
+/** 将输入框未发送的自定义问题并入 userQuestion */
+function absorbPendingInput() {
+  const text = inputText.value.trim()
+  if (!text)
+    return
+  const existing = userQuestion.value.trim()
+  userQuestion.value = existing && !existing.includes(text)
+    ? `${existing}、${text}`
+    : text
+  inputText.value = ''
+}
+
 function handleSend() {
   const text = inputText.value.trim()
   if (!text) {
@@ -43,6 +55,17 @@ onMounted(() => {
 
 const profile = computed(() => store.activeProfile)
 
+/** 点选方向 + 输入框自定义问题，用于气泡与确认卡片展示 */
+const displayFocusSummary = computed(() => {
+  const dirs = selected.value.join('、')
+  const question = userQuestion.value.trim()
+  if (dirs && question)
+    return `${dirs}、${question}`
+  if (question)
+    return question
+  return dirs
+})
+
 function toggleDirection(dir: DirectionValue) {
   if (selected.value.includes(dir)) {
     selected.value = selected.value.filter(d => d !== dir)
@@ -56,6 +79,7 @@ function handleNextStep() {
     uni.showToast({ title: t('jiedu.setup.toast.directionRequired'), icon: 'none' })
     return
   }
+  absorbPendingInput()
   step.value = 2
   nextTick(() => {
     scrollIntoViewId.value = 'confirm-card'
@@ -75,6 +99,7 @@ function handleBack() {
 }
 
 async function confirm() {
+  absorbPendingInput()
   await store.confirmJiedu(selected.value, userQuestion.value || undefined)
 }
 
@@ -145,7 +170,8 @@ function getIconName(dir: DirectionValue): string {
           </view>
         </view>
 
-        <view v-if="userQuestion" class="message-bubble user">
+        <!-- 选方向阶段单独展示输入；进入确认步后合并进「我希望关注」气泡 -->
+        <view v-if="userQuestion && step === 1" class="message-bubble user">
           <view class="message-content">
             {{ userQuestion }}
           </view>
@@ -189,7 +215,7 @@ function getIconName(dir: DirectionValue): string {
         <!-- Step 2: User Choice Bubble -->
         <view v-if="step === 2" class="message-bubble user">
           <view class="message-content">
-            {{ t('jiedu.setup.userDirections', { directions: selected.join('、') }) }}
+            {{ t('jiedu.setup.userDirections', { directions: displayFocusSummary }) }}
           </view>
         </view>
 
@@ -239,7 +265,7 @@ function getIconName(dir: DirectionValue): string {
             </view>
             <view class="confirm-row no-border">
               <text class="label">{{ t('jiedu.setup.labelDirections') }}</text>
-              <text class="value highlight-text">{{ selected.join('、') }}</text>
+              <text class="value highlight-text">{{ displayFocusSummary }}</text>
             </view>
           </view>
 

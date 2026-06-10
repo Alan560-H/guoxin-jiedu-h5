@@ -46,8 +46,11 @@ function startSimulation() {
       if (timer)
         clearInterval(timer)
       // 远程模式下，等待后端任务完成
-      if (store.useRemoteApi && remoteTaskId.value) {
-        pollRemoteTask()
+      if (store.useRemoteApi) {
+        if (remoteTaskId.value)
+          pollRemoteTask()
+        else
+          uni.showToast({ title: '报告提交失败，请重试', icon: 'none' })
       } else {
         setTimeout(finishAndGoComplete, 800)
       }
@@ -76,8 +79,20 @@ onMounted(async () => {
     uni.redirectTo({ url: RouterPaths.jieduSetup })
     return
   }
-  // 远程模式：提交生成请求
-  if (store.useRemoteApi && store.userId && store.serverProducts.length > 0) {
+  // 远程模式：进入整理页即提交 report/generate（userId 由后端从 JWT 解析，不依赖 store.userId）
+  if (store.useRemoteApi) {
+    if (!store.isLoggedIn) {
+      uni.showToast({ title: '请先登录', icon: 'none' })
+      uni.redirectTo({ url: RouterPaths.home })
+      return
+    }
+    if (store.serverProducts.length === 0)
+      await store.loadProducts()
+    if (store.serverProducts.length === 0) {
+      uni.showToast({ title: '商品加载失败，请稍后重试', icon: 'none' })
+      uni.navigateBack()
+      return
+    }
     const productId = store.activeProductId || store.serverProducts[0].id
     const inputJson = JSON.stringify({
       profileId: store.activeProfileId,
@@ -86,9 +101,9 @@ onMounted(async () => {
       userQuestion: store.userQuestion || undefined,
     })
     const result = await store.doGenerateReport(productId, inputJson)
-    if (result && result.taskId) {
+    if (result?.taskId) {
       remoteTaskId.value = result.taskId
-      remoteReportId.value = result.reportId
+      remoteReportId.value = result.reportId ?? null
     } else {
       uni.showToast({ title: '提交失败，请重试', icon: 'none' })
       uni.navigateBack()
