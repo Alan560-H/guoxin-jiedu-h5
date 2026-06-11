@@ -35,13 +35,7 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/prod-api/, ''),
       },
-      '/prod-api': {
-        // target: 'https://care.yipuwenhua.com',
-		// target: 'https://test-app.yipuwh.com',
-		target: 'https://ft.temvo.cn',
-        changeOrigin: true,
-        secure: false,
-      },
+      
 	  '/test-api': {
 	    target: 'https://test-app.yipuwh.com',
 	    changeOrigin: true,
