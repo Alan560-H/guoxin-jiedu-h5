@@ -10,7 +10,7 @@ import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 import { ImageConfig } from '@/config/assets'
 import { isWeChatBrowser } from '@/utils/weixin/env'
-import { getBirthYearFromBirthDay } from '@/utils/guoxin/birthDateTime'
+import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
 import {
   redirectToWxOAuth,
   markOAuthPendingStart,
@@ -356,7 +356,7 @@ async function handleLoginSuccess() {
             >
               <view class="profile-item-left">
                 <view class="profile-item-name">{{ p.name }}</view>
-                <view class="profile-item-sub">{{ p.genderText }} · {{ getBirthYearFromBirthDay(p.birthDay) }}年 · {{ p.birthPlace }}</view>
+                <view class="profile-item-sub">{{ p.genderText }} · {{ getProfileBirthYear(p) }}年 · {{ p.birthPlace }}</view>
               </view>
               <view class="profile-item-right">
                 <view class="gx-badge gx-badge-gold">{{ p.relationText }}</view>

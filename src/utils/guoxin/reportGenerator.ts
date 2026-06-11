@@ -2,13 +2,13 @@
 import type { DirectionValue } from '@/constants/guoxin'
 import type { ProfileVo } from '@/models/guoxin/profile'
 import type { ReportSection } from '@/models/guoxin/record'
-import { getBirthYearFromBirthDay } from '@/utils/guoxin/birthDateTime'
+import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
 
 export function generateDynamicReportContent(
   profile: ProfileVo,
   directions: DirectionValue[],
 ): ReportSection[] {
-  const age = new Date().getFullYear() - getBirthYearFromBirthDay(profile.birthDay)
+  const age = new Date().getFullYear() - getProfileBirthYear(profile)
   const isMale = profile.gender === 'male'
   const name = profile.name
   const titleName = isMale ? `${name.substring(0, 2)}先生` : `${name.substring(0, 2)}女士`

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CalendarValue, GenderValue, RelationValue } from '@/constants/guoxin'
 import type { ProfileVo } from '@/models/guoxin/profile'
+import type { BirthDateTimeParts } from '@/utils/guoxin/birthDateTime'
 import { onLoad } from '@dcloudio/uni-app'
 import { computed, onMounted, ref, watch } from 'vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
@@ -16,6 +17,7 @@ import {
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import {
+  buildDualBirthDays,
   buildHourOptions,
   buildMinuteOptions,
   buildYearRange,
@@ -135,9 +137,12 @@ function applyProfileToForm(p: ProfileVo) {
   areaCode.value = p.areaCode
   useTrueSolarTime.value = !!p.useTrueSolarTime
 
-  const parts = parseBirthDay(p.birthDay)
+  const sourceDay = p.calendarType === 'lunar' ? p.birthDayLunar : p.birthDaySolar
+  const parts = parseBirthDay(sourceDay || p.birthDay)
   if (!parts)
     return
+  if (p.calendarType === 'lunar' && p.lunarLeapMonth)
+    parts.month = -parts.month
 
   const years = calendarType.value === 'lunar' ? lunarYears : solarYears
   const yi = Math.max(0, years.indexOf(parts.year))
@@ -229,21 +234,26 @@ function onRegionChange(payload: { birthPlace: string, areaCode: string }) {
   areaCode.value = payload.areaCode
 }
 
-function buildBirthDayString(): string {
+function buildBirthParts(): BirthDateTimeParts | null {
   const y = yearList.value[dateIndex.value[0]]
   const m = monthList.value[dateIndex.value[1]]
   const d = dayList.value[dateIndex.value[2]]
   const h = hourOptions[timeIndex.value[0]] ?? 0
   const min = minuteOptions[timeIndex.value[1]] ?? 0
   if (y == null || !m || d == null)
-    return ''
-  return formatBirthDay({
+    return null
+  return {
     year: y,
     month: m.month,
     day: d,
     hour: h,
     minute: min,
-  })
+  }
+}
+
+function buildBirthDayString(): string {
+  const parts = buildBirthParts()
+  return parts ? formatBirthDay(parts) : ''
 }
 
 function validate() {
@@ -274,13 +284,18 @@ function buildDto() {
   const rel = RELATION_OPTIONS.find(r => r.value === relation.value)!
   const gen = GENDER_OPTIONS.find(g => g.value === gender.value)!
   const cal = CALENDAR_OPTIONS.find(c => c.value === calendarType.value)!
+  const parts = buildBirthParts()
+  const dual = parts ? buildDualBirthDays(calendarType.value, parts) : null
   return {
     name: name.value.trim(),
     relation: rel.value,
     relationText: rel.label,
     gender: gen.value,
     genderText: gen.label,
-    birthDay: buildBirthDayString(),
+    birthDay: dual?.birthDay ?? '',
+    birthDaySolar: dual?.birthDaySolar ?? '',
+    birthDayLunar: dual?.birthDayLunar ?? '',
+    lunarLeapMonth: dual?.lunarLeapMonth || undefined,
     birthPlace: birthPlace.value.trim(),
     areaCode: areaCode.value,
     calendarType: cal.value,

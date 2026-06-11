@@ -12,6 +12,9 @@ export interface ReportGenerateInput {
   gender: ProfileVo['gender']
   genderText: string
   birthDay: string
+  birthDaySolar: string
+  birthDayLunar: string
+  lunarLeapMonth?: boolean
   birthPlace: string
   areaCode: string
   calendarType: ProfileVo['calendarType']

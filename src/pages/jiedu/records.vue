@@ -7,7 +7,7 @@ import { isReportRecordPending, isReportRecordReady, isReportTaskFailed } from '
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
-import { getBirthYearFromBirthDay } from '@/utils/guoxin/birthDateTime'
+import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
 
 const store = useGuoxinStore()
 const showCount = ref(0)
@@ -99,7 +99,7 @@ function goDetail(rec: { id: string; status?: string }) {
             {{ profile.name }}
           </view>
           <view class="profile-sub">
-            关系：{{ profile.relationText }} · 性别：{{ profile.genderText }} · {{ getBirthYearFromBirthDay(profile.birthDay) }}年出生
+            关系：{{ profile.relationText }} · 性别：{{ profile.genderText }} · {{ getProfileBirthYear(profile) }}年出生
           </view>
         </view>
         <view class="meta-right">

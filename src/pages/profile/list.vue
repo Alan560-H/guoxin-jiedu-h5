@@ -6,7 +6,7 @@ import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
-import { getBirthYearFromBirthDay } from '@/utils/guoxin/birthDateTime'
+import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
 
 const { t } = useI18n()
 const store = useGuoxinStore()
@@ -23,8 +23,8 @@ onMounted(async () => {
 
 const profiles = computed(() => store.profiles)
 
-function profileAge(p: { birthDay: string }) {
-  return new Date().getFullYear() - getBirthYearFromBirthDay(p.birthDay)
+function profileAge(p: { birthDaySolar: string, birthDay: string }) {
+  return new Date().getFullYear() - getProfileBirthYear(p)
 }
 
 function goCreate() {

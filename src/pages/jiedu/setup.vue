@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { DIRECTION_OPTIONS } from '@/constants/guoxin'
 import type { DirectionValue } from '@/constants/guoxin'
-import { ImageConfig } from '@/config/assets'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import GxButton from '@/components/guoxin/GxButton.vue'
-import { useGuoxinStore } from '@/stores/guoxinStore'
+import { ImageConfig } from '@/config/assets'
+import { DIRECTION_OPTIONS } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
+import { useGuoxinStore } from '@/stores/guoxinStore'
+import { formatDualBirthDayDisplay } from '@/utils/guoxin/birthDateTime'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
-import { formatBirthDayDisplay } from '@/utils/guoxin/birthDateTime'
 
 const { t } = useI18n()
 const store = useGuoxinStore()
@@ -58,7 +58,7 @@ const birthDisplay = computed(() => {
   const p = profile.value
   if (!p)
     return ''
-  return formatBirthDayDisplay(p.birthDay, p.calendarType, p.calendarTypeText)
+  return formatDualBirthDayDisplay(p)
 })
 
 /** 点选方向 + 输入框自定义问题，用于气泡与确认卡片展示 */
@@ -75,7 +75,8 @@ const displayFocusSummary = computed(() => {
 function toggleDirection(dir: DirectionValue) {
   if (selected.value.includes(dir)) {
     selected.value = selected.value.filter(d => d !== dir)
-  } else {
+  }
+  else {
     selected.value = [...selected.value, dir]
   }
 }
@@ -99,7 +100,8 @@ function handlePrevStep() {
 function handleBack() {
   if (step.value === 2) {
     step.value = 1
-  } else {
+  }
+  else {
     navigateBackOrHome(1)
   }
 }
@@ -119,13 +121,13 @@ function goCredits() {
 
 function getIconName(dir: DirectionValue): string {
   const mapping: Record<string, string> = {
-    '家庭关系': 'family',
-    '情绪状态': 'mood',
-    '健康作息': 'health',
-    '事业方向': 'work',
-    '财务规划': 'money',
-    '子女关系': 'children',
-    '近期状态': 'recent',
+    家庭关系: 'family',
+    情绪状态: 'mood',
+    健康作息: 'health',
+    事业方向: 'work',
+    财务规划: 'money',
+    子女关系: 'children',
+    近期状态: 'recent',
   }
   return mapping[dir] || 'recent'
 }
@@ -133,26 +135,39 @@ function getIconName(dir: DirectionValue): string {
 
 <template>
   <view v-if="profile" class="gx-chat-page flex_column page-container">
-
     <!-- 1. Header Navigation Bar -->
     <view class="screen-header">
       <view class="header-btn" @tap="handleBack">
-        <text class="arrow">‹</text>
-        <text class="btn-label">{{ t('jiedu.setup.back') }}</text>
+        <text class="arrow">
+          ‹
+        </text>
+        <text class="btn-label">
+          {{ t('jiedu.setup.back') }}
+        </text>
       </view>
-      <view class="screen-header-title">{{ t('jiedu.setup.title') }}</view>
+      <view class="screen-header-title">
+        {{ t('jiedu.setup.title') }}
+      </view>
       <view class="header-btn right-btn" @tap="goProfiles">
         <svg class="header-icon" aria-hidden="true">
-          <use :href="ImageConfig.icon('recent')"></use>
+          <use :href="ImageConfig.icon('recent')" />
         </svg>
-        <text class="btn-label">{{ t('jiedu.setup.profiles') }}</text>
+        <text class="btn-label">
+          {{ t('jiedu.setup.profiles') }}
+        </text>
       </view>
     </view>
 
     <!-- 2. Sub-Header Credits Indicator -->
     <view class="sub-header-bar">
-      <view>{{ t('jiedu.setup.creditsRemain') }}<text class="credit-count-val" @tap.stop="goCredits">{{ store.credits }}</text>{{ t('jiedu.setup.creditsUnit') }}</view>
-      <view class="consultant-label">{{ t('jiedu.setup.consultant') }}</view>
+      <view>
+        {{ t('jiedu.setup.creditsRemain') }}<text class="credit-count-val" @tap.stop="goCredits">
+          {{ store.credits }}
+        </text>{{ t('jiedu.setup.creditsUnit') }}
+      </view>
+      <view class="consultant-label">
+        {{ t('jiedu.setup.consultant') }}
+      </view>
     </view>
 
     <!-- 3. Scrollable Conversation/Interactive Flow -->
@@ -163,7 +178,6 @@ function getIconName(dir: DirectionValue): string {
       scroll-with-animation
     >
       <view class="chat-history-content">
-
         <!-- Welcome Speech Bubble -->
         <view class="message-bubble teacher">
           <view class="chat-avatar-wrapper">
@@ -171,7 +185,9 @@ function getIconName(dir: DirectionValue): string {
           </view>
           <view class="message-content">
             <text>{{ t('jiedu.setup.welcomePrefix') }}</text>
-            <text class="text-highlight">{{ profile.name }}（{{ profile.relationText }}）</text>
+            <text class="text-highlight">
+              {{ profile.name }}（{{ profile.relationText }}）
+            </text>
             <text>{{ t('jiedu.setup.welcomeSuffix') }}</text>
           </view>
         </view>
@@ -187,7 +203,7 @@ function getIconName(dir: DirectionValue): string {
         <view v-if="step === 1" class="chat-setup-card">
           <view class="chat-setup-title">
             <svg class="title-icon" aria-hidden="true">
-              <use :href="ImageConfig.icon('cloud')"></use>
+              <use :href="ImageConfig.icon('cloud')" />
             </svg>
             <text>{{ t('jiedu.setup.selectDirections') }}</text>
           </view>
@@ -202,10 +218,12 @@ function getIconName(dir: DirectionValue): string {
             >
               <view class="icon">
                 <svg aria-hidden="true" style="width: 100%; height: 100%;">
-                  <use :href="ImageConfig.icon(getIconName(dir))"></use>
+                  <use :href="ImageConfig.icon(getIconName(dir))" />
                 </svg>
               </view>
-              <text class="label-text">{{ dir }}</text>
+              <text class="label-text">
+                {{ dir }}
+              </text>
             </view>
           </view>
 
@@ -239,35 +257,59 @@ function getIconName(dir: DirectionValue): string {
         <view v-if="step === 2" id="confirm-card" class="chat-setup-card confirm-card">
           <view class="chat-setup-title">
             <svg class="title-icon" aria-hidden="true">
-              <use :href="ImageConfig.icon('record')"></use>
+              <use :href="ImageConfig.icon('record')" />
             </svg>
             <text>{{ t('jiedu.setup.confirmTitle') }}</text>
           </view>
 
           <view class="confirm-table">
             <view class="confirm-row">
-              <text class="label">{{ t('jiedu.setup.labelName') }}</text>
-              <text class="value">{{ profile.name }}</text>
+              <text class="label">
+                {{ t('jiedu.setup.labelName') }}
+              </text>
+              <text class="value">
+                {{ profile.name }}
+              </text>
             </view>
             <view class="confirm-row">
-              <text class="label">{{ t('jiedu.setup.labelRelation') }}</text>
-              <text class="value">{{ profile.relationText }}</text>
+              <text class="label">
+                {{ t('jiedu.setup.labelRelation') }}
+              </text>
+              <text class="value">
+                {{ profile.relationText }}
+              </text>
+            </view>
+            <view class="confirm-row confirm-row-birth">
+              <text class="label">
+                {{ t('jiedu.setup.labelBirthDate') }}
+              </text>
+              <text class="value value-birth">
+                {{ birthDisplay }}
+              </text>
             </view>
             <view class="confirm-row">
-              <text class="label">{{ t('jiedu.setup.labelBirthDate') }}</text>
-              <text class="value">{{ birthDisplay }}</text>
+              <text class="label">
+                {{ t('jiedu.setup.labelBirthPlace') }}
+              </text>
+              <text class="value">
+                {{ profile.birthPlace }}
+              </text>
             </view>
             <view class="confirm-row">
-              <text class="label">{{ t('jiedu.setup.labelBirthPlace') }}</text>
-              <text class="value">{{ profile.birthPlace }}</text>
-            </view>
-            <view class="confirm-row">
-              <text class="label">{{ t('jiedu.setup.labelTrueSolar') }}</text>
-              <text class="value">{{ profile.useTrueSolarTime ? t('common.enabled') : t('common.disabled') }}</text>
+              <text class="label">
+                {{ t('jiedu.setup.labelTrueSolar') }}
+              </text>
+              <text class="value">
+                {{ profile.useTrueSolarTime ? t('common.enabled') : t('common.disabled') }}
+              </text>
             </view>
             <view class="confirm-row no-border">
-              <text class="label">{{ t('jiedu.setup.labelDirections') }}</text>
-              <text class="value highlight-text">{{ displayFocusSummary }}</text>
+              <text class="label">
+                {{ t('jiedu.setup.labelDirections') }}
+              </text>
+              <text class="value highlight-text">
+                {{ displayFocusSummary }}
+              </text>
             </view>
           </view>
 
@@ -283,7 +325,6 @@ function getIconName(dir: DirectionValue): string {
             </GxButton>
           </view>
         </view>
-
       </view>
     </scroll-view>
 
@@ -295,10 +336,11 @@ function getIconName(dir: DirectionValue): string {
         :placeholder="t('jiedu.setup.inputPlaceholder')"
         confirm-type="send"
         @confirm="handleSend"
-      />
-      <button class="send-btn" @tap="handleSend">{{ t('jiedu.setup.send') }}</button>
+      >
+      <button class="send-btn" @tap="handleSend">
+        {{ t('jiedu.setup.send') }}
+      </button>
     </view>
-
   </view>
 </template>
 
@@ -640,6 +682,15 @@ function getIconName(dir: DirectionValue): string {
     color: #241F19;
     font-weight: 700;
     text-align: right;
+  }
+
+  &.confirm-row-birth {
+    align-items: flex-start;
+  }
+
+  .value-birth {
+    white-space: pre-line;
+    line-height: 1.5;
   }
 
   .highlight-text {

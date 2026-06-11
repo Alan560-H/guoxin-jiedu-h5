@@ -1,4 +1,5 @@
 import type { CalendarValue } from '@/constants/guoxin'
+import { Lunar, Solar } from 'lunar-javascript'
 
 export interface BirthDateTimeParts {
   year: number
@@ -60,22 +61,119 @@ export function parseLegacyBirthHour(hourText: string | null | undefined): [numb
   return LEGACY_SHICHEN_TIME[hourText] ?? [0, 0]
 }
 
-/** 从 birthDay 取展示用年份（年龄计算用公历/农历数字年） */
+export interface DualBirthDays {
+  /** 用户所选历法下的出生时间 */
+  birthDay: string
+  birthDaySolar: string
+  birthDayLunar: string
+  lunarLeapMonth: boolean
+}
+
+/** 由 picker 所选历法 + 年月日时分，换算并生成公历/农历双日期 */
+export function buildDualBirthDays(
+  calendarType: CalendarValue,
+  parts: BirthDateTimeParts,
+): DualBirthDays | null {
+  if (!parts.year || !parts.month || !parts.day)
+    return null
+
+  const birthDay = formatBirthDay(parts)
+  const { hour, minute } = parts
+
+  if (calendarType === 'solar') {
+    const solar = Solar.fromYmdHms(parts.year, parts.month, parts.day, hour, minute, 0)
+    const lunar = solar.getLunar()
+    const lunarMonth = lunar.getMonth()
+    return {
+      birthDay,
+      birthDaySolar: birthDay,
+      birthDayLunar: formatBirthDay({
+        year: lunar.getYear(),
+        month: Math.abs(lunarMonth),
+        day: lunar.getDay(),
+        hour,
+        minute,
+      }),
+      lunarLeapMonth: lunarMonth < 0,
+    }
+  }
+
+  const lunar = Lunar.fromYmdHms(parts.year, parts.month, parts.day, hour, minute, 0)
+  const solar = lunar.getSolar()
+  return {
+    birthDay,
+    birthDaySolar: formatBirthDay({
+      year: solar.getYear(),
+      month: solar.getMonth(),
+      day: solar.getDay(),
+      hour,
+      minute,
+    }),
+    birthDayLunar: formatBirthDay({
+      year: parts.year,
+      month: Math.abs(parts.month),
+      day: parts.day,
+      hour,
+      minute,
+    }),
+    lunarLeapMonth: parts.month < 0,
+  }
+}
+
+/** 仅有 birthDay + calendarType 时补全双日期 */
+export function resolveDualBirthDays(
+  birthDay: string,
+  calendarType: CalendarValue = 'solar',
+  lunarLeapMonth?: boolean,
+): DualBirthDays | null {
+  const parts = parseBirthDay(birthDay)
+  if (!parts)
+    return null
+  if (calendarType === 'lunar' && lunarLeapMonth)
+    parts.month = -parts.month
+  return buildDualBirthDays(calendarType, parts)
+}
+
+/** 年龄计算优先公历年 */
 export function getBirthYearFromBirthDay(birthDay: string): number {
   return parseBirthDay(birthDay)?.year ?? new Date().getFullYear()
+}
+
+export function getProfileBirthYear(profile: {
+  birthDaySolar?: string
+  birthDay: string
+}): number {
+  const solar = profile.birthDaySolar?.trim() || profile.birthDay
+  return getBirthYearFromBirthDay(solar)
 }
 
 export function formatBirthDayDisplay(
   birthDay: string,
   calendarType?: CalendarValue,
   calendarTypeText?: string,
+  lunarLeapMonth?: boolean,
 ): string {
   const p = parseBirthDay(birthDay)
   if (!p)
     return birthDay || '未填写'
   const cal = calendarTypeText ?? (calendarType === 'lunar' ? '农历' : '公历')
-  const monthLabel = p.month < 0 ? `闰${Math.abs(p.month)}` : String(p.month)
+  const monthLabel = lunarLeapMonth ? `闰${p.month}` : String(p.month)
   return `${cal} ${p.year}年${monthLabel}月${p.day}日 ${pad2(p.hour)}:${pad2(p.minute)}`
+}
+
+export function formatDualBirthDayDisplay(profile: {
+  birthDaySolar: string
+  birthDayLunar: string
+  lunarLeapMonth?: boolean
+}): string {
+  const solar = formatBirthDayDisplay(profile.birthDaySolar, 'solar', '公历')
+  const lunar = formatBirthDayDisplay(
+    profile.birthDayLunar,
+    'lunar',
+    '农历',
+    profile.lunarLeapMonth,
+  )
+  return `${solar}\n${lunar}`
 }
 
 export function buildYearRange(start = 1930, end = new Date().getFullYear()): number[] {
