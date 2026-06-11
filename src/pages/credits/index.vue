@@ -98,7 +98,12 @@ async function purchase() {
       return
     purchasing.value = true
     try {
-      await store.purchaseRemoteProduct(productId)
+      const ok = await store.purchaseRemoteProduct(productId)
+      if (ok) {
+        setTimeout(() => {
+          uni.reLaunch({ url: RouterPaths.home })
+        }, 600)
+      }
     }
     finally {
       purchasing.value = false

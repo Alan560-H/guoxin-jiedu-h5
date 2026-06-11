@@ -3,7 +3,7 @@ import { CREDIT_PACKAGES } from '@/constants/guoxin'
 import type { CreateProfileDto, ProfileVo } from '@/models/guoxin/profile'
 import type { RecordVo } from '@/models/guoxin/record'
 import { RouterPaths } from '@/routerPaths'
-import { wxMwebPay, formatMwebPayError } from '@/utils/weixin/pay'
+import { wxChoosePay, formatWxPayError } from '@/utils/weixin/pay'
 import { DEFAULT_PROFILES, DEFAULT_RECORDS, normalizeSeedProfile } from '@/utils/guoxin/seedData'
 import { parseGuoxinLoginData, clearGuoxinUserSessionSnapshot, writeGuoxinUserSessionSnapshot, type GuoxinLoginSession } from '@/utils/guoxin/parseLoginResponse'
 import { formatNowTime, formatRecordTitle, generateDynamicReportContent } from '@/utils/guoxin/reportGenerator'
@@ -427,24 +427,31 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return null
   }
 
-  /** 远程：微信 H5 支付（MWEB）购买商品套餐 */
+  /** 远程：微信公众号 JSAPI 购买商品套餐 */
   async function purchaseRemoteProduct(productId: number): Promise<boolean> {
     if (!useRemoteApi.value)
       return false
-    try {
-      await wxMwebPay({
-        productId,
-        openId: openId.value || undefined,
-      })
-      // 跳转 mweb_url 后当前页卸载，success 由支付回跳 + onShow 刷新次数
+    if (!openId.value) {
+      uni.showToast({ title: '请在微信内完成授权后再购买', icon: 'none' })
       return false
+    }
+    try {
+      await wxChoosePay({ productId, openId: openId.value })
+      invalidateRemoteCache(['credits', 'orders', 'consumeRecords'])
+      await Promise.all([
+        ensureCreditsLoaded(true),
+        ensureOrdersLoaded(true),
+        ensureConsumeRecordsLoaded(true),
+      ])
+      uni.showToast({ title: '开通成功', icon: 'success' })
+      return true
     }
     catch (err) {
       const code = err instanceof Error ? err.message : ''
-      if (code === 'cancel')
+      if (code === 'cancel' || code === 'not_wechat' || code === 'missing_openid')
         return false
       console.error('远程购买失败', err)
-      uni.showToast({ title: formatMwebPayError(err), icon: 'none', duration: 3000 })
+      uni.showToast({ title: formatWxPayError(err), icon: 'none', duration: 3000 })
       return false
     }
   }

@@ -12,29 +12,27 @@ export interface WxOAuthLoginVo {
   userInfo?: import('@/models/userInfoVo').UserInfoVo
 }
 
-/** 创建支付订单请求（国心 H5 MWEB） */
+/** 创建支付订单请求（公众号 JSAPI） */
 export interface WxPayCreateParam {
   /** 商品ID */
   productId: number
-  /** 可选：后端可从 JWT 识别用户；JSAPI 遗留字段 */
+  /** 用户 openid，JSAPI 统一下单必填 */
   openId?: string
-  /** H5 支付完成回跳地址，不传则后端默认 */
-  returnUrl?: string
 }
 
-/** 微信 H5 支付（MWEB）下单响应 */
-export interface WxPayMwebVo {
-  mwebUrl?: string
-  mweb_url?: string
-  h5Url?: string
-  h5_url?: string
-}
-
-/** @deprecated JSAPI chooseWXPay 参数，MWEB 模式不再使用 */
+/** chooseWXPay 所需参数（pay/create 返回） */
 export interface WxPayParamsVo {
   timeStamp: string
   nonceStr: string
   package: string
   signType: string
   paySign: string
+}
+
+/** @deprecated MWEB 回退字段，JSAPI 模式不应返回 */
+export interface WxPayMwebVo {
+  mwebUrl?: string
+  mweb_url?: string
+  h5Url?: string
+  h5_url?: string
 }
