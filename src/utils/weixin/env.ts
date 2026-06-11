@@ -16,6 +16,7 @@ export function getJssdkSignUrl(): string {
 
 /** OAuth 回调地址：取当前页地址栏 origin + pathname */
 export function getOAuthRedirectUri(): string {
+    return "https://maggot-doily-flatness.ngrok-free.dev/";
   if (typeof window === 'undefined')
     return ''
   const { origin, pathname } = window.location
