@@ -1,7 +1,7 @@
 import type { DirectionValue } from '@/constants/guoxin'
 import type { ProfileVo } from '@/models/guoxin/profile'
 
-/** report/generate 的 inputJson 结构（与 Java 联调） */
+/** report/generate 的 inputJson 结构（与档案接口字段一致） */
 export interface ReportGenerateInput {
   profileId: number | string
   directions: DirectionValue[]
@@ -11,11 +11,9 @@ export interface ReportGenerateInput {
   relationText: string
   gender: ProfileVo['gender']
   genderText: string
-  birthYear: number
-  birthMonth: number
-  birthDay: number
-  birthHour: string
+  birthDay: string
   birthPlace: string
+  areaCode: string
   calendarType: ProfileVo['calendarType']
   calendarTypeText: string
   useTrueSolarTime: boolean
@@ -30,17 +28,19 @@ export type ReportTaskStatus =
   | 'pending'
   | 'processing'
   | 'streaming'
+  | 'generating'
+  | 'running'
   | 'success'
   | 'done'
   | 'completed'
   | 'failed'
   | 'error'
-  | string
+  | 'cancelled'
 
 export interface ReportTaskStatusVo {
-  status: ReportTaskStatus
+  status?: ReportTaskStatus | string
   reportId?: number | string
   recordId?: number | string
-  msg?: string
+  progress?: number
   message?: string
 }

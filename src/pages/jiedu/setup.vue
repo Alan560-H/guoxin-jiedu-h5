@@ -8,6 +8,7 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { formatBirthDayDisplay } from '@/utils/guoxin/birthDateTime'
 
 const { t } = useI18n()
 const store = useGuoxinStore()
@@ -52,6 +53,13 @@ onMounted(() => {
 })
 
 const profile = computed(() => store.activeProfile)
+
+const birthDisplay = computed(() => {
+  const p = profile.value
+  if (!p)
+    return ''
+  return formatBirthDayDisplay(p.birthDay, p.calendarType, p.calendarTypeText)
+})
 
 /** 点选方向 + 输入框自定义问题，用于气泡与确认卡片展示 */
 const displayFocusSummary = computed(() => {
@@ -247,11 +255,7 @@ function getIconName(dir: DirectionValue): string {
             </view>
             <view class="confirm-row">
               <text class="label">{{ t('jiedu.setup.labelBirthDate') }}</text>
-              <text class="value">{{ t('jiedu.setup.birthDateFmt', { calendar: profile.calendarTypeText, year: profile.birthYear, month: profile.birthMonth, day: profile.birthDay }) }}</text>
-            </view>
-            <view class="confirm-row">
-              <text class="label">{{ t('jiedu.setup.labelBirthHour') }}</text>
-              <text class="value">{{ profile.birthHour }}</text>
+              <text class="value">{{ birthDisplay }}</text>
             </view>
             <view class="confirm-row">
               <text class="label">{{ t('jiedu.setup.labelBirthPlace') }}</text>

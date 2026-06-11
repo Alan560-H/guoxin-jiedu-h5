@@ -35,22 +35,6 @@ export const DIRECTION_OPTIONS = [
 
 export type DirectionValue = typeof DIRECTION_OPTIONS[number]
 
-export const BIRTH_HOUR_OPTIONS = [
-  '子时（23-1点）',
-  '丑时（1-3点）',
-  '寅时（3-5点）',
-  '卯时（5-7点）',
-  '辰时（7-9点）',
-  '巳时（9-11点）',
-  '午时（11-13点）',
-  '未时（13-15点）',
-  '申时（15-17点）',
-  '酉时（17-19点）',
-  '戌时（19-21点）',
-  '亥时（21-23点）',
-  '记不清了',
-] as const
-
 export type FontScale = 'standard' | 'large' | 'xlarge'
 
 /** 本地演示套餐；远程模式商品来自后端 getProducts */

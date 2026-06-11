@@ -69,6 +69,8 @@
     "@unocss/preset-legacy-compat": "^66.7.0",
     "@vueuse/core": "9.13.0",
     "core-js": "^3.49.0",
+    "element-china-area-data": "^6.1.0",
+    "lunar-javascript": "^1.7.7",
     "pinia": "2.2.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "unocss-applet": "^0.12.2",

@@ -7,11 +7,11 @@ export interface ProfileVo {
   relationText: string
   gender: GenderValue
   genderText: string
-  birthYear: number
-  birthMonth: number
-  birthDay: number
-  birthHour: string
+  /** 出生日期时间，格式 YYYY-MM-DD HH:mm */
+  birthDay: string
   birthPlace: string
+  /** 区县 6 位 adcode */
+  areaCode: string
   calendarType: CalendarValue
   calendarTypeText: string
   jieduCount: number
@@ -25,11 +25,9 @@ export interface CreateProfileDto {
   relationText: string
   gender: GenderValue
   genderText: string
-  birthYear: number
-  birthMonth: number
-  birthDay: number
-  birthHour: string
+  birthDay: string
   birthPlace: string
+  areaCode: string
   calendarType: CalendarValue
   calendarTypeText: string
   useTrueSolarTime?: boolean

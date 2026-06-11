@@ -5,6 +5,7 @@ import type { RecordVo } from '@/models/guoxin/record'
 import { RouterPaths } from '@/routerPaths'
 import { wxChoosePay, formatWxPayError } from '@/utils/weixin/pay'
 import { DEFAULT_PROFILES, DEFAULT_RECORDS, normalizeSeedProfile } from '@/utils/guoxin/seedData'
+import { normalizeProfileVo } from '@/utils/guoxin/normalizeProfile'
 import { parseGuoxinLoginData, clearGuoxinUserSessionSnapshot, writeGuoxinUserSessionSnapshot, type GuoxinLoginSession } from '@/utils/guoxin/parseLoginResponse'
 import { formatNowTime, formatRecordTitle, generateDynamicReportContent } from '@/utils/guoxin/reportGenerator'
 import {
@@ -124,6 +125,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
 
   function initSeedData() {
     if (!useRemoteApi.value) {
+      profiles.value = profiles.value.map(p => normalizeSeedProfile(normalizeProfileVo(p as unknown as Record<string, unknown>)))
       if (profiles.value.length === 0) {
         profiles.value = DEFAULT_PROFILES.map(normalizeSeedProfile)
         records.value = [...DEFAULT_RECORDS]
@@ -675,25 +677,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  function mapServerProfile(p: any): ProfileVo {
-    return {
-      id: String(p.id),
-      name: p.name,
-      relation: p.relation,
-      relationText: p.relationText,
-      gender: p.gender,
-      genderText: p.genderText,
-      birthYear: p.birthYear,
-      birthMonth: p.birthMonth,
-      birthDay: p.birthDay,
-      birthHour: p.birthHour,
-      birthPlace: p.birthPlace,
-      calendarType: p.calendarType,
-      calendarTypeText: p.calendarTypeText,
-      useTrueSolarTime: !!p.useTrueSolarTime,
-      jieduCount: p.jieduCount || 0,
-      lastJieduTime: p.lastJieduTime || '无',
-    }
+  function mapServerProfile(p: Record<string, unknown>): ProfileVo {
+    return normalizeProfileVo({
+      ...p,
+      jieduCount: p.jieduCount ?? 0,
+      lastJieduTime: p.lastJieduTime ?? '无',
+    })
   }
 
   /** 加载用户档案列表 */

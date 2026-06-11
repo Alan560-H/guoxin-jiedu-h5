@@ -12,6 +12,7 @@ declare module 'vue' {
     GxChip: typeof import('./src/components/guoxin/GxChip.vue')['default']
     GxLoginModal: typeof import('./src/components/guoxin/GxLoginModal.vue')['default']
     GxNavBar: typeof import('./src/components/guoxin/GxNavBar.vue')['default']
+    GxRegionPicker: typeof import('./src/components/guoxin/GxRegionPicker.vue')['default']
     UConfigProvider: typeof import('uview-pro/components/u-config-provider/u-config-provider.vue')['default']
     UIcon: typeof import('uview-pro/components/u-icon/u-icon.vue')['default']
     ULink: typeof import('uview-pro/components/u-link/u-link.vue')['default']
