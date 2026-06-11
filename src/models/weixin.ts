@@ -1,27 +1,31 @@
-/** 微信 JSSDK 签名配置 */
-export interface WxJssdkSignVo {
-  appId: string
-  timestamp: number
-  nonceStr: string
-  signature: string
-}
-
 /** 微信 OAuth 登录响应 */
 export interface WxOAuthLoginVo {
   token: string
   userInfo?: import('@/models/userInfoVo').UserInfoVo
 }
 
-/** 创建支付订单请求（公众号 JSAPI） */
+/** 创建支付订单请求（公众号 JSAPI）；openid 由后端从登录态获取 */
 export interface WxPayCreateParam {
   /** 商品ID */
   productId: number
-  /** 用户 openid，JSAPI 统一下单必填 */
-  openId?: string
 }
 
-/** chooseWXPay 所需参数（pay/create 返回） */
+/** pay/create 响应 data（Java 统一下单后返回） */
+export interface WxPayCreateVo {
+  timeStamp: string
+  nonceStr: string
+  paySign: string
+  signType: string
+  appId?: string
+  /** 可能为 wx 单号或已带 prepay_id= 前缀 */
+  prepay_id?: string
+  prepayId?: string
+  package?: string
+}
+
+/** WeixinJSBridge.getBrandWCPayRequest 入参（由 WxPayCreateVo 归一化） */
 export interface WxPayParamsVo {
+  appId: string
   timeStamp: string
   nonceStr: string
   package: string

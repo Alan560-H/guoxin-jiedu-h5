@@ -8,7 +8,6 @@ export type WxOAuthScope = 'snsapi_base' | 'snsapi_userinfo'
 interface AppConfig {
     wxAppId: string
     wxOAuthScope: WxOAuthScope
-    wxJssdkSignPath: string
     wxOAuthLoginPath: string
     wxPayCreatePath: string
     domain: {
@@ -29,8 +28,6 @@ const appConfig: AppConfig = {
     wxAppId: wxAppIdFromEnv,
     /** 静默授权仅拿 openid，用户信息由 Java wxLogin 返回 */
     wxOAuthScope: 'snsapi_userinfo',
-    /** @deprecated 请用 guoxin.ts getWxJssdkSign */
-    wxJssdkSignPath: '/api/yiqixue/app/guoxin/jssdk/sign',
     wxOAuthLoginPath: '/app/wx/oauth/login',
     /** @deprecated 请用 guoxin.ts createWxPayOrder */
     wxPayCreatePath: '/api/yiqixue/app/guoxin/pay/create',
@@ -48,7 +45,6 @@ const appConfig: AppConfig = {
 export const {
     wxAppId,
     wxOAuthScope,
-    wxJssdkSignPath,
     wxOAuthLoginPath,
     wxPayCreatePath,
     domain,

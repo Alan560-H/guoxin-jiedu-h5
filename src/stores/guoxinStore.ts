@@ -431,12 +431,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   async function purchaseRemoteProduct(productId: number): Promise<boolean> {
     if (!useRemoteApi.value)
       return false
-    if (!openId.value) {
-      uni.showToast({ title: '请在微信内完成授权后再购买', icon: 'none' })
+    if (!isLoggedIn.value) {
+      uni.showToast({ title: '请先登录后再购买', icon: 'none' })
       return false
     }
     try {
-      await wxChoosePay({ productId, openId: openId.value })
+      await wxChoosePay({ productId })
       invalidateRemoteCache(['credits', 'orders', 'consumeRecords'])
       await Promise.all([
         ensureCreditsLoaded(true),
@@ -448,7 +448,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
     catch (err) {
       const code = err instanceof Error ? err.message : ''
-      if (code === 'cancel' || code === 'not_wechat' || code === 'missing_openid')
+      if (code === 'cancel' || code === 'not_wechat')
         return false
       console.error('远程购买失败', err)
       uni.showToast({ title: formatWxPayError(err), icon: 'none', duration: 3000 })
