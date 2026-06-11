@@ -1,4 +1,4 @@
-import { wxAppId, wxOAuthRedirectUri, wxOAuthScope } from '@/api/env'
+import { wxAppId, wxOAuthScope } from '@/api/env'
 
 /** 是否微信内置浏览器（H5） */
 export function isWeChatBrowser(): boolean {
@@ -14,10 +14,8 @@ export function getJssdkSignUrl(): string {
   return window.location.href.split('#')[0]
 }
 
-/** OAuth 回调地址：env 非空时覆盖，否则取当前页地址栏 origin + pathname */
+/** OAuth 回调地址：取当前页地址栏 origin + pathname */
 export function getOAuthRedirectUri(): string {
-  if (wxOAuthRedirectUri)
-    return wxOAuthRedirectUri
   if (typeof window === 'undefined')
     return ''
   const { origin, pathname } = window.location

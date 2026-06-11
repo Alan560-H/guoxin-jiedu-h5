@@ -67,7 +67,8 @@
     "darkmode": true,
     "themeLocation": "theme.json",
     "router": {
-      "mode": "history"
+      "mode": "history",
+      "base": "/h5/"
     }
   }
 }

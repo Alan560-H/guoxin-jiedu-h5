@@ -182,7 +182,7 @@ function openPrivacyAgreement() {
 
 .modal-card {
   background-color: #FCF5E9;
-  background-image: url("/static/assets/rice-paper-bg.svg");
+  background-image: url("@/static/assets/rice-paper-bg.svg");
   border-radius: 40rpx;
   width: 85%;
   max-width: 600rpx;

@@ -108,7 +108,7 @@ import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 .legal-page {
   min-height: 100vh;
   background:
-    url("/static/assets/rice-paper-bg.svg") center / cover no-repeat,
+    url("@/static/assets/rice-paper-bg.svg") center / cover no-repeat,
     linear-gradient(140deg, rgba(255, 252, 244, 0.95), rgba(249, 239, 220, 0.9)),
     #FCF5E9;
 }

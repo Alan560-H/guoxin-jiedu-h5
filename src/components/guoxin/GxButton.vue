@@ -82,7 +82,7 @@ function handleClick() {
     bottom: -10rpx;
     width: 130rpx;
     height: 70rpx;
-    background: url("/static/assets/button-cloud.svg") center / contain no-repeat;
+    background: url("@/static/assets/button-cloud.svg") center / contain no-repeat;
     opacity: 0.85;
     pointer-events: none;
   }

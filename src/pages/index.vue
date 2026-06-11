@@ -8,6 +8,7 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
+import { ImageConfig } from '@/config/assets'
 import { isWeChatBrowser } from '@/utils/weixin/env'
 import {
   redirectToWxOAuth,
@@ -232,7 +233,7 @@ async function handleLoginSuccess() {
       <view class="teacher-intro-card">
         <view class="avatar-wrapper">
           <view class="avatar">
-            <image class="avatar-img" src="/static/assets/xinyu-teacher.svg" mode="aspectFill" />
+            <image class="avatar-img" :src="ImageConfig.xinyuTeacher" mode="aspectFill" />
           </view>
         </view>
         <view class="teacher-details">
@@ -560,7 +561,7 @@ async function handleLoginSuccess() {
 
 .modal-card {
   background-color: #FCF5E9;
-  background-image: url("/static/assets/rice-paper-bg.svg");
+  background-image: url("@/static/assets/rice-paper-bg.svg");
   border-radius: 40rpx;
   width: 85%;
   max-width: 600rpx;

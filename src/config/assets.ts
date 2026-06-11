@@ -1,4 +1,4 @@
-const STATIC_BASE = '/static/assets'
+const STATIC_BASE = `${import.meta.env.BASE_URL}static/assets`
 
 /** 静态资源路径统一入口，避免在页面中硬编码完整 URL */
 export const ImageConfig = {
