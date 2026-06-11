@@ -16,9 +16,6 @@ const step = ref(1)
 const scrollIntoViewId = ref('')
 const inputText = ref('')
 const userQuestion = ref('')
-const ricePaperBg = ImageConfig.ricePaperBg
-const chatLandscape = ImageConfig.chatLandscape
-
 /** 将输入框未发送的自定义问题并入 userQuestion */
 function absorbPendingInput() {
   const text = inputText.value.trim()
@@ -311,7 +308,7 @@ function getIconName(dir: DirectionValue): string {
   max-width: 414px;
   margin: 0 auto;
   background:
-    url(v-bind(ricePaperBg)) center / cover no-repeat,
+    url("@/static/assets/rice-paper-bg.svg") center / cover no-repeat,
     linear-gradient(140deg, rgba(255, 252, 244, 0.95), rgba(249, 239, 220, 0.9)),
     #FCF5E9;
   overflow: hidden;
@@ -444,7 +441,7 @@ function getIconName(dir: DirectionValue): string {
     right: 0;
     bottom: 0;
     height: 380rpx;
-    background: url(v-bind(chatLandscape)) center bottom / 100% auto no-repeat;
+    background: url("@/static/assets/chat-landscape.svg") center bottom / 100% auto no-repeat;
     opacity: 0.74;
     pointer-events: none;
     z-index: 0;
