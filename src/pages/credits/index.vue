@@ -15,6 +15,7 @@ const selectedId = ref<CreditPackageId>('standard')
 const selectedProductId = ref<number | null>(null)
 const purchasing = ref(false)
 const showLogin = ref(false)
+const showCount = ref(0)
 
 const displayProducts = computed(() => {
   if (store.useRemoteApi && store.serverProducts.length > 0) {
@@ -38,11 +39,11 @@ onMounted(async () => {
     return
   }
   if (store.useRemoteApi) {
-    await store.loadProducts()
-    await store.refreshDisplayCredits()
     await Promise.all([
-      store.loadOrders(),
-      store.loadConsumeRecords(),
+      store.ensureProductsLoaded(),
+      store.ensureCreditsLoaded(),
+      store.ensureOrdersLoaded(),
+      store.ensureConsumeRecordsLoaded(),
     ])
     syncDefaultProductSelection()
   }
@@ -59,11 +60,14 @@ function syncDefaultProductSelection() {
   selectPkg(matched.id, matched.productId ?? undefined)
 }
 
+/** 首次用缓存；支付回跳再次展示时强制刷新 */
 onShow(() => {
-  if (store.isLoggedIn && store.useRemoteApi) {
-    void store.refreshDisplayCredits()
-    void store.loadOrders()
-  }
+  if (!store.isLoggedIn || !store.useRemoteApi)
+    return
+  showCount.value++
+  const force = showCount.value > 1
+  void store.ensureCreditsLoaded(force)
+  void store.ensureOrdersLoaded(force)
 })
 
 function selectPkg(id: string, productId?: number) {
@@ -114,7 +118,7 @@ function goBack() {
 }
 
 async function handleLoginSuccess() {
-  await store.refreshDisplayCredits()
+  await store.ensureCreditsLoaded(true)
 }
 
 function freeAdd() {

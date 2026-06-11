@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
@@ -9,29 +9,33 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
 const store = useGuoxinStore()
+const showCount = ref(0)
 
-async function refreshRemoteRecords() {
+async function refreshRemoteRecords(force = false) {
   if (!store.useRemoteApi)
     return
-  await store.loadReports()
-  await store.loadReadingRecords()
+  await Promise.all([
+    store.ensureReportsLoaded(force),
+    store.ensureReadingRecordsLoaded(force),
+  ])
   if (store.activeProfile?.id)
     await store.loadJieduRecords(store.activeProfile.id)
 }
 
-onMounted(async () => {
+onMounted(() => {
   if (!store.isLoggedIn) {
     uni.reLaunch({ url: RouterPaths.home })
     return
   }
   store.initSeedData()
-  await refreshRemoteRecords()
 })
 
-/** 从整理页离开或生成完成后返回，拉最新报告列表 */
+/** 首次用缓存；从其他页返回时强制刷新 */
 onShow(() => {
-  if (store.isLoggedIn)
-    void refreshRemoteRecords()
+  if (!store.isLoggedIn)
+    return
+  showCount.value++
+  void refreshRemoteRecords(showCount.value > 1)
 })
 
 const profile = computed(() => store.activeProfile)

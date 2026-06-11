@@ -104,9 +104,12 @@ async function pollRemoteTask() {
     pollSuccess.value = true
     if (result.reportId)
       remoteReportId.value = result.reportId
-    await store.loadReports()
-    await store.loadReadingRecords()
-    await store.refreshDisplayCredits()
+    store.invalidateRemoteCache(['reports', 'readingRecords', 'credits'])
+    await Promise.all([
+      store.ensureReportsLoaded(true),
+      store.ensureReadingRecordsLoaded(true),
+      store.ensureCreditsLoaded(true),
+    ])
     fastForwardAnimation()
   }
   else {
@@ -143,8 +146,7 @@ async function submitGenerateRequest(): Promise<boolean> {
     uni.redirectTo({ url: RouterPaths.home })
     return false
   }
-  if (store.serverProducts.length === 0)
-    await store.loadProducts()
+  await store.ensureProductsLoaded()
   if (store.serverProducts.length === 0) {
     uni.showToast({ title: '商品加载失败，请稍后重试', icon: 'none' })
     return false

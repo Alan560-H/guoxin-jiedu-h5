@@ -16,6 +16,7 @@ import {
   normalizeGenerateResult,
   toTaskIdNumber,
 } from '@/utils/guoxin/reportGenerate'
+import { createRemoteDataCache, type RemoteCacheKey } from '@/utils/guoxin/remoteDataCache'
 import {
   login as apiLogin,
   wxLogin as apiWxLogin,
@@ -73,6 +74,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const activeProductId = ref<number | null>(null)
   const useRemoteApi = ref(true) // 是否启用远程API
   const relationOptions = ref<Array<{ value: string; label: string }>>([]) // 关系选项（从字典加载）
+  const remoteCache = createRemoteDataCache()
 
   const activeProfile = computed(() =>
     profiles.value.find(p => p.id === activeProfileId.value) ?? null,
@@ -179,9 +181,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     avatarUrl.value = ''
     serverProducts.value = []
     serverReports.value = []
+    serverOrders.value = []
+    consumeRecords.value = []
     readingRecords.value = []
     totalAvailableCount.value = 0
     activeProductId.value = null
+    remoteCache.invalidate('all')
     try {
       uni.removeStorageSync('apph5Token')
       clearGuoxinUserSessionSnapshot()
@@ -254,6 +259,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     activeProfileId.value = profile.id
     // 同步到后端（后端从JWT解析userId）
     if (useRemoteApi.value) {
+      remoteCache.invalidate(['profiles'])
       apiCreateProfile(dto).then(res => {
         if (res.code === 200 && res.data && res.data.id) {
           // 用后端真实ID替换本地临时ID
@@ -302,6 +308,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
     // 同步到后端（后端从JWT解析userId）
     if (useRemoteApi.value && !isNaN(Number(id))) {
+      remoteCache.invalidate(['profiles'])
       apiDeleteProfile(Number(id)).catch(e => console.error('删除档案后端同步失败', e))
     }
   }
@@ -363,15 +370,14 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         uni.showToast({ title: '请先登录', icon: 'none' })
         return false
       }
-      if (serverProducts.value.length === 0)
-        await loadProducts()
+      await ensureProductsLoaded()
       if (serverProducts.value.length === 0) {
         uni.showToast({ title: '商品加载失败，请稍后重试', icon: 'none' })
         return false
       }
       if (!activeProductId.value)
         activeProductId.value = serverProducts.value[0].id
-      await refreshAvailableCount(activeProductId.value)
+      await ensureCreditsLoaded()
       if (totalAvailableCount.value <= 0) {
         uni.navigateTo({ url: RouterPaths.credits })
         return false
@@ -759,17 +765,77 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  /** 按当前商品刷新剩余解读次数（远程展示统一入口） */
-  async function refreshDisplayCredits() {
+  function invalidateRemoteCache(keys?: RemoteCacheKey[] | 'all') {
+    remoteCache.invalidate(keys)
+  }
+
+  async function ensureProductsLoaded(force = false) {
+    if (!useRemoteApi.value)
+      return
+    return remoteCache.ensure('products', () => loadProducts(), { force })
+  }
+
+  async function ensureProfilesLoaded(force = false) {
+    if (!useRemoteApi.value)
+      return
+    return remoteCache.ensure('profiles', () => loadProfiles(), { force })
+  }
+
+  async function ensureCreditsLoaded(force = false) {
     if (!useRemoteApi.value || !isLoggedIn.value)
       return
-    if (serverProducts.value.length === 0)
-      await loadProducts()
+    await ensureProductsLoaded(force)
     const productId = activeProductId.value ?? serverProducts.value[0]?.id
     if (!productId)
       return
     activeProductId.value = productId
-    await refreshAvailableCount(productId)
+    return remoteCache.ensure(
+      'credits',
+      () => refreshAvailableCount(productId),
+      { force, tag: productId },
+    )
+  }
+
+  async function ensureReadingRecordsLoaded(force = false) {
+    if (!useRemoteApi.value)
+      return
+    return remoteCache.ensure('readingRecords', () => loadReadingRecords(), { force })
+  }
+
+  async function ensureOrdersLoaded(force = false) {
+    if (!useRemoteApi.value || !isLoggedIn.value)
+      return
+    return remoteCache.ensure('orders', () => loadOrders(), { force })
+  }
+
+  async function ensureConsumeRecordsLoaded(force = false) {
+    if (!useRemoteApi.value || !isLoggedIn.value)
+      return
+    return remoteCache.ensure('consumeRecords', () => loadConsumeRecords(), { force })
+  }
+
+  async function ensureReportsLoaded(force = false) {
+    if (!useRemoteApi.value)
+      return
+    return remoteCache.ensure('reports', () => loadReports(), { force })
+  }
+
+  /** 登录/恢复会话后一次性拉取首页所需远程数据 */
+  async function bootstrapAfterLogin() {
+    if (!useRemoteApi.value)
+      return
+    remoteCache.invalidate(['products', 'profiles', 'credits', 'readingRecords'])
+    await Promise.all([
+      ensureProductsLoaded(),
+      ensureProfilesLoaded(),
+      ensureCreditsLoaded(),
+      ensureReadingRecordsLoaded(),
+    ])
+  }
+
+  /** 按当前商品刷新剩余解读次数（远程展示统一入口，带缓存） */
+  async function refreshDisplayCredits(force = false) {
+    return ensureCreditsLoaded(force)
   }
 
   /** 加载用户订单列表 */
@@ -916,18 +982,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  /** 登录/恢复会话后拉取首页所需数据（报告列表进记录页再拉） */
-  async function initRemoteData() {
-    if (!useRemoteApi.value) return
-    await loadProducts()
-    if (serverProducts.value.length > 0) {
-      activeProductId.value = serverProducts.value[0].id
-      await refreshAvailableCount(activeProductId.value)
-    }
-    await refreshDisplayCredits()
-    await loadProfiles()
-    await loadReadingRecords()
-  }
+  /** @deprecated 请用 bootstrapAfterLogin */
+  const initRemoteData = bootstrapAfterLogin
 
   const COMPLETE_PLACEHOLDER_SECTIONS: RecordVo['content'] = [
     { title: '一、整体状态', body: '结合您的关注方向整理的阶段状态与情绪脉络。' },
@@ -1026,6 +1082,15 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     purchaseCredits,
     purchaseRemoteProduct,
     refreshDisplayCredits,
+    invalidateRemoteCache,
+    bootstrapAfterLogin,
+    ensureProductsLoaded,
+    ensureProfilesLoaded,
+    ensureCreditsLoaded,
+    ensureReadingRecordsLoaded,
+    ensureOrdersLoaded,
+    ensureConsumeRecordsLoaded,
+    ensureReportsLoaded,
     setFontScale,
     addCredits,
     // 后端集成

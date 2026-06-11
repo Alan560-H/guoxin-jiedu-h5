@@ -58,7 +58,7 @@ async function handleOAuthCallback(code: string) {
       showLogin.value = true
       return
     }
-    await store.initRemoteData()
+    await store.bootstrapAfterLogin()
     if (consumeOAuthPendingStart())
       continueJieduAfterLogin()
   }
@@ -91,12 +91,12 @@ onMounted(async () => {
   // ③ 无 token、无 code → 正常展示首页（未登录）
 })
 
-/** 回到首页时刷新剩余次数与上次解读 */
+/** 回到首页：读 Pinia 缓存，不重复请求（支付/生成报告后在对应页 force 刷新） */
 onShow(() => {
   if (!store.useRemoteApi || !store.isLoggedIn)
     return
-  void store.refreshDisplayCredits()
-  void store.loadReadingRecords()
+  void store.ensureCreditsLoaded()
+  void store.ensureReadingRecordsLoaded()
 })
 
 function promptBindMobile(intent: 'none' | 'start' = 'none') {
@@ -210,7 +210,7 @@ function setScale(scale: FontScale) {
 
 async function handleLoginSuccess() {
   if (store.useRemoteApi) {
-    await store.initRemoteData()
+    await store.bootstrapAfterLogin()
   }
   const shouldContinue = loginIntent.value === 'start' || consumeOAuthPendingStart()
   loginIntent.value = 'none'

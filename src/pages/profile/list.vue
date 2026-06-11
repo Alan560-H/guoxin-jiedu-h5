@@ -17,7 +17,7 @@ onMounted(async () => {
   }
   store.initSeedData()
   if (store.useRemoteApi)
-    await store.loadProfiles()
+    await store.ensureProfilesLoaded()
 })
 
 const profiles = computed(() => store.profiles)

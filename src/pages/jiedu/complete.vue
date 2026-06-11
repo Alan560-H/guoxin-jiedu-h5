@@ -29,7 +29,7 @@ onMounted(async () => {
           record.value = store.mapServerDetailToRecord(detail)
       }
       if (!record.value) {
-        await store.loadReports()
+        await store.ensureReportsLoaded()
         const found = store.serverReports.find((r: { id: number }) => String(r.id) === reportIdParam.value)
         if (found)
           record.value = store.mapServerReportToRecord(found)
