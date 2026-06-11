@@ -71,11 +71,13 @@ const httpInterceptor : RequestInterceptor = {
 		// 这里仅为演示，根据实际业务确定
 		const { code, msg = '请求错误：未知' } = rawData as any
 		if (code === 403 || code === 401) {
-			uni.removeStorageSync('apph5Token')
-			useGuoxinStore().clearSession()
-			meta.toast && showToast('登录已过期，请重新登录', 'error')
-			const userInfo = userInfoStore()
-			userInfo.loginOut()
+			if (!meta.skipSessionClear) {
+				uni.removeStorageSync('apph5Token')
+				useGuoxinStore().clearSession()
+				meta.toast && showToast('登录已过期，请重新登录', 'error')
+				const userInfo = userInfoStore()
+				userInfo.loginOut()
+			}
 			throw new Error(rawData)
 		}
 		else if (!(code >= 200 && code < 300)) {

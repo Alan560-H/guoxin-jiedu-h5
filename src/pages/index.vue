@@ -26,6 +26,8 @@ const loginMode = ref<'smsLogin' | 'bindMobile'>('smsLogin')
 const showProfileSelect = ref(false)
 /** 登录完成后是否继续「开始解读」流程 */
 const loginIntent = ref<'none' | 'start'>('none')
+/** 防止同一 code 被重复兑换（HMR/重复挂载会导致 invalid code） */
+const oauthCodeHandled = ref<string | null>(null)
 
 /** 登录/授权成功后，继续「开始解读」后续步骤 */
 function continueJieduAfterLogin() {
@@ -42,6 +44,9 @@ function continueJieduAfterLogin() {
 
 /** 微信授权回调：code 交 Java wxLogin，返回 token（及用户信息含 openid） */
 async function handleOAuthCallback(code: string) {
+  if (oauthCodeHandled.value === code)
+    return
+  oauthCodeHandled.value = code
   try {
     uni.showLoading({ title: '登录中...' })
     const result = await store.doWxLogin(code)
@@ -61,6 +66,7 @@ async function handleOAuthCallback(code: string) {
     clearOAuthParamsFromUrl()
     console.error('微信登录失败', e)
     uni.showToast({ title: '微信授权失败，请重试', icon: 'none' })
+    oauthCodeHandled.value = null
   }
 }
 

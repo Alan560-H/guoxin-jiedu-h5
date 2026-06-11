@@ -22,11 +22,11 @@ interface AppConfig {
 }
 
 const appConfig: AppConfig = {
-  wxAppId: 'wx845946f84bcc1745',
+  wxAppId: 'wxfc83f32036d920f3',
   /** 固定 OAuth 回调，须与公众号授权域名及 Java wxLogin redirect_uri 完全一致 */
-  wxOAuthRedirectUri: 'https://im.whhongyi.com.cn/',
+  wxOAuthRedirectUri: 'https://maggot-doily-flatness.ngrok-free.dev/',
   /** 静默授权仅拿 openid，用户信息由 Java wxLogin 返回 */
-  wxOAuthScope: 'snsapi_base',
+  wxOAuthScope: 'snsapi_userinfo',
   /** 本地 Vite 代理国心 Java；勿用 im 域名；换环境请改此地址或后续抽至 .env.local */
   guoxinDevProxyTarget: 'http://172.16.140.87:8082',
   /** @deprecated 请用 guoxin.ts getWxJssdkSign */

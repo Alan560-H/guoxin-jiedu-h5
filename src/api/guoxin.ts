@@ -2,7 +2,7 @@ import { http } from 'uview-pro'
 import type { ResponseData } from '@/models/responseData'
 import type { ProfileVo } from '@/models/guoxin/profile'
 import type { RecordVo } from '@/models/guoxin/record'
-import type { WxJssdkSignVo, WxPayCreateParam, WxPayParamsVo } from '@/models/weixin'
+import type { WxJssdkSignVo, WxPayCreateParam, WxPayMwebVo } from '@/models/weixin'
 
 const BASE = '/api/yiqixue/app/guoxin'
 
@@ -27,8 +27,8 @@ export const bindMobile = (data: { userId: number; mobile: string; smsCode: stri
   http.post(`${BASE}/bindMobile`, data)
 
 /** 获取用户信息（userId由后端从JWT解析） */
-export const getUserInfo = (): Promise<ResponseData<any>> =>
-  http.get(`${BASE}/userInfo`)
+export const getUserInfo = (config?: Record<string, unknown>): Promise<ResponseData<any>> =>
+  http.get(`${BASE}/userInfo`, {}, config)
 
 /** 获取商品列表(上架) */
 export const getProducts = (): Promise<ResponseData<any[]>> =>
@@ -102,6 +102,6 @@ export const getJieduRecords = (profileId: string): Promise<ResponseData<RecordV
 export const getWxJssdkSign = (url: string): Promise<ResponseData<WxJssdkSignVo>> =>
   http.get(`${BASE}/jssdk/sign`, { url })
 
-/** 创建微信支付订单，返回 chooseWXPay 参数 */
-export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayParamsVo>> =>
-  http.post(`${BASE}/pay/create`, data)
+/** 创建微信支付订单（MWEB），返回 mweb_url 跳转链接 */
+export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayMwebVo>> =>
+  http.post(`${BASE}/pay/create`, data, { meta: { loading: false, toast: true } })

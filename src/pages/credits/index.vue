@@ -9,8 +9,6 @@ import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
-import { isWeChatBrowser } from '@/utils/weixin/env'
-import { GUOXIN_OAUTH_STATE, redirectToWxOAuth } from '@/utils/weixin/oauth'
 
 const store = useGuoxinStore()
 const selectedId = ref<CreditPackageId>('standard')
@@ -40,17 +38,32 @@ onMounted(async () => {
     return
   }
   if (store.useRemoteApi) {
+    await store.loadProducts()
     await store.refreshDisplayCredits()
     await Promise.all([
       store.loadOrders(),
       store.loadConsumeRecords(),
     ])
+    syncDefaultProductSelection()
   }
 })
 
+/** 远程商品 id 与本地 demo 的 standard 不一致，进入页默认选中第一个套餐 */
+function syncDefaultProductSelection() {
+  const products = displayProducts.value
+  if (products.length === 0)
+    return
+  const matched = products.find(p => p.productId === store.activeProductId)
+    ?? products.find(p => p.id === selectedId.value)
+    ?? products[0]
+  selectPkg(matched.id, matched.productId ?? undefined)
+}
+
 onShow(() => {
-  if (store.isLoggedIn && store.useRemoteApi)
+  if (store.isLoggedIn && store.useRemoteApi) {
     void store.refreshDisplayCredits()
+    void store.loadOrders()
+  }
 })
 
 function selectPkg(id: string, productId?: number) {
@@ -60,23 +73,7 @@ function selectPkg(id: string, productId?: number) {
     store.activeProductId = productId
 }
 
-function requireWxPurchaseReady(): boolean {
-  if (!isWeChatBrowser()) {
-    uni.showToast({ title: '请在微信内打开', icon: 'none' })
-    return false
-  }
-  if (!store.openId) {
-    uni.showModal({
-      title: '需要微信授权',
-      content: '微信支付需先完成微信授权登录',
-      confirmText: '去授权',
-      success: (res) => {
-        if (res.confirm)
-          redirectToWxOAuth(GUOXIN_OAUTH_STATE)
-      },
-    })
-    return false
-  }
+function requirePurchaseReady(): boolean {
   if (store.needsBindMobile()) {
     showLogin.value = true
     return false
@@ -86,22 +83,18 @@ function requireWxPurchaseReady(): boolean {
 
 async function purchase() {
   if (store.useRemoteApi) {
-    if (!selectedProductId.value) {
+    const productId = selectedProductId.value ?? store.activeProductId
+    if (!productId) {
       uni.showToast({ title: '请选择套餐', icon: 'none' })
       return
     }
-    if (!requireWxPurchaseReady())
+    if (!requirePurchaseReady())
       return
     if (purchasing.value)
       return
     purchasing.value = true
     try {
-      const ok = await store.purchaseRemoteProduct(selectedProductId.value)
-      if (ok) {
-        setTimeout(() => {
-          uni.reLaunch({ url: RouterPaths.home })
-        }, 600)
-      }
+      await store.purchaseRemoteProduct(productId)
     }
     finally {
       purchasing.value = false

@@ -3,8 +3,9 @@ import { CREDIT_PACKAGES } from '@/constants/guoxin'
 import type { CreateProfileDto, ProfileVo } from '@/models/guoxin/profile'
 import type { RecordVo } from '@/models/guoxin/record'
 import { RouterPaths } from '@/routerPaths'
-import { wxChoosePay } from '@/utils/weixin/pay'
+import { wxMwebPay, formatMwebPayError } from '@/utils/weixin/pay'
 import { DEFAULT_PROFILES, DEFAULT_RECORDS, normalizeSeedProfile } from '@/utils/guoxin/seedData'
+import { parseGuoxinLoginData, clearGuoxinUserSessionSnapshot, writeGuoxinUserSessionSnapshot, type GuoxinLoginSession } from '@/utils/guoxin/parseLoginResponse'
 import { formatNowTime, formatRecordTitle, generateDynamicReportContent } from '@/utils/guoxin/reportGenerator'
 import {
   buildReportInputJson,
@@ -60,6 +61,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const bindStatus = ref<number>(0)
   const token = ref<string>('')
   const openId = ref<string>('')
+  const nickname = ref<string>('')
+  const avatarUrl = ref<string>('')
   const serverProducts = ref<any[]>([])
   const serverReports = ref<any[]>([])
   const serverOrders = ref<any[]>([])
@@ -133,19 +136,18 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     setFontScale(fontScale.value)
   }
 
-  /** 写入登录/用户信息接口返回的会话（token 由登录接口写入；用户信息里含 openid） */
-  function applySessionFromLoginData(data: {
-    userId?: number
-    mobile?: string
-    bindStatus?: number
-    token?: string
-    openId?: string
-    openid?: string
-  }) {
+  /** 写入 wxLogin / userInfo 返回的会话（token → apph5Token；快照 → guoxin-user-session） */
+  function applySessionFromLoginData(data: GuoxinLoginSession) {
     if (data.userId != null)
       userId.value = data.userId
-    mobile.value = data.mobile || ''
-    bindStatus.value = data.bindStatus ?? 0
+    if (data.mobile != null)
+      mobile.value = data.mobile
+    if (data.bindStatus != null)
+      bindStatus.value = data.bindStatus
+    if (data.nickname != null)
+      nickname.value = data.nickname
+    if (data.avatarUrl != null)
+      avatarUrl.value = data.avatarUrl
     if (data.token) {
       token.value = data.token
       uni.setStorageSync('apph5Token', data.token)
@@ -154,6 +156,15 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     if (oid)
       openId.value = oid
     isLoggedIn.value = true
+    writeGuoxinUserSessionSnapshot({
+      userId: userId.value ?? undefined,
+      mobile: mobile.value,
+      bindStatus: bindStatus.value,
+      openId: openId.value,
+      nickname: nickname.value,
+      avatarUrl: avatarUrl.value,
+      token: token.value || undefined,
+    })
   }
 
   /** 401 或登出时清空远程会话（与 apph5Token 同步） */
@@ -164,6 +175,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     bindStatus.value = 0
     token.value = ''
     openId.value = ''
+    nickname.value = ''
+    avatarUrl.value = ''
     serverProducts.value = []
     serverReports.value = []
     readingRecords.value = []
@@ -171,6 +184,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     activeProductId.value = null
     try {
       uni.removeStorageSync('apph5Token')
+      clearGuoxinUserSessionSnapshot()
     }
     catch {
       // ignore
@@ -196,12 +210,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     try {
       const res = await getUserInfo()
       if (res.code === 200 && res.data) {
-        applySessionFromLoginData({
-          userId: res.data.userId,
-          mobile: res.data.mobile,
-          bindStatus: res.data.bindStatus,
-          openId: res.data.openId ?? res.data.openid,
-        })
+        applySessionFromLoginData(parseGuoxinLoginData(res.data))
         await initRemoteData()
         return true
       }
@@ -412,27 +421,24 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return null
   }
 
-  /** 远程：微信 JSAPI 购买商品套餐 */
+  /** 远程：微信 H5 支付（MWEB）购买商品套餐 */
   async function purchaseRemoteProduct(productId: number): Promise<boolean> {
     if (!useRemoteApi.value)
       return false
-    if (!openId.value) {
-      uni.showToast({ title: '请在微信内完成授权后再购买', icon: 'none' })
-      return false
-    }
     try {
-      await wxChoosePay({ productId, openId: openId.value })
-      await refreshDisplayCredits()
-      await loadOrders()
-      uni.showToast({ title: '开通成功', icon: 'success' })
-      return true
+      await wxMwebPay({
+        productId,
+        openId: openId.value || undefined,
+      })
+      // 跳转 mweb_url 后当前页卸载，success 由支付回跳 + onShow 刷新次数
+      return false
     }
     catch (err) {
       const code = err instanceof Error ? err.message : ''
-      if (code === 'cancel' || code === 'not_wechat')
+      if (code === 'cancel')
         return false
       console.error('远程购买失败', err)
-      uni.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
+      uni.showToast({ title: formatMwebPayError(err), icon: 'none', duration: 3000 })
       return false
     }
   }
@@ -513,11 +519,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       const res = await apiLoginBySms({ mobile: mobileStr, smsCode })
       if (res.code === 200 && res.data) {
         applySessionFromLoginData({
-          userId: res.data.userId,
+          ...parseGuoxinLoginData(res.data),
           mobile: res.data.mobile ?? mobileStr,
-          bindStatus: res.data.bindStatus,
-          token: res.data.token,
         })
+        await loadUserInfo({ skipSessionClear: true })
       } else {
         throw new Error(res.msg || '登录失败')
       }
@@ -539,11 +544,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       const res = await apiLogin({ openid, unionid, nickname, avatarUrl })
       if (res.code === 200 && res.data) {
         applySessionFromLoginData({
-          userId: res.data.userId,
-          mobile: res.data.mobile,
-          bindStatus: res.data.bindStatus,
-          token: res.data.token,
-          openId: res.data.openId ?? openid,
+          ...parseGuoxinLoginData(res.data),
+          openId: parseGuoxinLoginData(res.data).openId ?? openid,
         })
         return
       }
@@ -565,19 +567,14 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     try {
       const res = await apiWxLogin({ code })
       if (res.code === 200 && res.data) {
-        applySessionFromLoginData({
-          userId: res.data.userId,
-          mobile: res.data.mobile,
-          bindStatus: res.data.bindStatus,
-          token: res.data.token,
-          openId: res.data.openId ?? res.data.openid,
-        })
-        return { needBindMobile: !!res.data.needBindMobile }
+        const session = parseGuoxinLoginData(res.data)
+        applySessionFromLoginData(session)
+        await loadUserInfo({ skipSessionClear: true })
+        return { needBindMobile: !!session.needBindMobile }
       } else {
         throw new Error(res.msg || '微信登录失败')
       }
-    } catch (e) {
-      console.error('微信登录失败', e)
+    }     catch (e) {
       throw e
     }
   }
@@ -899,19 +896,22 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     })
   }
 
-  /** 加载用户信息 */
-  async function loadUserInfo() {
-    if (!useRemoteApi.value || !isLoggedIn.value) return
+  /** 加载用户信息（wxLogin 后 softFail 避免 getUserInfo 失败清空刚写入的会话） */
+  async function loadUserInfo(options?: { skipSessionClear?: boolean }) {
+    if (!useRemoteApi.value || !isLoggedIn.value)
+      return
     try {
-      const res = await getUserInfo()
-      if (res.code === 200 && res.data) {
-        mobile.value = res.data.mobile || ''
-        bindStatus.value = res.data.bindStatus || 0
-        const oid = res.data.openId ?? res.data.openid
-        if (oid)
-          openId.value = oid
-      }
-    } catch (e) {
+      const res = await getUserInfo({
+        meta: {
+          loading: false,
+          toast: false,
+          skipSessionClear: options?.skipSessionClear,
+        },
+      })
+      if (res.code === 200 && res.data)
+        applySessionFromLoginData(parseGuoxinLoginData(res.data))
+    }
+    catch (e) {
       console.error('加载用户信息失败', e)
     }
   }
@@ -1034,6 +1034,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     bindStatus,
     token,
     openId,
+    nickname,
+    avatarUrl,
     serverProducts,
     serverReports,
     serverOrders,
@@ -1075,6 +1077,6 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   persist: {
     key: 'guoxin-store',
     storage: localStorage,
-    pick: ['profiles', 'records', 'activeProfileId', 'selectedDirections', 'fontScale', 'isLoggedIn', 'userId', 'mobile', 'useRemoteApi'],
+    pick: ['profiles', 'records', 'activeProfileId', 'selectedDirections', 'fontScale', 'isLoggedIn', 'userId', 'mobile', 'bindStatus', 'openId', 'nickname', 'avatarUrl', 'useRemoteApi'],
   },
 })
