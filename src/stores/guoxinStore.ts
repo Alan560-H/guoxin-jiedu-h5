@@ -1,10 +1,10 @@
-import type { CreditPackageId, DirectionValue, FontScale } from '@/constants/guoxin'
+import type { CreditPackage, CreditPackageId, DirectionValue, FontScale } from '@/constants/guoxin'
 import { CREDIT_PACKAGES } from '@/constants/guoxin'
 import type { CreateProfileDto, ProfileVo } from '@/models/guoxin/profile'
 import type { RecordVo } from '@/models/guoxin/record'
 import { RouterPaths } from '@/routerPaths'
 import { wxChoosePay, formatWxPayError } from '@/utils/weixin/pay'
-import { DEFAULT_PROFILES, DEFAULT_RECORDS, normalizeSeedProfile } from '@/utils/guoxin/seedData'
+import { normalizeSeedProfile } from '@/utils/guoxin/seedData'
 import { normalizeProfileVo } from '@/utils/guoxin/normalizeProfile'
 import { parseGuoxinLoginData, clearGuoxinUserSessionSnapshot, writeGuoxinUserSessionSnapshot, type GuoxinLoginSession } from '@/utils/guoxin/parseLoginResponse'
 import { formatNowTime, formatRecordTitle, generateDynamicReportContent } from '@/utils/guoxin/reportGenerator'
@@ -18,6 +18,7 @@ import {
   toTaskIdNumber,
 } from '@/utils/guoxin/reportGenerate'
 import { createRemoteDataCache, type RemoteCacheKey } from '@/utils/guoxin/remoteDataCache'
+import { mapReportDetailToRecordVo, parseReportDirections } from '@/utils/guoxin/parseReportDetail'
 import {
   login as apiLogin,
   wxLogin as apiWxLogin,
@@ -30,14 +31,12 @@ import {
   getAvailableCount,
   generateReport as apiGenerateReport,
   getTaskStatus,
-  getReports,
   getReadingRecords,
   getCredits,
   getConsumeRecords,
   getReportDetail,
   getProfiles as apiGetProfiles,
   getProfileDetail,
-  getJieduRecords,
   createProfile as apiCreateProfile,
   updateProfile as apiUpdateProfile,
   deleteProfile as apiDeleteProfile,
@@ -66,11 +65,11 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const nickname = ref<string>('')
   const avatarUrl = ref<string>('')
   const serverProducts = ref<any[]>([])
-  const serverReports = ref<any[]>([])
   const serverOrders = ref<any[]>([])
   const consumeRecords = ref<any[]>([])
-  const jieduRecords = ref<RecordVo[]>([])
+  /** 解读记录页：当前档案列表；首页「上次解读」单独存 homeLatestRecord */
   const readingRecords = ref<any[]>([])
+  const homeLatestRecord = ref<any | null>(null)
   const totalAvailableCount = ref<number>(0)
   const activeProductId = ref<number | null>(null)
   const useRemoteApi = ref(true) // 是否启用远程API
@@ -86,21 +85,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   )
 
   const latestRecord = computed(() => {
-    if (useRemoteApi.value && isLoggedIn.value && readingRecords.value.length > 0) {
-      const latest = readingRecords.value[0]
-      return {
-        id: String(latest.id),
-        profileId: latest.profileId ? String(latest.profileId) : '',
-        profileName: latest.profileName || '',
-        title: latest.title || '解读报告',
-        time: latest.time || '',
-        directions: latest.directions || [],
-        content: null,
-        status: latest.status,
-      }
-    }
-    if (useRemoteApi.value && isLoggedIn.value && serverReports.value.length > 0)
-      return mapServerReportToRecord(serverReports.value[0])
+    if (useRemoteApi.value && isLoggedIn.value && homeLatestRecord.value)
+      return mapServerReportToRecord(homeLatestRecord.value)
+    if (useRemoteApi.value)
+      return null
     return records.value[0] ?? null
   })
 
@@ -126,16 +114,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   function initSeedData() {
     if (!useRemoteApi.value) {
       profiles.value = profiles.value.map(p => normalizeSeedProfile(normalizeProfileVo(p as unknown as Record<string, unknown>)))
-      if (profiles.value.length === 0) {
-        profiles.value = DEFAULT_PROFILES.map(normalizeSeedProfile)
-        records.value = [...DEFAULT_RECORDS]
+      if (!activeProfileId.value || !profiles.value.some(p => p.id === activeProfileId.value))
         activeProfileId.value = profiles.value[0]?.id ?? ''
-      }
-      else if (!activeProfileId.value || !profiles.value.some(p => p.id === activeProfileId.value)) {
-        activeProfileId.value = profiles.value[0]?.id ?? ''
-      }
-      if (credits.value <= 0)
-        credits.value = 99
     }
     setFontScale(fontScale.value)
   }
@@ -182,10 +162,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     nickname.value = ''
     avatarUrl.value = ''
     serverProducts.value = []
-    serverReports.value = []
     serverOrders.value = []
     consumeRecords.value = []
     readingRecords.value = []
+    homeLatestRecord.value = null
     totalAvailableCount.value = 0
     activeProductId.value = null
     remoteCache.invalidate('all')
@@ -372,13 +352,6 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         uni.showToast({ title: '请先登录', icon: 'none' })
         return false
       }
-      await ensureProductsLoaded()
-      if (serverProducts.value.length === 0) {
-        uni.showToast({ title: '商品加载失败，请稍后重试', icon: 'none' })
-        return false
-      }
-      if (!activeProductId.value)
-        activeProductId.value = serverProducts.value[0].id
       await ensureCreditsLoaded()
       if (totalAvailableCount.value <= 0) {
         uni.navigateTo({ url: RouterPaths.credits })
@@ -439,6 +412,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
     try {
       await wxChoosePay({ productId })
+      activeProductId.value = productId
       invalidateRemoteCache(['credits', 'orders', 'consumeRecords'])
       await Promise.all([
         ensureCreditsLoaded(true),
@@ -459,7 +433,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   }
 
   async function purchaseCredits(pkgId: CreditPackageId): Promise<boolean> {
-    const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId)
+    const pkg: CreditPackage | undefined = CREDIT_PACKAGES.find(p => p.id === pkgId)
     if (!pkg)
       return false
 
@@ -722,39 +696,47 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return null
   }
 
-  /** 加载用户报告列表 */
-  async function loadReports() {
-    if (!useRemoteApi.value) return
+  /** 首页「上次解读」：全局最近一条，不带 profileId */
+  async function loadHomeLatestRecord() {
+    if (!useRemoteApi.value || !isLoggedIn.value)
+      return
     try {
-      const res = await getReports()
-      if (res.code === 200 && res.data) {
-        serverReports.value = res.data
-      }
-    } catch (e) {
-      console.error('加载报告列表失败', e)
+      const res = await getReadingRecords({ pageSize: 1 })
+      if (res.code === 200 && res.data?.length)
+        homeLatestRecord.value = res.data[0]
+      else
+        homeLatestRecord.value = null
+    }
+    catch (e) {
+      console.error('加载上次解读失败', e)
     }
   }
 
-  /** 加载解读记录列表（含档案信息） */
-  async function loadReadingRecords() {
-    if (!useRemoteApi.value) return
+  /** 按档案加载解读记录（解读记录页每次进入直接请求，不走缓存） */
+  async function loadReadingRecords(profileId: string | number) {
+    if (!useRemoteApi.value || profileId === '' || profileId == null)
+      return
     try {
-      const res = await getReadingRecords()
-      if (res.code === 200 && res.data) {
+      const res = await getReadingRecords({ profileId })
+      if (res.code === 200 && res.data)
         readingRecords.value = res.data
-      }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('加载解读记录失败', e)
     }
   }
 
-  /** 加载用户总可用次数（仅作兜底，展示以 refreshDisplayCredits 为准） */
+  /** 加载用户总可用次数（首页/权益展示；不依赖商品列表） */
   async function loadCredits() {
     if (!useRemoteApi.value) return
     try {
       const res = await getCredits()
       if (res.code === 200 && res.data) {
-        credits.value = res.data.credits ?? res.data.availableCount ?? 0
+        const count = res.data.credits ?? res.data.availableCount ?? 0
+        credits.value = count
+        totalAvailableCount.value = count
+        if (res.data.productId != null)
+          activeProductId.value = Number(res.data.productId)
       }
     } catch (e) {
       console.error('加载可用次数失败', e)
@@ -780,22 +762,15 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   async function ensureCreditsLoaded(force = false) {
     if (!useRemoteApi.value || !isLoggedIn.value)
       return
-    await ensureProductsLoaded(force)
-    const productId = activeProductId.value ?? serverProducts.value[0]?.id
-    if (!productId)
-      return
-    activeProductId.value = productId
-    return remoteCache.ensure(
-      'credits',
-      () => refreshAvailableCount(productId),
-      { force, tag: productId },
-    )
+    return remoteCache.ensure('credits', () => loadCredits(), { force })
   }
 
-  async function ensureReadingRecordsLoaded(force = false) {
-    if (!useRemoteApi.value)
-      return
-    return remoteCache.ensure('readingRecords', () => loadReadingRecords(), { force })
+  /** 生成报告前解析商品 id（优先缓存；否则从 credits 接口带回） */
+  async function resolveActiveProductId(): Promise<number | null> {
+    if (activeProductId.value != null)
+      return activeProductId.value
+    await ensureCreditsLoaded()
+    return activeProductId.value
   }
 
   async function ensureOrdersLoaded(force = false) {
@@ -810,22 +785,14 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return remoteCache.ensure('consumeRecords', () => loadConsumeRecords(), { force })
   }
 
-  async function ensureReportsLoaded(force = false) {
-    if (!useRemoteApi.value)
-      return
-    return remoteCache.ensure('reports', () => loadReports(), { force })
-  }
-
-  /** 登录/恢复会话后一次性拉取首页所需远程数据 */
+  /** 登录/恢复会话后拉取首页所需远程数据 */
   async function bootstrapAfterLogin() {
     if (!useRemoteApi.value)
       return
-    remoteCache.invalidate(['products', 'profiles', 'credits', 'readingRecords'])
+    remoteCache.invalidate(['credits'])
     await Promise.all([
-      ensureProductsLoaded(),
-      ensureProfilesLoaded(),
       ensureCreditsLoaded(),
-      ensureReadingRecordsLoaded(),
+      loadHomeLatestRecord(),
     ])
   }
 
@@ -857,19 +824,6 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         consumeRecords.value = res.data
     } catch (e) {
       console.error('加载消费记录失败', e)
-    }
-  }
-
-  /** 按档案加载解读记录（V2 records 接口） */
-  async function loadJieduRecords(profileId: string) {
-    if (!useRemoteApi.value || !isLoggedIn.value || !profileId)
-      return
-    try {
-      const res = await getJieduRecords(profileId)
-      if (res.code === 200 && res.data)
-        jieduRecords.value = res.data
-    } catch (e) {
-      console.error('加载档案解读记录失败', e)
     }
   }
 
@@ -987,58 +941,51 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     { title: '三、行动建议', body: '可执行的生活调整与自我照护提示。' },
   ]
 
-  /** 将后端报告映射为本地 RecordVo 格式 */
+  /** readingRecords / report/detail 列表项 → RecordVo */
   function mapServerReportToRecord(report: any): RecordVo {
-    const title = report.reportName || report.title || '专属解读报告'
-    const serverDirections = report.directions ?? report.focusDirections
+    const rawId = report.reportId ?? report.id
+    const title = report.title || report.reportName || '专属解读报告'
+    const directions = Array.isArray(report.directions)
+      ? report.directions
+      : parseReportDirections(report.directions ?? report.focusDirections)
     return {
-      id: String(report.id),
-      profileId: report.profileId != null ? String(report.profileId) : (activeProfileId.value || 'server'),
+      id: String(rawId),
+      profileId: report.profileId != null ? String(report.profileId) : (activeProfileId.value || ''),
       profileName: report.profileName || activeProfile.value?.name || '心语档案',
       title,
-      time: report.createTime || report.time || '',
-      directions: Array.isArray(serverDirections) && serverDirections.length > 0
-        ? serverDirections
-        : [],
+      time: report.time || report.createTime || '',
+      directions,
       content: (report._content?.length ? report._content : COMPLETE_PLACEHOLDER_SECTIONS),
       status: report.status,
     }
   }
 
-  /** 报告详情接口 → RecordVo */
+  /** 报告详情接口 → RecordVo（data 扁平含 reportContent.chapters） */
   function mapServerDetailToRecord(detail: any): RecordVo | null {
-    const report = detail?.report
-    if (!report)
+    if (!detail)
       return null
-    const version = detail?.currentVersion
-    const html = version?.htmlContent
-    const sections = html
-      ? [{ title: '完整报告', body: html }]
-      : COMPLETE_PLACEHOLDER_SECTIONS
-    const serverDirections = report.directions ?? report.focusDirections
-    return {
-      id: String(report.id),
-      profileId: report.profileId != null ? String(report.profileId) : (activeProfileId.value || 'server'),
-      profileName: report.profileName || activeProfile.value?.name || '心语档案',
-      title: report.reportName || '专属解读报告',
-      time: report.createTime || '',
-      directions: Array.isArray(serverDirections) && serverDirections.length > 0
-        ? serverDirections
-        : [],
-      content: sections,
-      status: report.status,
-    }
+    const mapped = mapReportDetailToRecordVo(detail as Record<string, unknown>)
+    if (!mapped)
+      return null
+    if (!mapped.content?.length)
+      mapped.content = COMPLETE_PLACEHOLDER_SECTIONS
+    return mapped
   }
 
   /** 加载报告详情 */
   async function loadReportDetail(reportId: number): Promise<any> {
-    if (!useRemoteApi.value || !isLoggedIn.value) return null
+    if (!useRemoteApi.value || !isLoggedIn.value)
+      return null
     try {
       const res = await getReportDetail(reportId)
-      if (res.code === 200 && res.data) {
-        return res.data
+      const code = Number(res.code)
+      if (code >= 200 && code < 300) {
+        const payload = res.data ?? res
+        if (payload && typeof payload === 'object' && (payload as { id?: unknown }).id != null)
+          return payload
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('加载报告详情失败', e)
     }
     return null
@@ -1083,10 +1030,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     ensureProductsLoaded,
     ensureProfilesLoaded,
     ensureCreditsLoaded,
-    ensureReadingRecordsLoaded,
+    resolveActiveProductId,
     ensureOrdersLoaded,
     ensureConsumeRecordsLoaded,
-    ensureReportsLoaded,
     setFontScale,
     addCredits,
     // 后端集成
@@ -1098,10 +1044,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     nickname,
     avatarUrl,
     serverProducts,
-    serverReports,
     serverOrders,
     consumeRecords,
-    jieduRecords,
     readingRecords,
     totalAvailableCount,
     activeProductId,
@@ -1119,12 +1063,11 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     relationOptions,
     loadProducts,
     refreshAvailableCount,
-    loadReports,
     loadReadingRecords,
+    loadHomeLatestRecord,
     loadCredits,
     loadOrders,
     loadConsumeRecords,
-    loadJieduRecords,
     buildActiveReportInputJson,
     doGenerateReport,
     pollTaskStatus,

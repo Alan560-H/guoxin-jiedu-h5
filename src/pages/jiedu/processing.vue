@@ -104,11 +104,10 @@ async function pollRemoteTask() {
     pollSuccess.value = true
     if (result.reportId)
       remoteReportId.value = result.reportId
-    store.invalidateRemoteCache(['reports', 'readingRecords', 'credits'])
+    store.invalidateRemoteCache(['credits'])
     await Promise.all([
-      store.ensureReportsLoaded(true),
-      store.ensureReadingRecordsLoaded(true),
       store.ensureCreditsLoaded(true),
+      store.loadHomeLatestRecord(),
     ])
     fastForwardAnimation()
   }
@@ -146,9 +145,9 @@ async function submitGenerateRequest(): Promise<boolean> {
     uni.redirectTo({ url: RouterPaths.home })
     return false
   }
-  await store.ensureProductsLoaded()
-  if (store.serverProducts.length === 0) {
-    uni.showToast({ title: '商品加载失败，请稍后重试', icon: 'none' })
+  const productId = await store.resolveActiveProductId()
+  if (!productId) {
+    uni.showToast({ title: '暂无法获取体验包，请前往权益页', icon: 'none' })
     return false
   }
   const inputJson = store.buildActiveReportInputJson()
@@ -156,7 +155,6 @@ async function submitGenerateRequest(): Promise<boolean> {
     uni.showToast({ title: '档案或关注方向缺失', icon: 'none' })
     return false
   }
-  const productId = store.activeProductId || store.serverProducts[0].id
   const result = await store.doGenerateReport(productId, inputJson)
   if (!result?.taskId) {
     uni.showToast({ title: '提交失败，请重试', icon: 'none' })

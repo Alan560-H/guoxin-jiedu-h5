@@ -37,14 +37,20 @@ export type DirectionValue = typeof DIRECTION_OPTIONS[number]
 
 export type FontScale = 'standard' | 'large' | 'xlarge'
 
-/** 本地演示套餐；远程模式商品来自后端 getProducts */
-export const CREDIT_PACKAGES = [
-  { id: 'trial', name: '心语解读体验包', amount: 1, price: 19.9, originPrice: 39, desc: '适合首次体验，了解国心解读服务' },
-  { id: 'standard', name: '心语解读权益包', amount: 10, price: 99, originPrice: 199, hot: true, desc: '可为多位家庭成员分别解读' },
-  { id: 'family', name: '家庭心语权益包', amount: 20, price: 159, originPrice: 299, desc: '适合全家使用，为每位成员建立专属档案' },
-] as const
+export interface CreditPackage {
+  id: string
+  name: string
+  amount: number
+  price: number
+  originPrice: number
+  desc: string
+  hot?: boolean
+}
 
-export type CreditPackageId = typeof CREDIT_PACKAGES[number]['id']
+/** 本地演示套餐（已清空）；远程模式商品来自 getProducts */
+export const CREDIT_PACKAGES: readonly CreditPackage[] = []
+
+export type CreditPackageId = string
 
 export const DISCLAIMER_TEXT = '内容仅供传统文化学习与生活参考，不作为医疗、法律、理财等任何现实决策依据。'
 

@@ -1,51 +1,61 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import type { RecordVo } from '@/models/guoxin/record'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 
 const store = useGuoxinStore()
-const recordId = ref('')
-const serverDetail = ref<any>(null)
+const record = ref<RecordVo | null>(null)
 const loading = ref(true)
 
-onLoad((query) => {
-  if (query?.recordId)
-    recordId.value = String(query.recordId)
-})
+/** uni-app H5 须在 onLoad 读 query 并拉数，onMounted 时 query 可能尚未就绪 */
+onLoad(async (query) => {
+  const idStr = query?.recordId || query?.reportId
+  if (!idStr) {
+    loading.value = false
+    return
+  }
 
-onMounted(async () => {
+  const recordId = String(idStr)
+  store.activeRecordId = recordId
   store.initSeedData()
-  if (recordId.value)
-    store.activeRecordId = recordId.value
 
-  // 远程模式：从后端加载报告详情
-  if (store.useRemoteApi && recordId.value) {
-    const id = Number(recordId.value)
-    if (!isNaN(id)) {
-      serverDetail.value = await store.loadReportDetail(id)
+  try {
+    if (store.useRemoteApi) {
+      const id = Number(recordId)
+      if (!Number.isNaN(id)) {
+        const detail = await store.loadReportDetail(id)
+        if (detail)
+          record.value = store.mapServerDetailToRecord(detail)
+      }
+      if (!record.value && store.activeProfileId) {
+        await store.loadReadingRecords(store.activeProfileId)
+        const found = store.readingRecords.find(r => String(r.reportId ?? r.id) === recordId)
+        if (found)
+          record.value = store.mapServerReportToRecord(found)
+      }
+    }
+    else {
+      record.value = store.getRecordById(recordId)
     }
   }
-  loading.value = false
-})
-
-const record = computed(() => {
-  // 远程模式：从服务器详情构建
-  if (store.useRemoteApi && serverDetail.value)
-    return store.mapServerDetailToRecord(serverDetail.value)
-  // 本地模式
-  const id = recordId.value || store.activeRecordId
-  return id ? store.getRecordById(id) : null
+  finally {
+    loading.value = false
+    // eslint-disable-next-line no-console
+    console.log('[jiedu/detail] record=', record.value)
+    // eslint-disable-next-line no-console
+    console.log('[jiedu/detail] profile=', profile.value)
+  }
 })
 
 const profile = computed(() => {
   if (!record.value)
     return null
-  if (store.useRemoteApi) {
-    return { name: record.value.profileName, relationText: '' } as any
-  }
+  if (store.useRemoteApi)
+    return { name: record.value.profileName, relationText: '' }
   return store.getProfileById(record.value.profileId)
 })
 
@@ -62,14 +72,20 @@ function goSetupAgain() {
     store.navigateToSetup(store.activeProfileId || undefined)
     return
   }
-  if (profile.value && 'id' in profile.value && profile.value.id) {
+  if (profile.value && 'id' in profile.value && profile.value.id)
     store.navigateToSetup(profile.value.id)
-  }
 }
 </script>
 
 <template>
-  <view v-if="record && profile" class="gx-page flex_column page-container">
+  <view v-if="loading" class="gx-page flex_column page-container">
+    <GxNavBar title="专属解读详情" :show-back="true" />
+    <view class="gx-empty-state">
+      <view class="empty-text">加载中...</view>
+    </view>
+  </view>
+
+  <view v-else-if="record && profile" class="gx-page flex_column page-container">
     <GxNavBar title="专属解读详情" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
@@ -79,11 +95,11 @@ function goSetupAgain() {
         <view class="report-frame">
           <!-- Report Header -->
           <view class="report-header">
-            <view class="report-title-main">心语生活参考</view>
+            <view class="report-title-main">{{ record.title || '心语生活参考' }}</view>
             <view class="report-meta-text">
-              <view class="meta-row-item">档案：<strong>{{ profile.name }}</strong> ({{ profile.relationText }})</view>
+              <view class="meta-row-item">档案：<strong>{{ profile.name }}</strong><template v-if="profile.relationText"> ({{ profile.relationText }})</template></view>
               <view class="meta-row-item">生成时间：{{ record.time }}</view>
-              <view class="meta-row-item highlight">关注：{{ record.directions.join('、') }}</view>
+              <view v-if="record.directions.length" class="meta-row-item highlight">关注：{{ record.directions.join('、') }}</view>
             </view>
           </view>
 

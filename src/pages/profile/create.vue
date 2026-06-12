@@ -248,6 +248,7 @@ function buildBirthParts(): BirthDateTimeParts | null {
     day: d,
     hour: h,
     minute: min,
+    second: 0,
   }
 }
 

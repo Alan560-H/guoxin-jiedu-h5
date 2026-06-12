@@ -47,27 +47,10 @@ export default defineConfig(({ mode }) => {
       port: 9999, // 端口（保留）
       host: '0.0.0.0', // 替代 disableHostCheck: true，允许外部访问
       proxy: {
-        '/app-api': {
-          target: 'https://paipanapp.yipuwh.com',
-          changeOrigin: true,
-          secure: false,
-        },
-        '/prod-api/api/yiqixue/app/guoxin': {
+        '/api/yiqixue/app/guoxin': {
           target: guoxinDevProxyTarget,
           changeOrigin: true,
-          secure: false,
-          rewrite: path => path.replace(/^\/prod-api/, ''),
-        },
-
-        '/test-api': {
-          target: 'https://test-app.yipuwh.com',
-          changeOrigin: true,
-          secure: false,
-        },
-        '/care-api': {
-          target: 'https://care.yipuwenhua.com',
-          changeOrigin: true,
-          secure: false,
+          secure: true,
         },
 
       },

@@ -35,7 +35,7 @@ const appConfig: AppConfig = {
         baseUrl: 'https://test.yipuwenhua.com/app-api',
     },
     dev: {
-        baseUrl: '/prod-api',
+        baseUrl: '',
     },
     prod: {
         baseUrl: '',

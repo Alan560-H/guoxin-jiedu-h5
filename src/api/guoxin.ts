@@ -1,7 +1,6 @@
 import { http } from 'uview-pro'
 import type { ResponseData } from '@/models/responseData'
 import type { ProfileVo } from '@/models/guoxin/profile'
-import type { RecordVo } from '@/models/guoxin/record'
 import type { WxPayCreateParam, WxPayCreateVo } from '@/models/weixin'
 
 const BASE = '/api/yiqixue/app/guoxin'
@@ -42,13 +41,9 @@ export const getOrders = (): Promise<ResponseData<any[]>> =>
 export const getAvailableCount = (productId: number): Promise<ResponseData<any>> =>
   http.get(`${BASE}/availableCount`, { productId })
 
-/** 获取用户报告列表（userId由后端从JWT解析） */
-export const getReports = (): Promise<ResponseData<any[]>> =>
-  http.get(`${BASE}/reports`)
-
 /** 获取解读记录列表（含档案信息，userId由后端从JWT解析） */
-export const getReadingRecords = (): Promise<ResponseData<any[]>> =>
-  http.get(`${BASE}/readingRecords`)
+export const getReadingRecords = (params?: { profileId?: string | number, pageSize?: number }): Promise<ResponseData<any[]>> =>
+  http.get(`${BASE}/readingRecords`, params)
 
 /** 获取用户总可用次数（userId由后端从JWT解析） */
 export const getCredits = (): Promise<ResponseData<any>> =>
@@ -93,11 +88,6 @@ export const updateProfile = (id: number, data: any): Promise<ResponseData<any>>
 /** 删除档案 */
 export const deleteProfile = (id: number): Promise<ResponseData<any>> =>
   http.delete(`${BASE}/profile/${id}`)
-
-/** V2 预留：解读记录 */
-export const getJieduRecords = (profileId: string): Promise<ResponseData<RecordVo[]>> =>
-  http.get(`${BASE}/records`, { profileId })
-
 
 /** 创建微信支付订单（JSAPI），返回 WeixinJSBridge 唤起参数 */
 export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayCreateVo>> =>

@@ -17,7 +17,7 @@ export function normalizeProfileVo(raw: Record<string, unknown>): ProfileVo {
   const rawLunar = typeof raw.birthDayLunar === 'string' ? raw.birthDayLunar.trim() : ''
   const dual = (rawSolar && rawLunar)
     ? {
-        birthDay,
+        birthDay: rawSolar,
         birthDaySolar: rawSolar,
         birthDayLunar: rawLunar,
         lunarLeapMonth: !!raw.lunarLeapMonth,
@@ -36,8 +36,8 @@ export function normalizeProfileVo(raw: Record<string, unknown>): ProfileVo {
     relationText: String(raw.relationText ?? ''),
     gender: raw.gender as ProfileVo['gender'],
     genderText: String(raw.genderText ?? ''),
-    birthDay: dual?.birthDay ?? birthDay,
-    birthDaySolar: dual?.birthDaySolar ?? birthDay,
+    birthDay: dual?.birthDaySolar ?? dual?.birthDay ?? birthDay,
+    birthDaySolar: dual?.birthDaySolar ?? dual?.birthDay ?? birthDay,
     birthDayLunar: dual?.birthDayLunar ?? birthDay,
     lunarLeapMonth: dual?.lunarLeapMonth,
     birthPlace,

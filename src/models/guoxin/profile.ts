@@ -7,7 +7,7 @@ export interface ProfileVo {
   relationText: string
   gender: GenderValue
   genderText: string
-  /** 用户所选历法下的出生时间，格式 YYYY-MM-DD HH:mm */
+  /** 公历出生时间（与 birthDaySolar 一致），格式 YYYY-MM-DD HH:mm:ss */
   birthDay: string
   /** 公历出生时间 */
   birthDaySolar: string

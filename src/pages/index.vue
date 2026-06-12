@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
 import type { FontScale } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
@@ -32,11 +31,13 @@ const loginIntent = ref<'none' | 'start'>('none')
 const oauthCodeHandled = ref<string | null>(null)
 
 /** 登录/授权成功后，继续「开始解读」后续步骤 */
-function continueJieduAfterLogin() {
+async function continueJieduAfterLogin() {
   if (store.hasNoCredits()) {
     uni.navigateTo({ url: RouterPaths.credits })
     return
   }
+  if (store.useRemoteApi)
+    await store.ensureProfilesLoaded()
   if (store.profiles.length === 0) {
     uni.navigateTo({ url: RouterPaths.profileCreate })
     return
@@ -61,7 +62,7 @@ async function handleOAuthCallback(code: string) {
     }
     await store.bootstrapAfterLogin()
     if (consumeOAuthPendingStart())
-      continueJieduAfterLogin()
+      await continueJieduAfterLogin()
   }
   catch (e: unknown) {
     uni.hideLoading()
@@ -90,14 +91,6 @@ onMounted(async () => {
   }
 
   // ③ 无 token、无 code → 正常展示首页（未登录）
-})
-
-/** 回到首页：读 Pinia 缓存，不重复请求（支付/生成报告后在对应页 force 刷新） */
-onShow(() => {
-  if (!store.useRemoteApi || !store.isLoggedIn)
-    return
-  void store.ensureCreditsLoaded()
-  void store.ensureReadingRecordsLoaded()
 })
 
 function promptBindMobile(intent: 'none' | 'start' = 'none') {
@@ -151,6 +144,10 @@ const latestRecord = computed(() => store.latestRecord)
 const profiles = computed(() => store.profiles)
 
 function handleStartJiedu() {
+  void handleStartJieduAsync()
+}
+
+async function handleStartJieduAsync() {
   if (!store.isLoggedIn) {
     promptLoginForStart()
     return
@@ -165,6 +162,9 @@ function handleStartJiedu() {
     uni.navigateTo({ url: RouterPaths.credits })
     return
   }
+
+  if (store.useRemoteApi)
+    await store.ensureProfilesLoaded()
 
   // Go to profile creation if no profiles exist
   if (profiles.value.length === 0) {
@@ -188,8 +188,14 @@ function handleCreateProfileFromModal() {
 }
 
 function goProfiles() {
+  void goProfilesAsync()
+}
+
+async function goProfilesAsync() {
   if (!requireLoggedInAndBound('none'))
     return
+  if (store.useRemoteApi)
+    await store.ensureProfilesLoaded()
   uni.navigateTo({ url: RouterPaths.profileList })
 }
 
@@ -215,8 +221,8 @@ async function handleLoginSuccess() {
   }
   const shouldContinue = loginIntent.value === 'start' || consumeOAuthPendingStart()
   loginIntent.value = 'none'
-  if (shouldContinue)
-    continueJieduAfterLogin()
+    if (shouldContinue)
+      await continueJieduAfterLogin()
 }
 </script>
 

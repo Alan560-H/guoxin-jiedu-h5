@@ -2,10 +2,8 @@ export type RemoteCacheKey =
   | 'products'
   | 'profiles'
   | 'credits'
-  | 'readingRecords'
   | 'orders'
   | 'consumeRecords'
-  | 'reports'
 
 /** 远程列表/次数类数据的加载去重与缓存标记（数据存 Pinia，此处只管是否已拉过） */
 export function createRemoteDataCache() {

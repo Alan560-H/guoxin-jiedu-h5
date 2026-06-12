@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
@@ -10,18 +10,6 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
 
 const store = useGuoxinStore()
-const showCount = ref(0)
-
-async function refreshRemoteRecords(force = false) {
-  if (!store.useRemoteApi)
-    return
-  await Promise.all([
-    store.ensureReportsLoaded(force),
-    store.ensureReadingRecordsLoaded(force),
-  ])
-  if (store.activeProfile?.id)
-    await store.loadJieduRecords(store.activeProfile.id)
-}
 
 onMounted(() => {
   if (!store.isLoggedIn) {
@@ -31,32 +19,20 @@ onMounted(() => {
   store.initSeedData()
 })
 
-/** 首次用缓存；从其他页返回时强制刷新 */
+/** 每次进入解读记录页都重新拉取当前档案的记录 */
 onShow(() => {
-  if (!store.isLoggedIn)
+  if (!store.isLoggedIn || !store.useRemoteApi)
     return
-  showCount.value++
-  void refreshRemoteRecords(showCount.value > 1)
+  const profileId = store.activeProfileId
+  if (!profileId)
+    return
+  void store.loadReadingRecords(profileId)
 })
 
 const profile = computed(() => store.activeProfile)
 const list = computed(() => {
-  if (store.useRemoteApi) {
-    const profileId = profile.value?.id
-    const merged = new Map<string, ReturnType<typeof store.mapServerReportToRecord>>()
-    for (const r of store.serverReports) {
-      const item = store.mapServerReportToRecord(r)
-      if (profileId && item.profileId !== profileId && item.profileId !== 'server')
-        continue
-      merged.set(item.id, item)
-    }
-    for (const r of store.jieduRecords) {
-      if (profileId && r.profileId !== profileId)
-        continue
-      merged.set(r.id, r)
-    }
-    return Array.from(merged.values())
-  }
+  if (store.useRemoteApi)
+    return store.readingRecords.map(r => store.mapServerReportToRecord(r))
   if (!profile.value)
     return []
   return store.getRecordsByProfileId(profile.value.id)

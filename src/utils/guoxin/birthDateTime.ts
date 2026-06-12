@@ -8,6 +8,7 @@ export interface BirthDateTimeParts {
   day: number
   hour: number
   minute: number
+  second: number
 }
 
 const LEGACY_SHICHEN_TIME: Record<string, [number, number]> = {
@@ -26,7 +27,7 @@ const LEGACY_SHICHEN_TIME: Record<string, [number, number]> = {
   '记不清了': [0, 0],
 }
 
-const BIRTH_DAY_RE = /^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}))?$/
+const BIRTH_DAY_RE = /^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
@@ -34,7 +35,8 @@ function pad2(n: number): string {
 
 export function formatBirthDay(parts: BirthDateTimeParts): string {
   const monthAbs = Math.abs(parts.month)
-  return `${parts.year}-${pad2(monthAbs)}-${pad2(parts.day)} ${pad2(parts.hour)}:${pad2(parts.minute)}`
+  const second = parts.second ?? 0
+  return `${parts.year}-${pad2(monthAbs)}-${pad2(parts.day)} ${pad2(parts.hour)}:${pad2(parts.minute)}:${pad2(second)}`
 }
 
 export function parseBirthDay(value: string | null | undefined): BirthDateTimeParts | null {
@@ -49,7 +51,35 @@ export function parseBirthDay(value: string | null | undefined): BirthDateTimePa
     day: Number(m[3]),
     hour: m[4] != null ? Number(m[4]) : 0,
     minute: m[5] != null ? Number(m[5]) : 0,
+    second: m[6] != null ? Number(m[6]) : 0,
   }
+}
+
+function partsFromSolar(solar: InstanceType<typeof Solar>): BirthDateTimeParts {
+  return {
+    year: solar.getYear(),
+    month: solar.getMonth(),
+    day: solar.getDay(),
+    hour: solar.getHour(),
+    minute: solar.getMinute(),
+    second: solar.getSecond(),
+  }
+}
+
+function partsFromLunar(lunar: InstanceType<typeof Lunar>): BirthDateTimeParts {
+  return {
+    year: lunar.getYear(),
+    month: lunar.getMonth(),
+    day: lunar.getDay(),
+    hour: lunar.getHour(),
+    minute: lunar.getMinute(),
+    second: lunar.getSecond(),
+  }
+}
+
+/** 农历展示/提交用月份（绝对值，不含闰月符号） */
+function lunarPartsForFormat(parts: BirthDateTimeParts): BirthDateTimeParts {
+  return { ...parts, month: Math.abs(parts.month) }
 }
 
 export function parseLegacyBirthHour(hourText: string | null | undefined): [number, number] {
@@ -62,7 +92,7 @@ export function parseLegacyBirthHour(hourText: string | null | undefined): [numb
 }
 
 export interface DualBirthDays {
-  /** 用户所选历法下的出生时间 */
+  /** 公历出生时间（与 birthDaySolar 一致） */
   birthDay: string
   birthDaySolar: string
   birthDayLunar: string
@@ -77,46 +107,34 @@ export function buildDualBirthDays(
   if (!parts.year || !parts.month || !parts.day)
     return null
 
-  const birthDay = formatBirthDay(parts)
-  const { hour, minute } = parts
+  const { hour, minute, second } = parts
+  const sec = second ?? 0
 
   if (calendarType === 'solar') {
-    const solar = Solar.fromYmdHms(parts.year, parts.month, parts.day, hour, minute, 0)
+    const solar = Solar.fromYmdHms(parts.year, parts.month, parts.day, hour, minute, sec)
     const lunar = solar.getLunar()
-    const lunarMonth = lunar.getMonth()
+    const solarParts = partsFromSolar(solar)
+    const lunarParts = partsFromLunar(lunar)
+    const birthDaySolar = formatBirthDay(solarParts)
     return {
-      birthDay,
-      birthDaySolar: birthDay,
-      birthDayLunar: formatBirthDay({
-        year: lunar.getYear(),
-        month: Math.abs(lunarMonth),
-        day: lunar.getDay(),
-        hour,
-        minute,
-      }),
-      lunarLeapMonth: lunarMonth < 0,
+      birthDay: birthDaySolar,
+      birthDaySolar,
+      birthDayLunar: formatBirthDay(lunarPartsForFormat(lunarParts)),
+      lunarLeapMonth: lunarParts.month < 0,
     }
   }
 
-  const lunar = Lunar.fromYmdHms(parts.year, parts.month, parts.day, hour, minute, 0)
+  const lunar = Lunar.fromYmdHms(parts.year, parts.month, parts.day, hour, minute, sec)
   const solar = lunar.getSolar()
+  const solarParts = partsFromSolar(solar)
+  const lunarParts = partsFromLunar(lunar)
+  const birthDaySolar = formatBirthDay(solarParts)
+  const birthDayLunar = formatBirthDay(lunarPartsForFormat(lunarParts))
   return {
-    birthDay,
-    birthDaySolar: formatBirthDay({
-      year: solar.getYear(),
-      month: solar.getMonth(),
-      day: solar.getDay(),
-      hour,
-      minute,
-    }),
-    birthDayLunar: formatBirthDay({
-      year: parts.year,
-      month: Math.abs(parts.month),
-      day: parts.day,
-      hour,
-      minute,
-    }),
-    lunarLeapMonth: parts.month < 0,
+    birthDay: birthDaySolar,
+    birthDaySolar,
+    birthDayLunar,
+    lunarLeapMonth: lunarParts.month < 0,
   }
 }
 
@@ -158,7 +176,7 @@ export function formatBirthDayDisplay(
     return birthDay || '未填写'
   const cal = calendarTypeText ?? (calendarType === 'lunar' ? '农历' : '公历')
   const monthLabel = lunarLeapMonth ? `闰${p.month}` : String(p.month)
-  return `${cal} ${p.year}年${monthLabel}月${p.day}日 ${pad2(p.hour)}:${pad2(p.minute)}`
+  return `${cal} ${p.year}年${monthLabel}月${p.day}日 ${pad2(p.hour)}:${pad2(p.minute)}:${pad2(p.second ?? 0)}`
 }
 
 export function formatDualBirthDayDisplay(profile: {
@@ -214,5 +232,5 @@ export function resolveBirthDayString(raw: LegacyProfileBirth): string {
   if (y == null || m == null || d == null)
     return ''
   const [hour, minute] = parseLegacyBirthHour(raw.birthHour)
-  return formatBirthDay({ year: y, month: m, day: d, hour, minute })
+  return formatBirthDay({ year: y, month: m, day: d, hour, minute, second: 0 })
 }

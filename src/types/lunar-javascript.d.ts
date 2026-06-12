@@ -16,6 +16,9 @@ declare module 'lunar-javascript' {
     getYear(): number
     getMonth(): number
     getDay(): number
+    getHour(): number
+    getMinute(): number
+    getSecond(): number
     getLunar(): Lunar
   }
 
@@ -24,6 +27,9 @@ declare module 'lunar-javascript' {
     getYear(): number
     getMonth(): number
     getDay(): number
+    getHour(): number
+    getMinute(): number
+    getSecond(): number
     getSolar(): Solar
   }
 }

@@ -11,7 +11,7 @@ import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 
 const store = useGuoxinStore()
-const selectedId = ref<CreditPackageId>('standard')
+const selectedId = ref<CreditPackageId>('')
 const selectedProductId = ref<number | null>(null)
 const purchasing = ref(false)
 const showLogin = ref(false)
@@ -125,11 +125,6 @@ function goBack() {
 async function handleLoginSuccess() {
   await store.ensureCreditsLoaded(true)
 }
-
-function freeAdd() {
-  store.addCredits(10)
-  uni.showToast({ title: '已免费赠送10次', icon: 'success' })
-}
 </script>
 
 <template>
@@ -181,9 +176,6 @@ function freeAdd() {
       <view class="gx-btn-group action-buttons">
         <GxButton type="primary" :disabled="purchasing" @click="purchase">
           {{ purchasing ? '支付中...' : '立即开通权益' }}
-        </GxButton>
-        <GxButton v-if="!store.useRemoteApi" type="secondary" @click="freeAdd">
-          【测试演示】免费增加 10 次
         </GxButton>
         <GxButton type="outline" @click="goBack">
           稍后再说
