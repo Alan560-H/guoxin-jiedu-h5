@@ -5,6 +5,7 @@ import { userInfoStore } from "@/stores/userInfoStore"
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import { isAppEmbeddedWebView } from '@/utils/appWebView'
+import { extractHttpResponseMsg } from '@/utils/guoxin/apiError'
 // 示例：演示如何使用token
 const isDevelopment = process.env.NODE_ENV === 'development';
 const baseUrl = isDevelopment ? dev.baseUrl : prod.baseUrl;
@@ -61,16 +62,16 @@ const httpInterceptor : RequestInterceptor = {
 			meta.toast && showToast('请求错误：未知', 'error')
 			throw new Error('请求错误：未知')
 		}
-		// 请求错误
+		// 请求错误（HTTP 非 2xx；body 为 JSON 时优先展示 msg）
 		if (!(statusCode >= 200 && statusCode < 300)) {
-			const errorMessage = `请求错误[${statusCode}]`
-			meta.toast && showToast(errorMessage, 'error')
-			throw new Error(`${errorMessage}：${errMsg}`)
+			const errorMessage = extractHttpResponseMsg(rawData, statusCode)
+			meta.toast && showToast(errorMessage, 'error', { duration: 2500 })
+			throw new Error(errorMessage)
 		}
 		// 业务逻辑错误：登录过期/状态码不正确
-		// 这里仅为演示，根据实际业务确定
 		const { code, msg = '请求错误：未知' } = rawData as any
-		if (code === 403 || code === 401) {
+		const codeNum = Number(code)
+		if (codeNum === 403 || codeNum === 401) {
 			if (!meta.skipSessionClear) {
 				uni.removeStorageSync('apph5Token')
 				useGuoxinStore().clearSession()
@@ -80,7 +81,7 @@ const httpInterceptor : RequestInterceptor = {
 			}
 			throw new Error(rawData)
 		}
-		else if (!(code >= 200 && code < 300)) {
+		else if (!(codeNum >= 200 && codeNum < 300)) {
 			meta.toast && showToast(msg, 'error', { duration: 2500 })
 			 return Promise.reject(rawData); // 替换throw，返回拒绝的Promise
 		}

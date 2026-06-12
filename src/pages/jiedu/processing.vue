@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { onUnload } from '@dcloudio/uni-app'
+import { onMounted, onBeforeUnmount, ref } from 'vue'
+import { onHide, onUnload } from '@dcloudio/uni-app'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
@@ -77,6 +77,11 @@ function tryFinishWhenReady() {
     finishAndGoComplete()
   else
     handlePollFailure(pollErrorMsg.value || '报告生成失败，请稍后查看')
+}
+
+function deactivatePage() {
+  pageActive.value = false
+  clearSimulationTimer()
 }
 
 async function pollRemoteTask() {
@@ -183,9 +188,16 @@ onMounted(async () => {
   startSimulation()
 })
 
+onHide(() => {
+  deactivatePage()
+})
+
 onUnload(() => {
-  pageActive.value = false
-  clearSimulationTimer()
+  deactivatePage()
+})
+
+onBeforeUnmount(() => {
+  deactivatePage()
 })
 
 function skipNow() {
@@ -199,6 +211,7 @@ function skipNow() {
   finishAndGoComplete()
 }
 function goRecords() {
+  deactivatePage()
   uni.navigateTo({ url: RouterPaths.jieduRecords })
 }
 </script>

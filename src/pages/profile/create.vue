@@ -31,6 +31,15 @@ import {
   getLunarMonthOptions,
   getLunarYearOptions,
 } from '@/utils/guoxin/lunarCalendar'
+import {
+  formatLunarDayLabel,
+  formatLunarMonthLabel,
+  resolveShichenIndex,
+  resolveShichenLabel,
+  SHICHEN_OPTIONS,
+  shichenLabels,
+  toChineseYear,
+} from '@/utils/guoxin/lunarDisplay'
 
 const store = useGuoxinStore()
 
@@ -52,6 +61,11 @@ const useTrueSolarTime = ref(false)
 const dateFilled = ref(false)
 const dateIndex = ref<[number, number, number]>([0, 0, 0])
 const timeIndex = ref<[number, number]>([0, 0])
+/** 农历时辰 picker；未手动改过时用 storedBirthHour/Minute（编辑保留原分钟） */
+const shichenIndex = ref(0)
+const shichenTouched = ref(false)
+const storedBirthHour = ref(0)
+const storedBirthMinute = ref(0)
 
 const solarYears = buildYearRange()
 const lunarYears = getLunarYearOptions()
@@ -85,16 +99,27 @@ const dayList = computed(() => {
   return Array.from({ length: monthOpt.dayCount }, (_, i) => i + 1)
 })
 
-const dateLabels = computed(() => [
-  yearList.value.map(y => `${y}年`),
-  monthList.value.map(m => m.label),
-  dayList.value.map(d => `${d}日`),
-])
+const dateLabels = computed(() => {
+  if (calendarType.value === 'lunar') {
+    return [
+      yearList.value.map(y => toChineseYear(y)),
+      monthList.value.map(m => formatLunarMonthLabel(m.month)),
+      dayList.value.map(d => formatLunarDayLabel(d)),
+    ]
+  }
+  return [
+    yearList.value.map(y => `${y}年`),
+    monthList.value.map(m => m.label),
+    dayList.value.map(d => `${d}日`),
+  ]
+})
 
 const timeLabels = computed(() => [
   hourOptions.map(h => `${String(h).padStart(2, '0')}时`),
   minuteOptions.map(m => `${String(m).padStart(2, '0')}分`),
 ])
+
+const shichenPickerRange = shichenLabels()
 
 const dateDisplay = computed(() => {
   if (!dateFilled.value)
@@ -104,11 +129,17 @@ const dateDisplay = computed(() => {
   const d = dayList.value[dateIndex.value[2]]
   if (y == null || !m || d == null)
     return ''
-  const cal = calendarType.value === 'lunar' ? '农历' : '公历'
-  return `${cal} ${y}年${m.label}${d}日`
+  if (calendarType.value === 'lunar')
+    return `农历 ${toChineseYear(y)}${formatLunarMonthLabel(m.month)}${formatLunarDayLabel(d)}`
+  return `公历 ${y}年${m.label}${d}日`
 })
 
 const timeDisplay = computed(() => {
+  if (calendarType.value === 'lunar') {
+    if (shichenTouched.value)
+      return SHICHEN_OPTIONS[shichenIndex.value]?.label ?? '子时(早)'
+    return resolveShichenLabel(storedBirthHour.value, storedBirthMinute.value)
+  }
   const h = hourOptions[timeIndex.value[0]] ?? 0
   const m = minuteOptions[timeIndex.value[1]] ?? 0
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
@@ -124,8 +155,18 @@ function resetDateIndex() {
   dateFilled.value = false
 }
 
+function resetTimeState() {
+  timeIndex.value = [0, 0]
+  shichenIndex.value = 0
+  shichenTouched.value = false
+  storedBirthHour.value = 0
+  storedBirthMinute.value = 0
+}
+
 watch(calendarType, () => {
   resetDateIndex()
+  if (!isEditMode.value)
+    resetTimeState()
 })
 
 function applyProfileToForm(p: ProfileVo) {
@@ -167,6 +208,10 @@ function applyProfileToForm(p: ProfileVo) {
   dateIndex.value[2] = di
   dateFilled.value = true
 
+  storedBirthHour.value = parts.hour
+  storedBirthMinute.value = parts.minute
+  shichenTouched.value = false
+  shichenIndex.value = resolveShichenIndex(parts.hour, parts.minute)
   timeIndex.value = [
     Math.max(0, hourOptions.indexOf(parts.hour)),
     Math.max(0, minuteOptions.indexOf(parts.minute)),
@@ -229,6 +274,25 @@ function onTimeChange(e: { detail: { value: number[] } }) {
   timeIndex.value = e.detail.value as [number, number]
 }
 
+function onShichenChange(e: { detail: { value: number } }) {
+  shichenIndex.value = e.detail.value
+  shichenTouched.value = true
+}
+
+function resolveBirthHourMinute(): { hour: number, minute: number } {
+  if (calendarType.value === 'lunar') {
+    if (shichenTouched.value) {
+      const opt = SHICHEN_OPTIONS[shichenIndex.value] ?? SHICHEN_OPTIONS[0]
+      return { hour: opt.hour, minute: opt.minute }
+    }
+    return { hour: storedBirthHour.value, minute: storedBirthMinute.value }
+  }
+  return {
+    hour: hourOptions[timeIndex.value[0]] ?? 0,
+    minute: minuteOptions[timeIndex.value[1]] ?? 0,
+  }
+}
+
 function onRegionChange(payload: { birthPlace: string, areaCode: string }) {
   birthPlace.value = payload.birthPlace
   areaCode.value = payload.areaCode
@@ -238,8 +302,7 @@ function buildBirthParts(): BirthDateTimeParts | null {
   const y = yearList.value[dateIndex.value[0]]
   const m = monthList.value[dateIndex.value[1]]
   const d = dayList.value[dateIndex.value[2]]
-  const h = hourOptions[timeIndex.value[0]] ?? 0
-  const min = minuteOptions[timeIndex.value[1]] ?? 0
+  const { hour: h, minute: min } = resolveBirthHourMinute()
   if (y == null || !m || d == null)
     return null
   return {
@@ -404,6 +467,7 @@ async function save(startImmediately: boolean) {
               </text>
             </view>
             <picker
+              :key="`date-${calendarType}`"
               mode="multiSelector"
               :range="dateLabels"
               :value="dateIndex"
@@ -424,9 +488,27 @@ async function save(startImmediately: boolean) {
 
           <view class="form-item">
             <view class="gx-form-label item-label">
-              出生时间（选填，默认 00:00）
+              {{ calendarType === 'lunar' ? '出生时辰（选填，默认子时早）' : '出生时间（选填，默认 00:00）' }}
             </view>
             <picker
+              v-if="calendarType === 'lunar'"
+              key="time-lunar"
+              mode="selector"
+              :range="shichenPickerRange"
+              :value="shichenIndex"
+              class="custom-picker-trigger"
+              @change="onShichenChange"
+            >
+              <view class="select-trigger-box">
+                <text>{{ timeDisplay }}</text>
+                <text class="picker-arrow">
+                  ›
+                </text>
+              </view>
+            </picker>
+            <picker
+              v-else
+              key="time-solar"
               mode="multiSelector"
               :range="timeLabels"
               :value="timeIndex"

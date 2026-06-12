@@ -17,8 +17,9 @@ import {
   normalizeGenerateResult,
   toTaskIdNumber,
 } from '@/utils/guoxin/reportGenerate'
-import { createRemoteDataCache, type RemoteCacheKey } from '@/utils/guoxin/remoteDataCache'
+import { extractApiErrorMsg } from '@/utils/guoxin/apiError'
 import { mapReportDetailToRecordVo, parseReportDirections } from '@/utils/guoxin/parseReportDetail'
+import { createRemoteDataCache } from '@/utils/guoxin/remoteDataCache'
 import {
   login as apiLogin,
   wxLogin as apiWxLogin,
@@ -354,6 +355,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       }
       await ensureCreditsLoaded()
       if (totalAvailableCount.value <= 0) {
+        uni.navigateTo({ url: RouterPaths.credits })
+        return false
+      }
+      const productId = await resolveActiveProductId()
+      if (!productId) {
+        uni.showToast({ title: '暂无法获取体验包，请前往权益页', icon: 'none' })
         uni.navigateTo({ url: RouterPaths.credits })
         return false
       }
@@ -765,12 +772,19 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return remoteCache.ensure('credits', () => loadCredits(), { force })
   }
 
-  /** 生成报告前解析商品 id（优先缓存；否则从 credits 接口带回） */
+  /** 生成报告前解析商品 id（credits → 解读提交时按需拉 products 兜底） */
   async function resolveActiveProductId(): Promise<number | null> {
     if (activeProductId.value != null)
       return activeProductId.value
     await ensureCreditsLoaded()
-    return activeProductId.value
+    if (activeProductId.value != null)
+      return activeProductId.value
+    await ensureProductsLoaded()
+    if (serverProducts.value.length > 0) {
+      activeProductId.value = serverProducts.value[0].id
+      return activeProductId.value
+    }
+    return null
   }
 
   async function ensureOrdersLoaded(force = false) {
@@ -844,7 +858,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         return normalizeGenerateResult(res.data as Record<string, unknown>)
       }
       uni.showToast({ title: res.msg || '生成失败', icon: 'none' })
-    } catch (e) {
+    }
+    catch (e) {
       console.error('生成报告失败', e)
     }
     return null
@@ -864,7 +879,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       if (shouldAbort?.())
         return { cancelled: true as const }
       try {
-        const res = await getTaskStatus(id)
+        const res = await getTaskStatus(id, {
+          meta: { loading: false, toast: false },
+        })
         if (shouldAbort?.())
           return { cancelled: true as const }
         if (res.code === 200 && res.data) {
@@ -882,8 +899,14 @@ export const useGuoxinStore = defineStore('guoxin', () => {
             }
           }
         }
-      } catch (e) {
+      }
+      catch (e) {
         console.error('查询任务状态失败', e)
+        return {
+          failed: true as const,
+          success: false as const,
+          msg: extractApiErrorMsg(e, '查询任务状态失败'),
+        }
       }
       if (i < maxRetries - 1) {
         const slept = await sleepUntil(interval, shouldAbort)
