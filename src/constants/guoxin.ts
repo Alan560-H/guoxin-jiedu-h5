@@ -55,3 +55,6 @@ export type CreditPackageId = string
 export const DISCLAIMER_TEXT = '内容仅供传统文化学习与生活参考，不作为医疗、法律、理财等任何现实决策依据。'
 
 export const CREDITS_PAYWALL_TEXT = '权益开通后不支持退款，请根据实际需要选择。'
+
+/** 是否开放短信验证码登录（绑定手机号仍使用短信验证码） */
+export const SMS_LOGIN_ENABLED = false

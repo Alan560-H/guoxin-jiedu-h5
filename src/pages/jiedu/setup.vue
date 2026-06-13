@@ -8,10 +8,12 @@ import { DIRECTION_OPTIONS } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { formatDualBirthDayDisplay } from '@/utils/guoxin/birthDateTime'
-import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { navigateBackOrHome, navigateToHome } from '@/utils/guoxin/navigation'
+import { useActionLock } from '@/utils/guoxin/useActionLock'
 
 const { t } = useI18n()
 const store = useGuoxinStore()
+const { locking: confirming, runLocked } = useActionLock()
 const selected = ref<DirectionValue[]>(['家庭关系'])
 const step = ref(1)
 const scrollIntoViewId = ref('')
@@ -47,10 +49,13 @@ onMounted(() => {
     return
   }
   store.initSeedData()
-  if (!store.activeProfile) {
-    uni.redirectTo({ url: RouterPaths.profileList })
-  }
+  if (!store.activeProfile)
+    uni.redirectTo({ url: RouterPaths.profileCreate })
 })
+
+function goHome() {
+  navigateToHome()
+}
 
 const profile = computed(() => store.activeProfile)
 
@@ -107,8 +112,10 @@ function handleBack() {
 }
 
 async function confirm() {
-  absorbPendingInput()
-  await store.confirmJiedu(selected.value, userQuestion.value || undefined)
+  await runLocked(async () => {
+    absorbPendingInput()
+    await store.confirmJiedu(selected.value, userQuestion.value || undefined)
+  })
 }
 
 function goProfiles() {
@@ -162,7 +169,7 @@ function getIconName(dir: DirectionValue): string {
     <view class="sub-header-bar">
       <view>
         {{ t('jiedu.setup.creditsRemain') }}<text class="credit-count-val" @tap.stop="goCredits">
-          {{ store.credits }}
+          {{ store.displayCredits }}
         </text>{{ t('jiedu.setup.creditsUnit') }}
       </view>
       <view class="consultant-label">
@@ -314,7 +321,7 @@ function getIconName(dir: DirectionValue): string {
           </view>
 
           <view class="confirm-actions">
-            <GxButton type="primary" @click="confirm">
+            <GxButton type="primary" :disabled="confirming" @click="confirm">
               {{ t('jiedu.setup.confirmStart') }}
             </GxButton>
             <GxButton type="secondary" @click="goProfiles">
@@ -342,6 +349,14 @@ function getIconName(dir: DirectionValue): string {
       </button>
     </view>
   </view>
+  <view v-else class="gx-chat-page flex_column page-container setup-empty">
+    <view class="empty-tip">
+      未找到当前档案，请重新创建
+    </view>
+    <GxButton type="primary" @click="goHome">
+      返回首页
+    </GxButton>
+  </view>
 </template>
 
 <style scoped lang="scss">
@@ -359,6 +374,20 @@ function getIconName(dir: DirectionValue): string {
     #FCF5E9;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.setup-empty {
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 48rpx;
+  gap: 40rpx;
+}
+
+.empty-tip {
+  font-size: 28rpx;
+  color: #665b4e;
+  text-align: center;
+  line-height: 1.6;
 }
 
 /* Custom Header Bar */

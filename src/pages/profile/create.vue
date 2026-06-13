@@ -40,8 +40,10 @@ import {
   shichenLabels,
   toChineseYear,
 } from '@/utils/guoxin/lunarDisplay'
+import { useActionLock } from '@/utils/guoxin/useActionLock'
 
 const store = useGuoxinStore()
+const { locking: saving, runLocked } = useActionLock()
 
 const relationOpts = computed(() =>
   store.relationOptions.length > 0 ? store.relationOptions : RELATION_OPTIONS,
@@ -371,23 +373,38 @@ function buildDto() {
 async function save(startImmediately: boolean) {
   if (!validate())
     return
-  const dto = buildDto()
-  if (isEditMode.value && profileId.value) {
-    await store.updateProfile(profileId.value, dto)
-    uni.showToast({ title: '修改成功', icon: 'success' })
-  }
-  else {
-    const created = await store.createProfile(dto)
-    profileId.value = created.id
-    uni.showToast({ title: '创建成功', icon: 'success' })
-  }
-  if (startImmediately) {
-    store.setActiveProfile(profileId.value || store.activeProfileId)
-    store.navigateToSetup()
-  }
-  else {
-    uni.navigateTo({ url: RouterPaths.profileList })
-  }
+  await runLocked(async () => {
+    const dto = buildDto()
+    try {
+      uni.showLoading({ title: '保存中...', mask: true })
+      if (isEditMode.value && profileId.value) {
+        const updated = await store.updateProfile(profileId.value, dto)
+        if (!updated) {
+          uni.showToast({ title: '档案不存在或已删除', icon: 'none' })
+          return
+        }
+        uni.showToast({ title: '修改成功', icon: 'success' })
+      }
+      else {
+        const created = await store.createProfile(dto)
+        profileId.value = created.id
+        uni.showToast({ title: '创建成功', icon: 'success' })
+      }
+    }
+    catch {
+      return
+    }
+    finally {
+      uni.hideLoading()
+    }
+    if (startImmediately) {
+      store.setActiveProfile(profileId.value || store.activeProfileId)
+      store.navigateToSetup()
+    }
+    else {
+      uni.navigateTo({ url: RouterPaths.profileList })
+    }
+  })
 }
 </script>
 
@@ -556,10 +573,10 @@ async function save(startImmediately: boolean) {
       </view>
 
       <view class="gx-btn-group form-actions">
-        <GxButton type="primary" @click="save(true)">
+        <GxButton type="primary" :disabled="saving" @click="save(true)">
           保存档案并开始解读
         </GxButton>
-        <GxButton type="secondary" @click="save(false)">
+        <GxButton type="secondary" :disabled="saving" @click="save(false)">
           仅保存档案
         </GxButton>
       </view>

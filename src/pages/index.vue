@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { FontScale } from '@/constants/guoxin'
+import { SMS_LOGIN_ENABLED } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxButton from '@/components/guoxin/GxButton.vue'
@@ -8,8 +9,9 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 import { ImageConfig } from '@/config/assets'
-import { isWeChatBrowser } from '@/utils/weixin/env'
+import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
 import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
+import { useActionLock } from '@/utils/guoxin/useActionLock'
 import {
   redirectToWxOAuth,
   markOAuthPendingStart,
@@ -20,10 +22,11 @@ import {
 } from '@/utils/weixin/oauth'
 
 const store = useGuoxinStore()
+const { locking: startingJiedu, runLocked: runStartJieduLocked } = useActionLock()
 
 const showLogin = ref(false)
 const showWxAuth = ref(false)
-const loginMode = ref<'smsLogin' | 'bindMobile'>('smsLogin')
+const loginMode = ref<'smsLogin' | 'bindMobile'>('bindMobile')
 const showProfileSelect = ref(false)
 /** 登录完成后是否继续「开始解读」流程 */
 const loginIntent = ref<'none' | 'start'>('none')
@@ -112,7 +115,7 @@ function requireLoggedInAndBound(intent: 'none' | 'start' = 'none'): boolean {
 }
 
 /**
- * 未登录时弹登录选择：微信内可选「网页授权」或「短信验证码」；非微信仅短信。
+ * 未登录时：微信内弹授权；非微信提示复制链接到微信打开。
  */
 function promptLogin(intent: 'none' | 'start' = 'none') {
   loginIntent.value = intent
@@ -120,8 +123,7 @@ function promptLogin(intent: 'none' | 'start' = 'none') {
     showWxAuth.value = true
     return
   }
-  loginMode.value = 'smsLogin'
-  showLogin.value = true
+  promptOpenInWeChat({ force: true })
 }
 
 function promptLoginForStart() {
@@ -135,16 +137,20 @@ function confirmWxAuth() {
 }
 
 function switchToSmsLogin() {
+  if (!SMS_LOGIN_ENABLED)
+    return
   showWxAuth.value = false
   loginMode.value = 'smsLogin'
   showLogin.value = true
 }
 
+const showSmsLoginEntry = SMS_LOGIN_ENABLED
+
 const latestRecord = computed(() => store.latestRecord)
 const profiles = computed(() => store.profiles)
 
 function handleStartJiedu() {
-  void handleStartJieduAsync()
+  void runStartJieduLocked(() => handleStartJieduAsync())
 }
 
 async function handleStartJieduAsync() {
@@ -256,7 +262,7 @@ async function handleLoginSuccess() {
 
       <!-- Action Buttons -->
       <view class="gx-btn-group action-buttons">
-        <GxButton type="primary" @click="handleStartJiedu">
+        <GxButton type="primary" :disabled="startingJiedu" @click="handleStartJiedu">
           开始我的专属解读
         </GxButton>
         <GxButton type="secondary" @click="goProfiles">
@@ -326,7 +332,7 @@ async function handleLoginSuccess() {
           <GxButton type="primary" @click="confirmWxAuth">
             微信授权登录
           </GxButton>
-          <GxButton type="outline" @click="switchToSmsLogin">
+          <GxButton v-if="showSmsLoginEntry" type="outline" @click="switchToSmsLogin">
             短信验证码登录
           </GxButton>
         </view>

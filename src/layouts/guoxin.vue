@@ -1,5 +1,15 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { DISCLAIMER_TEXT } from '@/constants/guoxin'
+import { useGuoxinStore } from '@/stores/guoxinStore'
+import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
+
+const store = useGuoxinStore()
+
+onMounted(() => {
+  if (store.useRemoteApi && !isWeChatBrowser())
+    promptOpenInWeChat()
+})
 </script>
 
 <template>

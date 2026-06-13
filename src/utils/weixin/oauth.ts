@@ -4,6 +4,7 @@ import {
   getOAuthCodeFromUrl,
   getOAuthStateFromUrl,
   isWeChatBrowser,
+  promptOpenInWeChat,
 } from '@/utils/weixin/env'
 
 /** 国心解读 OAuth 回调 state，须与授权跳转时一致 */
@@ -14,7 +15,7 @@ const OAUTH_PENDING_START_KEY = 'guoxin-oauth-pending-start'
 /** 跳转微信网页授权（须用户点击触发，见微信文档） */
 export function redirectToWxOAuth(state = GUOXIN_OAUTH_STATE): void {
   if (!isWeChatBrowser()) {
-    uni.showToast({ title: '请在微信内打开', icon: 'none' })
+    promptOpenInWeChat({ force: true })
     return
   }
   window.location.href = buildOAuthUrl(state)

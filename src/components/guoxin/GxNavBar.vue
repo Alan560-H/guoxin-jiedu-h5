@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { RouterPaths } from '@/routerPaths'
-import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { navigateBackOrHome, navigateToHome } from '@/utils/guoxin/navigation'
 
 const props = defineProps<{
   title?: string
   showBack?: boolean
   backDelta?: number
+  /** 为 true 时返回始终 reLaunch 到 fallbackUrl（默认首页） */
+  backHome?: boolean
   /** 无法 navigateBack 时的 fallback，默认首页 */
   fallbackUrl?: string
   dark?: boolean
@@ -17,6 +19,10 @@ const emit = defineEmits<{
 }>()
 
 function goBack() {
+  if (props.backHome) {
+    navigateToHome(props.fallbackUrl || RouterPaths.home)
+    return
+  }
   navigateBackOrHome(props.backDelta || 1, props.fallbackUrl || RouterPaths.home)
 }
 </script>
@@ -37,6 +43,9 @@ function goBack() {
 
       <view v-if="rightText" class="gx-nav-right" @tap="emit('rightClick')">
         {{ rightText }}
+      </view>
+      <view v-else-if="$slots.right" class="gx-nav-right gx-nav-right-slot">
+        <slot name="right" />
       </view>
       <view v-else class="gx-nav-back-text gx-nav-placeholder" />
     </view>
@@ -113,5 +122,10 @@ function goBack() {
   color: #153F33;
   font-weight: 600;
   padding: 8rpx 0 8rpx 16rpx;
+}
+
+.gx-nav-right-slot {
+  min-width: 120rpx;
+  padding-left: 8rpx;
 }
 </style>

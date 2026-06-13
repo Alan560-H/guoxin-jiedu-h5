@@ -7,9 +7,11 @@ import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
+import { useActionLock } from '@/utils/guoxin/useActionLock'
 
 const { t } = useI18n()
 const store = useGuoxinStore()
+const { runLocked } = useActionLock()
 
 onMounted(async () => {
   if (!store.isLoggedIn) {
@@ -55,8 +57,19 @@ function confirmDelete(id: string) {
     confirmColor: '#B7654A',
     success: (res) => {
       if (res.confirm) {
-        store.deleteProfile(id)
-        uni.showToast({ title: t('profile.list.deleted'), icon: 'success' })
+        void runLocked(async () => {
+          try {
+            uni.showLoading({ title: '删除中...', mask: true })
+            await store.deleteProfile(id)
+            uni.showToast({ title: t('profile.list.deleted'), icon: 'success' })
+          }
+          catch {
+            // HTTP 拦截器已 toast
+          }
+          finally {
+            uni.hideLoading()
+          }
+        })
       }
     },
   })

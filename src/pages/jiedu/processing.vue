@@ -6,7 +6,6 @@ import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
-import { toTaskIdNumber } from '@/utils/guoxin/reportGenerate'
 
 const store = useGuoxinStore()
 const step = ref(1)
@@ -144,33 +143,6 @@ function startSimulation() {
   }, 2500)
 }
 
-async function submitGenerateRequest(): Promise<boolean> {
-  if (!store.isLoggedIn) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
-    uni.redirectTo({ url: RouterPaths.home })
-    return false
-  }
-  const productId = await store.resolveActiveProductId()
-  if (!productId) {
-    uni.showToast({ title: '暂无法获取体验包，请前往权益页', icon: 'none' })
-    return false
-  }
-  const inputJson = store.buildActiveReportInputJson()
-  if (!inputJson) {
-    uni.showToast({ title: '档案或关注方向缺失', icon: 'none' })
-    return false
-  }
-  const result = await store.doGenerateReport(productId, inputJson)
-  if (!result?.taskId) {
-    uni.showToast({ title: '提交失败，请重试', icon: 'none' })
-    return false
-  }
-  remoteTaskId.value = toTaskIdNumber(result.taskId)
-  const initialReportId = result.reportId != null ? Number(result.reportId) : null
-  remoteReportId.value = initialReportId != null && !Number.isNaN(initialReportId) ? initialReportId : null
-  return true
-}
-
 onMounted(async () => {
   store.initSeedData()
   if (!store.activeProfile || !store.selectedDirections.length) {
@@ -178,11 +150,13 @@ onMounted(async () => {
     return
   }
   if (store.useRemoteApi) {
-    const ok = await submitGenerateRequest()
-    if (!ok) {
-      uni.navigateBack()
+    const pending = store.takePendingGenerateTask()
+    if (!pending?.taskId) {
+      uni.redirectTo({ url: RouterPaths.jieduSetup })
       return
     }
+    remoteTaskId.value = pending.taskId
+    remoteReportId.value = pending.reportId
     void pollRemoteTask()
   }
   startSimulation()
@@ -218,7 +192,7 @@ function goRecords() {
 
 <template>
   <view class="gx-page flex_column page-container">
-    <GxNavBar title="正在为您整理" :show-back="true" />
+    <GxNavBar title="正在为您整理" :show-back="true" back-home />
 
     <scroll-view scroll-y class="gx-scroll">
       <!-- Loading Banner -->

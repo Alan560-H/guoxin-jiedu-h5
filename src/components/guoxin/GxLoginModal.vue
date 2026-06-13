@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { SMS_LOGIN_ENABLED } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxButton from './GxButton.vue'
+import { useActionLock } from '@/utils/guoxin/useActionLock'
 
 const props = defineProps<{
   show: boolean
@@ -16,6 +18,8 @@ const emit = defineEmits<{
 }>()
 
 const store = useGuoxinStore()
+const { locking: submitting, runLocked: runSubmitLocked } = useActionLock()
+const { locking: sendingCode, runLocked: runSendCodeLocked } = useActionLock()
 
 const phone = ref('')
 const code = ref('')
@@ -35,20 +39,22 @@ async function sendCode() {
     uni.showToast({ title: '请输入正确的手机号码', icon: 'none' })
     return
   }
-  uni.showLoading({ title: '发送中...' })
-  const ok = await store.doSendSmsCode(phone.value)
-  uni.hideLoading()
-  if (!ok) return
-  // 开始倒计时
-  countdown.value = 60
-  timer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0 && timer) {
-      clearInterval(timer)
-      timer = null
-    }
-  }, 1000)
-  uni.showToast({ title: '验证码已发送', icon: 'success' })
+  await runSendCodeLocked(async () => {
+    uni.showLoading({ title: '发送中...' })
+    const ok = await store.doSendSmsCode(phone.value)
+    uni.hideLoading()
+    if (!ok)
+      return
+    countdown.value = 60
+    timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0 && timer) {
+        clearInterval(timer)
+        timer = null
+      }
+    }, 1000)
+    uni.showToast({ title: '验证码已发送', icon: 'success' })
+  })
 }
 
 async function handleSubmit() {
@@ -65,30 +71,38 @@ async function handleSubmit() {
     return
   }
 
-  uni.showLoading({ title: isBindMode.value ? '绑定中...' : '登录中...' })
-  try {
-    if (isBindMode.value) {
-      // 绑定手机号模式
-      await store.doBindMobileWithSms(phone.value, code.value)
-      uni.hideLoading()
-      uni.showToast({ title: '绑定成功', icon: 'success' })
-    } else {
-      // 短信登录模式（远程数据由父页 handleLoginSuccess 统一拉取，避免重复请求）
-      if (store.useRemoteApi) {
-        await store.doLoginBySms(phone.value, code.value)
-      } else {
-        store.isLoggedIn = true
+  await runSubmitLocked(async () => {
+    uni.showLoading({ title: isBindMode.value ? '绑定中...' : '登录中...' })
+    try {
+      if (isBindMode.value) {
+        await store.doBindMobileWithSms(phone.value, code.value)
+        uni.hideLoading()
+        uni.showToast({ title: '绑定成功', icon: 'success' })
       }
-      uni.hideLoading()
-      uni.showToast({ title: '登录成功', icon: 'success' })
+      else {
+        if (!SMS_LOGIN_ENABLED) {
+          uni.hideLoading()
+          uni.showToast({ title: '短信登录暂未开放，请使用微信授权', icon: 'none' })
+          return
+        }
+        if (store.useRemoteApi) {
+          await store.doLoginBySms(phone.value, code.value)
+        }
+        else {
+          store.isLoggedIn = true
+        }
+        uni.hideLoading()
+        uni.showToast({ title: '登录成功', icon: 'success' })
+      }
+      emit('success')
+      emit('close')
     }
-    emit('success')
-    emit('close')
-  } catch (e: any) {
-    uni.hideLoading()
-    console.error(isBindMode.value ? '绑定失败' : '登录失败', e)
-    uni.showToast({ title: e?.message || '操作失败，请重试', icon: 'none' })
-  }
+    catch (e: any) {
+      uni.hideLoading()
+      console.error(isBindMode.value ? '绑定失败' : '登录失败', e)
+      uni.showToast({ title: e?.message || '操作失败，请重试', icon: 'none' })
+    }
+  })
 }
 
 function openServiceAgreement() {
@@ -135,7 +149,7 @@ function openPrivacyAgreement() {
           />
           <button
             class="sms-btn"
-            :disabled="countdown > 0"
+            :disabled="countdown > 0 || sendingCode"
             @tap="sendCode"
           >
             {{ countdown > 0 ? `${countdown}s 后重试` : '获取验证码' }}
@@ -156,7 +170,7 @@ function openPrivacyAgreement() {
 
         <!-- Submit button -->
         <view class="submit-wrap">
-          <GxButton type="primary" @click="handleSubmit">
+          <GxButton type="primary" :disabled="submitting" @click="handleSubmit">
             {{ btnText }}
           </GxButton>
         </view>

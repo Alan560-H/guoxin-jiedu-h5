@@ -97,12 +97,9 @@ function showLoading() {
 	})
 }
 
-// 隐藏加载中，可以替换为uview-pro的u-loading-popup组件
+// 隐藏加载中
 function hideLoading() {
-	// 代码示例使用settimeout，仅为演示，实际开发中去掉
-	setTimeout(() => {
-		uni.hideLoading()
-	}, 1000)
+	uni.hideLoading()
 }
 
 // 显示toast，可以替换为uview-pro的u-toast组件
@@ -110,6 +107,8 @@ function showToast(title = '', icon : 'success' | 'error' | 'none' = 'none', opt
 	if (title.length === 0) {
 		return
 	}
+	// uni-app：loading 未关闭时 showToast 会被吞掉
+	uni.hideLoading()
 	uni.showToast({
 		title,
 		icon,

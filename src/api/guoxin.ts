@@ -54,8 +54,11 @@ export const getReportDetail = (reportId: number): Promise<ResponseData<any>> =>
   http.get(`${BASE}/report/detail`, { reportId })
 
 /** 提交报告生成请求（userId由后端从JWT解析） */
-export const generateReport = (data: { productId: number; inputJson?: string }): Promise<ResponseData<any>> =>
-  http.post(`${BASE}/report/generate`, data)
+export const generateReport = (
+  data: { productId: number, inputJson?: string },
+  config?: Record<string, unknown>,
+): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/report/generate`, data, config)
 
 /** 查询任务状态 */
 export const getTaskStatus = (
@@ -81,16 +84,16 @@ export const getProfileDetail = (id: number): Promise<ResponseData<any>> =>
   http.get(`${BASE}/profile/${id}`)
 
 /** 创建档案 */
-export const createProfile = (data: any): Promise<ResponseData<any>> =>
-  http.post(`${BASE}/profile`, data)
+export const createProfile = (data: any, config?: Record<string, unknown>): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/profile`, data, config)
 
 /** 编辑档案 */
-export const updateProfile = (id: number, data: any): Promise<ResponseData<any>> =>
-  http.put(`${BASE}/profile/${id}`, data)
+export const updateProfile = (id: number, data: any, config?: Record<string, unknown>): Promise<ResponseData<any>> =>
+  http.put(`${BASE}/profile/${id}`, data, config)
 
 /** 删除档案 */
-export const deleteProfile = (id: number): Promise<ResponseData<any>> =>
-  http.delete(`${BASE}/profile/${id}`)
+export const deleteProfile = (id: number, config?: Record<string, unknown>): Promise<ResponseData<any>> =>
+  http.delete(`${BASE}/profile/${id}`, config)
 
 /** 创建微信支付订单（JSAPI），返回 WeixinJSBridge 唤起参数 */
 export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayCreateVo>> =>

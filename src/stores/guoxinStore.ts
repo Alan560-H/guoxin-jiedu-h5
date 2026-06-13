@@ -17,7 +17,7 @@ import {
   normalizeGenerateResult,
   toTaskIdNumber,
 } from '@/utils/guoxin/reportGenerate'
-import { extractApiErrorMsg } from '@/utils/guoxin/apiError'
+import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
 import { mapReportDetailToRecordVo, parseReportDirections } from '@/utils/guoxin/parseReportDetail'
 import { createRemoteDataCache } from '@/utils/guoxin/remoteDataCache'
 import {
@@ -45,6 +45,9 @@ import {
 } from '@/api/guoxin'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+
+/** 档案增删改由页面展示 loading，关闭拦截器默认 loading 避免双层 */
+const PROFILE_MUTATION_META = { meta: { loading: false } }
 
 export const useGuoxinStore = defineStore('guoxin', () => {
   const profiles = ref<ProfileVo[]>([])
@@ -76,6 +79,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const useRemoteApi = ref(true) // 是否启用远程API
   const relationOptions = ref<Array<{ value: string; label: string }>>([]) // 关系选项（从字典加载）
   const remoteCache = createRemoteDataCache()
+  /** setup 确认后、进入整理页前已提交的生成任务 */
+  const pendingGenerateTask = ref<{ taskId: number, reportId: number | null } | null>(null)
 
   const activeProfile = computed(() =>
     profiles.value.find(p => p.id === activeProfileId.value) ?? null,
@@ -110,6 +115,13 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   function clearJieduSession() {
     selectedDirections.value = []
     userQuestion.value = ''
+    pendingGenerateTask.value = null
+  }
+
+  function takePendingGenerateTask() {
+    const task = pendingGenerateTask.value
+    pendingGenerateTask.value = null
+    return task
   }
 
   function initSeedData() {
@@ -231,7 +243,28 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return record
   }
 
-  function createProfile(dto: CreateProfileDto): ProfileVo {
+  async function createProfile(dto: CreateProfileDto): Promise<ProfileVo> {
+    if (useRemoteApi.value) {
+      remoteCache.invalidate(['profiles'])
+      try {
+        const res = await apiCreateProfile(dto, PROFILE_MUTATION_META)
+        if (res.code === 200 && res.data) {
+          const profile = mapServerProfile({
+            ...dto,
+            ...(res.data as Record<string, unknown>),
+          })
+          profiles.value.push(profile)
+          activeProfileId.value = profile.id
+          return profile
+        }
+        throw res
+      }
+      catch (e) {
+        console.error('创建档案失败', e)
+        throw e
+      }
+    }
+
     const profile: ProfileVo = {
       id: `p_${Date.now()}`,
       ...dto,
@@ -240,59 +273,57 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
     profiles.value.push(profile)
     activeProfileId.value = profile.id
-    // 同步到后端（后端从JWT解析userId）
-    if (useRemoteApi.value) {
-      remoteCache.invalidate(['profiles'])
-      apiCreateProfile(dto).then(res => {
-        if (res.code === 200 && res.data && res.data.id) {
-          // 用后端真实ID替换本地临时ID
-          const idx = profiles.value.findIndex(p => p.id === profile.id)
-          if (idx !== -1) {
-            profiles.value[idx].id = String(res.data.id)
-            if (activeProfileId.value === profile.id) {
-              activeProfileId.value = String(res.data.id)
-            }
-          }
-        } else {
-          console.warn('创建档案后端返回异常', res)
-        }
-      }).catch(e => {
-        console.error('创建档案后端同步失败', e)
-        uni.showToast({ title: '档案保存失败，请重试', icon: 'none' })
-      })
-    } else {
-      console.warn('创建档案未同步后端: useRemoteApi=', useRemoteApi.value, 'userId=', userId.value)
-    }
     return profile
   }
 
-  function updateProfile(id: string, dto: CreateProfileDto): ProfileVo | null {
+  async function updateProfile(id: string, dto: CreateProfileDto): Promise<ProfileVo | null> {
+    if (profiles.value.findIndex(p => p.id === id) === -1)
+      return null
+
+    if (useRemoteApi.value && !Number.isNaN(Number(id))) {
+      remoteCache.invalidate(['profiles'])
+      try {
+        const res = await apiUpdateProfile(Number(id), dto, PROFILE_MUTATION_META)
+        if (res.code !== 200)
+          throw res
+      }
+      catch (e) {
+        console.error('更新档案失败', e)
+        throw e
+      }
+    }
+
     const idx = profiles.value.findIndex(p => p.id === id)
     if (idx === -1)
       return null
+
     const existing = profiles.value[idx]
     const updated: ProfileVo = {
       ...existing,
       ...dto,
     }
     profiles.value[idx] = updated
-    // 同步到后端（后端从JWT解析userId）
-    if (useRemoteApi.value && !isNaN(Number(id))) {
-      apiUpdateProfile(Number(id), dto).catch(e => console.error('更新档案后端同步失败', e))
-    }
     return updated
   }
 
-  function deleteProfile(id: string) {
+  async function deleteProfile(id: string): Promise<void> {
+    if (useRemoteApi.value && !Number.isNaN(Number(id))) {
+      remoteCache.invalidate(['profiles'])
+      try {
+        const res = await apiDeleteProfile(Number(id), PROFILE_MUTATION_META)
+        if (res.code !== 200)
+          throw res
+      }
+      catch (e) {
+        console.error('删除档案失败', e)
+        throw e
+      }
+    }
+
     profiles.value = profiles.value.filter(p => p.id !== id)
     records.value = records.value.filter(r => r.profileId !== id)
     if (activeProfileId.value === id) {
       activeProfileId.value = profiles.value[0]?.id ?? ''
-    }
-    // 同步到后端（后端从JWT解析userId）
-    if (useRemoteApi.value && !isNaN(Number(id))) {
-      remoteCache.invalidate(['profiles'])
-      apiDeleteProfile(Number(id)).catch(e => console.error('删除档案后端同步失败', e))
     }
   }
 
@@ -348,6 +379,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       uni.showToast({ title: '请至少选择一个关注方向', icon: 'none' })
       return false
     }
+    userQuestion.value = question?.trim() || ''
+    selectedDirections.value = [...directions]
+
     if (useRemoteApi.value) {
       if (!isLoggedIn.value) {
         uni.showToast({ title: '请先登录', icon: 'none' })
@@ -364,13 +398,41 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         uni.navigateTo({ url: RouterPaths.credits })
         return false
       }
+      const inputJson = buildActiveReportInputJson()
+      if (!inputJson) {
+        uni.showToast({ title: '档案或关注方向缺失', icon: 'none' })
+        return false
+      }
+      try {
+        const result = await doGenerateReport(productId, inputJson)
+        if (!result?.taskId)
+          return false
+        const taskId = toTaskIdNumber(result.taskId)
+        if (!taskId)
+          return false
+        const reportIdRaw = result.reportId != null ? Number(result.reportId) : null
+        pendingGenerateTask.value = {
+          taskId,
+          reportId: reportIdRaw != null && !Number.isNaN(reportIdRaw) ? reportIdRaw : null,
+        }
+      }
+      catch (e) {
+        console.error('提交报告生成失败', e)
+        const action = await showApiErrorModal(e, {
+          fallback: '提交失败，请重试',
+          confirmText: '查看解读记录',
+          cancelText: '知道了',
+        })
+        if (action === 'confirm')
+          uni.navigateTo({ url: RouterPaths.jieduRecords })
+        return false
+      }
     }
     else if (credits.value <= 0) {
       uni.navigateTo({ url: RouterPaths.credits })
       return false
     }
-    userQuestion.value = question?.trim() || ''
-    selectedDirections.value = [...directions]
+
     uni.navigateTo({ url: RouterPaths.jieduProcessing })
     return true
   }
@@ -849,20 +911,23 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return buildReportInputJson(profile, selectedDirections.value, userQuestion.value)
   }
 
-  /** 提交报告生成 */
+  /** 提交报告生成；失败时 throw（HTTP 500 的 msg 由拦截器 toast，业务失败在本方法 toast） */
   async function doGenerateReport(productId: number, inputJson?: string) {
-    if (!useRemoteApi.value) return null
+    if (!useRemoteApi.value)
+      return null
     try {
-      const res = await apiGenerateReport({ productId, inputJson })
-      if (res.code === 200 && res.data) {
+      const res = await apiGenerateReport(
+        { productId, inputJson },
+        { meta: { toast: false } },
+      )
+      if (res.code === 200 && res.data)
         return normalizeGenerateResult(res.data as Record<string, unknown>)
-      }
-      uni.showToast({ title: res.msg || '生成失败', icon: 'none' })
+      throw res
     }
     catch (e) {
       console.error('生成报告失败', e)
+      throw e
     }
-    return null
   }
 
   /** 轮询任务状态（兼容 success/done/completed 与 failed/error）；离开页面时传 shouldAbort 取消轮询 */
@@ -1030,6 +1095,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     hasNoCredits,
     needsBindMobile,
     clearJieduSession,
+    takePendingGenerateTask,
     initSeedData,
     clearSession,
     tryRestoreSession,

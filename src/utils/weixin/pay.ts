@@ -1,7 +1,7 @@
 import type { WxPayCreateParam, WxPayCreateVo, WxPayParamsVo } from '@/models/weixin'
 import { createWxPayOrder } from '@/api/guoxin'
 import { wxAppId } from '@/api/env'
-import { isWeChatBrowser } from '@/utils/weixin/env'
+import { isWeChatBrowser, OPEN_IN_WECHAT_MESSAGE, promptOpenInWeChat } from '@/utils/weixin/env'
 
 interface WeixinJSBridgeInvokeResult {
   err_msg?: string
@@ -102,7 +102,7 @@ function invokeWeixinPay(params: WxPayParamsVo): Promise<void> {
 /** 公众号 JSAPI：pay/create → WeixinJSBridge 唤起支付 */
 export async function wxChoosePay(param: WxPayCreateParam): Promise<void> {
   if (!isWeChatBrowser()) {
-    uni.showToast({ title: '请在微信内打开', icon: 'none' })
+    promptOpenInWeChat({ force: true })
     return Promise.reject(new Error('not_wechat'))
   }
 
@@ -127,7 +127,7 @@ export const wxMwebPay = wxChoosePay
 export function formatWxPayError(err: unknown): string {
   const code = err instanceof Error ? err.message : ''
   if (code === 'not_wechat')
-    return '请在微信内打开'
+    return OPEN_IN_WECHAT_MESSAGE
   if (code === 'no_weixin_bridge')
     return '微信支付环境未就绪，请稍后重试'
   if (code === 'cancel')

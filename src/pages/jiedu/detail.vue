@@ -6,8 +6,11 @@ import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
+import GxFontScaleNav from '@/components/guoxin/GxFontScaleNav.vue'
+import { useActionLock } from '@/utils/guoxin/useActionLock'
 
 const store = useGuoxinStore()
+const { runLocked } = useActionLock()
 const record = ref<RecordVo | null>(null)
 const loading = ref(true)
 
@@ -22,6 +25,7 @@ onLoad(async (query) => {
   const recordId = String(idStr)
   store.activeRecordId = recordId
   store.initSeedData()
+  store.setFontScale(store.fontScale)
 
   try {
     if (store.useRemoteApi) {
@@ -68,25 +72,35 @@ function goHome() {
 }
 
 function goSetupAgain() {
-  if (store.useRemoteApi) {
-    store.navigateToSetup(store.activeProfileId || undefined)
-    return
-  }
-  if (profile.value && 'id' in profile.value && profile.value.id)
-    store.navigateToSetup(profile.value.id)
+  void runLocked(async () => {
+    const pid = record.value?.profileId
+      || (profile.value && 'id' in profile.value && profile.value.id ? profile.value.id : undefined)
+    if (pid)
+      store.navigateToSetup(pid)
+    else
+      uni.showToast({ title: '无法确定档案', icon: 'none' })
+  })
 }
 </script>
 
 <template>
   <view v-if="loading" class="gx-page flex_column page-container">
-    <GxNavBar title="专属解读详情" :show-back="true" />
+    <GxNavBar title="专属解读详情" :show-back="true">
+      <template #right>
+        <GxFontScaleNav />
+      </template>
+    </GxNavBar>
     <view class="gx-empty-state">
       <view class="empty-text">加载中...</view>
     </view>
   </view>
 
   <view v-else-if="record && profile" class="gx-page flex_column page-container">
-    <GxNavBar title="专属解读详情" :show-back="true" />
+    <GxNavBar title="专属解读详情" :show-back="true">
+      <template #right>
+        <GxFontScaleNav />
+      </template>
+    </GxNavBar>
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="report-wrapper">
@@ -122,7 +136,7 @@ function goSetupAgain() {
           <!-- Disclaimer card inside the frame -->
           <view class="report-disclaimer-card">
             <strong>温馨提示与免责声明：</strong><br>
-            本解读报告基于东方传统文化视角与现代基础心理分析方法整理，旨在为您在面对日常情绪及家庭交往时提供柔性参考建议。本内容不属于玄学占卜或命运预测，不具备医疗诊断、心理治疗、法律维权或理财投资等专业效力。涉及重大现实决策时，请咨询专业人士。
+            本报告基于AI生成，旨在为您在面对日常情绪及家庭交往时提供柔性参考建议。本内容不属于玄学占卜或命运预测，不具备医疗诊断、心理治疗、法律维权或理财投资等专业效力。涉及重大现实决策时，请咨询专业人士。
           </view>
         </view>
 
@@ -146,7 +160,11 @@ function goSetupAgain() {
   </view>
 
   <view v-else class="gx-page flex_column page-container">
-    <GxNavBar title="专属解读详情" :show-back="true" />
+    <GxNavBar title="专属解读详情" :show-back="true">
+      <template #right>
+        <GxFontScaleNav />
+      </template>
+    </GxNavBar>
     <view class="gx-empty-state">
       <view class="empty-icon">📋</view>
       <view class="empty-text">解读记录不存在或已失效。</view>
@@ -204,14 +222,14 @@ function goSetupAgain() {
 
 .report-title-main {
   font-family: "Noto Serif SC", Georgia, serif;
-  font-size: 44rpx;
+  font-size: calc(44rpx * var(--gx-font-scale));
   font-weight: 900;
   color: #153F33;
   letter-spacing: 4rpx;
 }
 
 .report-meta-text {
-  font-size: 24rpx;
+  font-size: calc(24rpx * var(--gx-font-scale));
   color: #665B4E;
   margin-top: 16rpx;
   display: flex;
@@ -241,7 +259,7 @@ function goSetupAgain() {
 
 .report-section-title {
   font-family: "Noto Serif SC", Georgia, serif;
-  font-size: 30rpx;
+  font-size: calc(30rpx * var(--gx-font-scale));
   font-weight: 700;
   color: #153F33;
   border-left: 6rpx solid #B9945F;
@@ -251,7 +269,7 @@ function goSetupAgain() {
 }
 
 .report-body-text {
-  font-size: 28rpx;
+  font-size: calc(28rpx * var(--gx-font-scale));
   line-height: 1.85;
   color: #241F19;
   text-align: justify;
@@ -262,7 +280,7 @@ function goSetupAgain() {
   background-color: #EEF3EA;
   border-radius: 16rpx;
   padding: 24rpx;
-  font-size: 22rpx;
+  font-size: calc(22rpx * var(--gx-font-scale));
   color: #665B4E;
   line-height: 1.6;
   margin-top: 48rpx;
