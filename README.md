@@ -15,27 +15,27 @@ pnpm build:h5
 - **首页**：开始解读、档案入口、上次解读、字号调节、充值
 - **心语档案**：列表、创建（Chip + 下拉表单）
 - **解读流程**：选方向 → 整理页轮询任务 → 完成概览 → 详情报告
-- **解读记录**：远程模式走后端 `reports`；档案仍为本地 seed（待接 Java profiles）
-- **解读权益**：远程商品来自 `getProducts`；微信 H5 支付 MWEB（`pay/create` → 跳转 `mweb_url`），回跳后 `getAvailableCount` 刷新次数
-- **数据**：登录/商品/次数/报告走 Java `/api/yiqixue/app/guoxin`；档案 persist 在 `guoxin-store`
+- **解读记录**：走后端 `readingRecords` / `report/detail`
+- **心语档案**：走后端 `profiles`，页面按需 `loadProfiles()`，不做本地缓存
+- **解读权益**：商品来自 `getProducts`；微信 JSAPI 支付（`pay/create` → `chooseWXPay`），成功后刷新 `getCredits`
+- **数据**：登录/商品/次数/报告/档案均走 Java `/api/yiqixue/app/guoxin`；Pinia 仅持久化会话与 UI 偏好（不含档案列表）
 
 ## V1 边界说明
 
 ### 当前不做 / 待接
 
-- 档案 CRUD 后端化（`profiles` 接口已接，文档待同步）
-- Dify 流式 SSE（当前为 `report/generate` + 轮询）
+- Dify 流式 SSE（当前为 `report/generate` + 轮询 `task/status`）
 
 ### 登录
 
-- 微信 OAuth（`wxLogin`）或短信（`loginBySms`）→ `apph5Token`
-- 首页远程模式：微信内自动 OAuth；非微信弹短信登录
+- 微信 OAuth（`wxLogin`）为主；短信登录默认关闭（`SMS_LOGIN_ENABLED`）
+- 首页：微信内 OAuth；非微信提示复制链接到微信打开
 
 ### 次数与支付
 
-- **次数来源**：`availableCount`（按商品 `productId`）
+- **次数来源**：`getCredits` / `availableCount`
 - **扣次**：后端 `report/generate` 成功后由服务端扣减
-- **购买**：已登录 + 已绑手机 → `pay/create`（MWEB）→ 跳转微信 App 支付；回跳后 `getAvailableCount` 刷新，前端不加次
+- **购买**：已登录 + 已绑手机 → `pay/create`（JSAPI）→ `chooseWXPay`；成功后刷新 `getCredits`
 
 ### 微信 OAuth
 
@@ -44,7 +44,7 @@ pnpm build:h5
 
 ### 开发调试
 
-- 清空演示数据：浏览器控制台执行 `localStorage.removeItem('guoxin-store')` 后刷新
+- 清空本地会话：浏览器控制台 `localStorage.removeItem('guoxin-store')` 与 `localStorage.removeItem('apph5Token')` 后刷新
 - 原型对照：HTML 原型整理完成后为弹窗；uni-app 实现为独立「解读已完成」页（`pages/jiedu/complete`）
 
 ## 目录结构
@@ -52,8 +52,8 @@ pnpm build:h5
 ```text
 src/
 ├── constants/guoxin.ts      # 关系/方向/时辰/套餐枚举
-├── stores/guoxinStore.ts    # 档案、记录、次数
-├── utils/guoxin/            # 种子数据、报告生成
+├── stores/guoxinStore.ts    # 档案、次数、解读会话
+├── utils/guoxin/            # 报告解析、导航、错误处理
 ├── components/guoxin/       # GxNavBar / Button / Card / Chip
 ├── layouts/guoxin.vue       # 免责声明 layout
 ├── pages/
@@ -91,7 +91,7 @@ src/
 
 | 类型 | 约定 | 示例 |
 |------|------|------|
-| TS / 工具文件 | camelCase | `guoxinStore.ts`、`reportGenerator.ts` |
+| TS / 工具文件 | camelCase | `guoxinStore.ts`、`apiError.ts` |
 | Vue 组件 | PascalCase | `GxButton.vue` |
 | 页面目录 | 小写语义化 | `pages/jiedu/`、`pages/profile/` |
 | 代码风格 | ESLint | `pnpm lint` |

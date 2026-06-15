@@ -21,7 +21,7 @@ onLoad((query) => {
 onMounted(async () => {
   store.initSeedData()
   try {
-    if (store.useRemoteApi && reportIdParam.value) {
+    if (reportIdParam.value) {
       const id = Number(reportIdParam.value)
       if (!isNaN(id)) {
         const detail = await store.loadReportDetail(id)
@@ -35,10 +35,8 @@ onMounted(async () => {
           record.value = store.mapServerReportToRecord(found)
       }
     }
-    else {
-      const id = reportIdParam.value || store.activeRecordId
-      record.value = id ? store.getRecordById(id) : null
-    }
+    if (record.value?.profileId)
+      store.setActiveProfile(record.value.profileId)
   }
   finally {
     loading.value = false

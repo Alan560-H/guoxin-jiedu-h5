@@ -85,12 +85,7 @@ async function handleSubmit() {
           uni.showToast({ title: '短信登录暂未开放，请使用微信授权', icon: 'none' })
           return
         }
-        if (store.useRemoteApi) {
-          await store.doLoginBySms(phone.value, code.value)
-        }
-        else {
-          store.isLoggedIn = true
-        }
+        await store.doLoginBySms(phone.value, code.value)
         uni.hideLoading()
         uni.showToast({ title: '登录成功', icon: 'success' })
       }

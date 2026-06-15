@@ -28,39 +28,30 @@ onLoad(async (query) => {
   store.setFontScale(store.fontScale)
 
   try {
-    if (store.useRemoteApi) {
-      const id = Number(recordId)
-      if (!Number.isNaN(id)) {
-        const detail = await store.loadReportDetail(id)
-        if (detail)
-          record.value = store.mapServerDetailToRecord(detail)
-      }
-      if (!record.value && store.activeProfileId) {
-        await store.loadReadingRecords(store.activeProfileId)
-        const found = store.readingRecords.find(r => String(r.reportId ?? r.id) === recordId)
-        if (found)
-          record.value = store.mapServerReportToRecord(found)
-      }
+    const id = Number(recordId)
+    if (!Number.isNaN(id)) {
+      const detail = await store.loadReportDetail(id)
+      if (detail)
+        record.value = store.mapServerDetailToRecord(detail)
     }
-    else {
-      record.value = store.getRecordById(recordId)
+    if (!record.value && store.activeProfileId) {
+      await store.loadReadingRecords(store.activeProfileId)
+      const found = store.readingRecords.find(r => String(r.reportId ?? r.id) === recordId)
+      if (found)
+        record.value = store.mapServerReportToRecord(found)
     }
+    if (record.value?.profileId)
+      store.setActiveProfile(record.value.profileId)
   }
   finally {
     loading.value = false
-    // eslint-disable-next-line no-console
-    console.log('[jiedu/detail] record=', record.value)
-    // eslint-disable-next-line no-console
-    console.log('[jiedu/detail] profile=', profile.value)
   }
 })
 
 const profile = computed(() => {
   if (!record.value)
     return null
-  if (store.useRemoteApi)
-    return { name: record.value.profileName, relationText: '' }
-  return store.getProfileById(record.value.profileId)
+  return { name: record.value.profileName, relationText: '' }
 })
 
 function goBack() {
@@ -73,8 +64,7 @@ function goHome() {
 
 function goSetupAgain() {
   void runLocked(async () => {
-    const pid = record.value?.profileId
-      || (profile.value && 'id' in profile.value && profile.value.id ? profile.value.id : undefined)
+    const pid = record.value?.profileId || store.activeProfileId || undefined
     if (pid)
       store.navigateToSetup(pid)
     else

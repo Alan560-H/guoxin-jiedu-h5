@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useGuoxinStore } from '@/stores/guoxinStore'
 import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
 
 /** 对话类全屏页：无底部免责声明，避免与固定输入栏争抢高度 */
-const store = useGuoxinStore()
 
 onMounted(() => {
-  if (store.useRemoteApi && !isWeChatBrowser())
+  if (!isWeChatBrowser())
     promptOpenInWeChat()
 })
 </script>

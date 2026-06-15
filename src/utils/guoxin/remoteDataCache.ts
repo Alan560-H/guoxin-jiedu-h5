@@ -1,6 +1,5 @@
 export type RemoteCacheKey =
   | 'products'
-  | 'profiles'
   | 'credits'
   | 'orders'
   | 'consumeRecords'

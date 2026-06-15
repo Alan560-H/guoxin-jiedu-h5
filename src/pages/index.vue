@@ -12,6 +12,7 @@ import { ImageConfig } from '@/config/assets'
 import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
 import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
 import { useActionLock } from '@/utils/guoxin/useActionLock'
+import { navigateToJieduSetup } from '@/utils/guoxin/navigation'
 import {
   redirectToWxOAuth,
   markOAuthPendingStart,
@@ -39,8 +40,7 @@ async function continueJieduAfterLogin() {
     uni.navigateTo({ url: RouterPaths.credits })
     return
   }
-  if (store.useRemoteApi)
-    await store.ensureProfilesLoaded()
+  await store.loadProfiles()
   if (store.profiles.length === 0) {
     uni.navigateTo({ url: RouterPaths.profileCreate })
     return
@@ -79,9 +79,6 @@ async function handleOAuthCallback(code: string) {
 onMounted(async () => {
   store.initSeedData()
 
-  if (!store.useRemoteApi)
-    return
-
   // ① 本地有 token → getUserInfo 换用户信息（响应里含 openid）
   if (await store.tryRestoreSession())
     return
@@ -119,7 +116,7 @@ function requireLoggedInAndBound(intent: 'none' | 'start' = 'none'): boolean {
  */
 function promptLogin(intent: 'none' | 'start' = 'none') {
   loginIntent.value = intent
-  if (store.useRemoteApi && isWeChatBrowser()) {
+  if (isWeChatBrowser()) {
     showWxAuth.value = true
     return
   }
@@ -169,8 +166,7 @@ async function handleStartJieduAsync() {
     return
   }
 
-  if (store.useRemoteApi)
-    await store.ensureProfilesLoaded()
+  await store.loadProfiles()
 
   // Go to profile creation if no profiles exist
   if (profiles.value.length === 0) {
@@ -185,7 +181,7 @@ async function handleStartJieduAsync() {
 function handleSelectProfile(id: string) {
   store.setActiveProfile(id)
   showProfileSelect.value = false
-  uni.navigateTo({ url: RouterPaths.jieduSetup })
+  navigateToJieduSetup()
 }
 
 function handleCreateProfileFromModal() {
@@ -200,8 +196,7 @@ function goProfiles() {
 async function goProfilesAsync() {
   if (!requireLoggedInAndBound('none'))
     return
-  if (store.useRemoteApi)
-    await store.ensureProfilesLoaded()
+  await store.loadProfiles()
   uni.navigateTo({ url: RouterPaths.profileList })
 }
 
@@ -222,9 +217,7 @@ function setScale(scale: FontScale) {
 }
 
 async function handleLoginSuccess() {
-  if (store.useRemoteApi) {
-    await store.bootstrapAfterLogin()
-  }
+  await store.bootstrapAfterLogin()
   const shouldContinue = loginIntent.value === 'start' || consumeOAuthPendingStart()
   loginIntent.value = 'none'
     if (shouldContinue)

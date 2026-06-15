@@ -21,7 +21,7 @@ onMounted(() => {
 
 /** 每次进入解读记录页都重新拉取当前档案的记录 */
 onShow(() => {
-  if (!store.isLoggedIn || !store.useRemoteApi)
+  if (!store.isLoggedIn)
     return
   const profileId = store.activeProfileId
   if (!profileId)
@@ -30,13 +30,9 @@ onShow(() => {
 })
 
 const profile = computed(() => store.activeProfile)
-const list = computed(() => {
-  if (store.useRemoteApi)
-    return store.readingRecords.map(r => store.mapServerReportToRecord(r))
-  if (!profile.value)
-    return []
-  return store.getRecordsByProfileId(profile.value.id)
-})
+const list = computed(() =>
+  store.readingRecords.map(r => store.mapServerReportToRecord(r)),
+)
 
 function recordStatusText(rec: { status?: string }) {
   if (isReportRecordPending(rec.status))

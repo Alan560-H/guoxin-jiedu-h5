@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { CREDIT_PACKAGES, CREDITS_PAYWALL_TEXT } from '@/constants/guoxin'
-import type { CreditPackageId } from '@/constants/guoxin'
+import { CREDITS_PAYWALL_TEXT } from '@/constants/guoxin'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
@@ -11,45 +10,41 @@ import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 
 const store = useGuoxinStore()
-const selectedId = ref<CreditPackageId>('')
+const selectedId = ref('')
 const selectedProductId = ref<number | null>(null)
 const purchasing = ref(false)
 const showLogin = ref(false)
 const showCount = ref(0)
+const productsReady = ref(false)
 
-const displayProducts = computed(() => {
-  if (store.useRemoteApi && store.serverProducts.length > 0) {
-    return store.serverProducts.map((p: any) => ({
-      id: String(p.id),
-      productId: p.id,
-      name: p.productName,
-      amount: p.generateCount,
-      price: p.salePrice,
-      originPrice: p.originalPrice,
-      desc: p.promotionText || `包含 ${p.generateCount} 次解读`,
-      hot: p.promotionStatus === 1,
-    }))
-  }
-  return CREDIT_PACKAGES.map(p => ({ ...p, productId: null }))
-})
+const displayProducts = computed(() =>
+  store.serverProducts.map((p: any) => ({
+    id: String(p.id),
+    productId: p.id,
+    name: p.productName,
+    amount: p.generateCount,
+    price: p.salePrice,
+    originPrice: p.originalPrice,
+    desc: p.promotionText || `包含 ${p.generateCount} 次解读`,
+    hot: p.promotionStatus === 1,
+  })),
+)
 
 onMounted(async () => {
   if (!store.isLoggedIn) {
     uni.reLaunch({ url: RouterPaths.home })
     return
   }
-  if (store.useRemoteApi) {
-    await Promise.all([
-      store.ensureProductsLoaded(),
-      store.ensureCreditsLoaded(),
-      store.ensureOrdersLoaded(),
-      store.ensureConsumeRecordsLoaded(),
-    ])
-    syncDefaultProductSelection()
-  }
+  await Promise.all([
+    store.ensureProductsLoaded(),
+    store.ensureCreditsLoaded(),
+    store.ensureOrdersLoaded(),
+    store.ensureConsumeRecordsLoaded(),
+  ])
+  productsReady.value = true
+  syncDefaultProductSelection()
 })
 
-/** 远程商品 id 与本地 demo 的 standard 不一致，进入页默认选中第一个套餐 */
 function syncDefaultProductSelection() {
   const products = displayProducts.value
   if (products.length === 0)
@@ -62,16 +57,19 @@ function syncDefaultProductSelection() {
 
 /** 首次用缓存；支付回跳再次展示时强制刷新 */
 onShow(() => {
-  if (!store.isLoggedIn || !store.useRemoteApi)
+  if (!store.isLoggedIn)
     return
   showCount.value++
   const force = showCount.value > 1
+  void store.ensureProductsLoaded(force)
   void store.ensureCreditsLoaded(force)
   void store.ensureOrdersLoaded(force)
+  if (force)
+    syncDefaultProductSelection()
 })
 
 function selectPkg(id: string, productId?: number) {
-  selectedId.value = id as CreditPackageId
+  selectedId.value = id
   selectedProductId.value = productId ?? null
   if (productId)
     store.activeProductId = productId
@@ -86,35 +84,26 @@ function requirePurchaseReady(): boolean {
 }
 
 async function purchase() {
-  if (store.useRemoteApi) {
-    const productId = selectedProductId.value ?? store.activeProductId
-    if (!productId) {
-      uni.showToast({ title: '请选择套餐', icon: 'none' })
-      return
-    }
-    if (!requirePurchaseReady())
-      return
-    if (purchasing.value)
-      return
-    purchasing.value = true
-    try {
-      const ok = await store.purchaseRemoteProduct(productId)
-      if (ok) {
-        setTimeout(() => {
-          uni.reLaunch({ url: RouterPaths.home })
-        }, 600)
-      }
-    }
-    finally {
-      purchasing.value = false
-    }
+  const productId = selectedProductId.value ?? store.activeProductId
+  if (!productId) {
+    uni.showToast({ title: '请选择套餐', icon: 'none' })
     return
   }
-  const ok = await store.purchaseCredits(selectedId.value)
-  if (ok) {
-    setTimeout(() => {
-      uni.reLaunch({ url: RouterPaths.home })
-    }, 600)
+  if (!requirePurchaseReady())
+    return
+  if (purchasing.value)
+    return
+  purchasing.value = true
+  try {
+    const ok = await store.purchaseRemoteProduct(productId)
+    if (ok) {
+      setTimeout(() => {
+        uni.reLaunch({ url: RouterPaths.home })
+      }, 600)
+    }
+  }
+  finally {
+    purchasing.value = false
   }
 }
 
@@ -140,9 +129,14 @@ async function handleLoginSuccess() {
         <view class="intro-subtitle">
           继续让心语老师为您整理专属生活与心理建议
         </view>
-        <view v-if="store.useRemoteApi" class="intro-credits">
+        <view class="intro-credits">
           当前剩余解读次数：<text class="credit-num">{{ store.displayCredits }}</text> 次
         </view>
+      </view>
+
+      <view v-if="productsReady && displayProducts.length === 0" class="products-empty">
+        <view class="empty-icon">📦</view>
+        <view class="empty-text">暂无可购买的解读套餐，请稍后再试或联系客服。</view>
       </view>
 
       <view
@@ -174,7 +168,7 @@ async function handleLoginSuccess() {
       </view>
 
       <view class="gx-btn-group action-buttons">
-        <GxButton type="primary" :disabled="purchasing" @click="purchase">
+        <GxButton type="primary" :disabled="purchasing || !selectedProductId" @click="purchase">
           {{ purchasing ? '支付中...' : '立即开通权益' }}
         </GxButton>
         <GxButton type="outline" @click="goBack">
@@ -205,6 +199,27 @@ async function handleLoginSuccess() {
   flex-direction: column;
   height: 100vh;
   box-sizing: border-box;
+}
+
+.products-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 80rpx 48rpx 40rpx;
+  box-sizing: border-box;
+
+  .empty-icon {
+    font-size: 88rpx;
+    margin-bottom: 24rpx;
+    opacity: 0.35;
+  }
+
+  .empty-text {
+    font-size: 28rpx;
+    color: #665b4e;
+    line-height: 1.7;
+  }
 }
 
 .paywall-intro {

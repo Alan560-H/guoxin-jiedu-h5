@@ -47,14 +47,8 @@ function finishAndGoComplete() {
   if (completed.value)
     return
   clearSimulationTimer()
-  if (!store.useRemoteApi) {
-    const record = store.completeJiedu()
-    if (!record)
-      return
-  }
   completed.value = true
-  if (store.useRemoteApi)
-    store.clearJieduSession()
+  store.clearJieduSession()
   uni.redirectTo({ url: `${RouterPaths.jieduComplete}?reportId=${remoteReportId.value || ''}` })
 }
 
@@ -149,16 +143,14 @@ onMounted(async () => {
     uni.redirectTo({ url: RouterPaths.jieduSetup })
     return
   }
-  if (store.useRemoteApi) {
-    const pending = store.takePendingGenerateTask()
-    if (!pending?.taskId) {
-      uni.redirectTo({ url: RouterPaths.jieduSetup })
-      return
-    }
-    remoteTaskId.value = pending.taskId
-    remoteReportId.value = pending.reportId
-    void pollRemoteTask()
+  const pending = store.takePendingGenerateTask()
+  if (!pending?.taskId) {
+    uni.redirectTo({ url: RouterPaths.jieduSetup })
+    return
   }
+  remoteTaskId.value = pending.taskId
+  remoteReportId.value = pending.reportId
+  void pollRemoteTask()
   startSimulation()
 })
 
@@ -174,16 +166,7 @@ onBeforeUnmount(() => {
   deactivatePage()
 })
 
-function skipNow() {
-  if (store.useRemoteApi) {
-    goRecords()
-    return
-  }
-  animationComplete.value = true
-  pollDone.value = true
-  pollSuccess.value = true
-  finishAndGoComplete()
-}
+
 function goRecords() {
   deactivatePage()
   uni.navigateTo({ url: RouterPaths.jieduRecords })
@@ -238,17 +221,14 @@ function goRecords() {
         </view>
       </view>
 
-      <view v-if="store.useRemoteApi && animationComplete && !pollDone" class="polling-hint">
+      <view v-if="animationComplete && !pollDone" class="polling-hint">
         报告仍在生成中，请稍候…
       </view>
 
       <!-- Action buttons -->
       <view class="gx-btn-group action-buttons">
-        <GxButton v-if="!store.useRemoteApi" type="secondary" @click="skipNow">
-          解读完成，立即查看
-        </GxButton>
-        <GxButton :type="store.useRemoteApi ? 'secondary' : 'outline'" @click="goRecords">
-          {{ store.useRemoteApi ? '先去解读记录，稍后查看' : '查看解读记录' }}
+        <GxButton type="secondary" @click="goRecords">
+          先去解读记录，稍后查看
         </GxButton>
       </view>
 

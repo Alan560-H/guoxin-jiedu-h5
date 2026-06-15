@@ -1,5 +1,14 @@
 <script setup lang="ts">
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
+
+const ALIYUN_BAILIAN_TERMS_URL = 'https://terms.alicdn.com/legal-agreement/terms/common_platform_service/20230728213935489/20230728213935489.html'
+
+function openAliyunBailianTerms() {
+  // #ifdef H5
+  if (typeof window !== 'undefined')
+    window.open(ALIYUN_BAILIAN_TERMS_URL, '_blank', 'noopener,noreferrer')
+  // #endif
+}
 </script>
 
 <template>
@@ -43,7 +52,7 @@ import GxNavBar from '@/components/guoxin/GxNavBar.vue'
         <view class="legal-card">
           <view class="section-title">四、AI 处理与阿里云百炼</view>
           <view class="paragraph">为向您生成解读内容，我们可能将必要的心语档案信息、关注方向、用户问题和上下文提示提交给阿里云百炼模型服务进行处理。阿里云百炼作为 AI 模型技术服务提供方，根据我们的服务请求返回生成结果。</view>
-          <view class="paragraph">我们会尽量遵循最小必要原则，只提交生成解读所需的信息。请您避免在问题中主动输入身份证号、银行卡号、详细住址、病历、精确财产信息、账号密码等与解读无关的敏感内容。</view>
+          <view class="paragraph">我们会尽量遵循最小必要原则，只提交生成解读所需的信息。请您避免在问题中主动输入身份证号、银行卡号、详细住址、病历、精确财产信息、账号密码等与解读无关的敏感内容。详情可参考<text class="link-text" @tap="openAliyunBailianTerms">阿里云百炼服务协议</text>。</view>
           <view class="paragraph">AI 生成结果可能存在不准确、不完整或表达偏差。生成内容仅供传统文化学习、交流陪伴和生活参考，不作为医疗、投资、法律或重大人生决策依据。</view>
         </view>
 
@@ -162,6 +171,12 @@ import GxNavBar from '@/components/guoxin/GxNavBar.vue'
   line-height: 1.85;
   color: #241F19;
   margin-top: 14rpx;
+
+  .link-text {
+    color: #153F33;
+    font-weight: 700;
+    text-decoration: underline;
+  }
 }
 
 .legal-tip {

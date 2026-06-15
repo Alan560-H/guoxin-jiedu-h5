@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DirectionValue } from '@/constants/guoxin'
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { onBackPress } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import { ImageConfig } from '@/config/assets'
@@ -8,7 +9,7 @@ import { DIRECTION_OPTIONS } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { formatDualBirthDayDisplay } from '@/utils/guoxin/birthDateTime'
-import { navigateBackOrHome, navigateToHome } from '@/utils/guoxin/navigation'
+import { navigateToHome } from '@/utils/guoxin/navigation'
 import { useActionLock } from '@/utils/guoxin/useActionLock'
 
 const { t } = useI18n()
@@ -107,9 +108,18 @@ function handleBack() {
     step.value = 1
   }
   else {
-    navigateBackOrHome(1)
+    navigateToHome()
   }
 }
+
+onBackPress(() => {
+  if (step.value === 2) {
+    step.value = 1
+    return true
+  }
+  navigateToHome()
+  return true
+})
 
 async function confirm() {
   await runLocked(async () => {

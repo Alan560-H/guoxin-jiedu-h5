@@ -148,8 +148,7 @@ const timeDisplay = computed(() => {
 })
 
 onMounted(async () => {
-  if (store.useRemoteApi)
-    await store.loadRelationOptions()
+  await store.loadRelationOptions()
 })
 
 function resetDateIndex() {
@@ -230,7 +229,7 @@ onLoad(async (options: any) => {
     profileId.value = options.id
     isEditMode.value = true
     let p = store.getProfileById(options.id)
-    if (store.useRemoteApi && !Number.isNaN(Number(options.id)))
+    if (!Number.isNaN(Number(options.id)))
       p = await store.loadProfileDetail(Number(options.id)) ?? p
     if (p)
       applyProfileToForm(p)

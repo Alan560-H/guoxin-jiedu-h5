@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useI18n } from 'vue-i18n'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
@@ -13,14 +14,13 @@ const { t } = useI18n()
 const store = useGuoxinStore()
 const { runLocked } = useActionLock()
 
-onMounted(async () => {
+onShow(async () => {
   if (!store.isLoggedIn) {
     uni.reLaunch({ url: RouterPaths.home })
     return
   }
   store.initSeedData()
-  if (store.useRemoteApi)
-    await store.ensureProfilesLoaded()
+  await store.loadProfiles()
 })
 
 const profiles = computed(() => store.profiles)
