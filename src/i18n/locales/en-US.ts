@@ -39,6 +39,7 @@ export default {
       toast: {
         inputRequired: 'Please enter your question',
         directionRequired: 'Select at least one focus area',
+        inputPending: 'Tap Send first, or clear the input before continuing',
       },
     },
     processing: {
@@ -47,7 +48,7 @@ export default {
       bannerDesc: 'I am reviewing traditional perspectives and psychology models to prepare a fuller reading. This may take a while; you will be notified when it is ready.',
       previewLabel: 'Preview',
       previewText: 'Based on your information, Teacher Xinyu has started preparing this reading.',
-      previewHighlight: 'The reading will likely focus on your current stage, family relationships, and daily rhythm.',
+      previewHighlight: 'Initially, this reading will focus on {directions}.',
       steps: {
         s1Title: 'Profile confirmed',
         s1Desc: 'Profile and focus areas recorded',
@@ -60,6 +61,7 @@ export default {
       },
       later: 'View later',
       viewRecords: 'View reading history',
+      goRecordsTip: 'Report generation takes about 3 minutes. You will be notified via WeChat when it is ready.',
       interrupted: 'Preparation interrupted; you may start again',
     },
     complete: {

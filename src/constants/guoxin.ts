@@ -24,13 +24,14 @@ export const CALENDAR_OPTIONS = [
 export type CalendarValue = typeof CALENDAR_OPTIONS[number]['value']
 
 export const DIRECTION_OPTIONS = [
-  '家庭关系',
-  '情绪状态',
-  '健康作息',
-  '事业方向',
-  '财务规划',
-  '子女关系',
-  '近期状态',
+  '认识自己',
+  '事业路径',
+  '你的财富',
+  '爱与关系',
+  '家人与社交',
+  '身体与能量',
+  '人生周期',
+  '重大选择',
 ] as const
 
 export type DirectionValue = typeof DIRECTION_OPTIONS[number]

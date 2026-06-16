@@ -30,7 +30,7 @@
       "style": {
         "navigationBarTitleText": "专属解读详情"
       },
-      "layout": "guoxin"
+      "layout": "guoxinReport"
     },
     {
       "path": "pages/jiedu/processing",

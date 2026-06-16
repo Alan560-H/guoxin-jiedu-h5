@@ -1,4 +1,5 @@
 import type { DirectionValue } from '@/constants/guoxin'
+import type { ReportDocument } from '@/models/guoxin/reportContent'
 
 export interface ReportSection {
   title: string
@@ -13,5 +14,6 @@ export interface RecordVo {
   time: string
   directions: DirectionValue[]
   content: ReportSection[] | null
+  reportDocument: ReportDocument | null
   status?: string
 }

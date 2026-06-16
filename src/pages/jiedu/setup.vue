@@ -15,7 +15,7 @@ import { useActionLock } from '@/utils/guoxin/useActionLock'
 const { t } = useI18n()
 const store = useGuoxinStore()
 const { locking: confirming, runLocked } = useActionLock()
-const selected = ref<DirectionValue[]>(['家庭关系'])
+const selected = ref<DirectionValue[]>([])
 const step = ref(1)
 const scrollIntoViewId = ref('')
 const inputText = ref('')
@@ -92,7 +92,10 @@ function handleNextStep() {
     uni.showToast({ title: t('jiedu.setup.toast.directionRequired'), icon: 'none' })
     return
   }
-  absorbPendingInput()
+  if (inputText.value.trim()) {
+    uni.showToast({ title: t('jiedu.setup.toast.inputPending'), icon: 'none' })
+    return
+  }
   step.value = 2
   nextTick(() => {
     scrollIntoViewId.value = 'confirm-card'
@@ -137,16 +140,17 @@ function goCredits() {
 }
 
 function getIconName(dir: DirectionValue): string {
-  const mapping: Record<string, string> = {
-    家庭关系: 'family',
-    情绪状态: 'mood',
-    健康作息: 'health',
-    事业方向: 'work',
-    财务规划: 'money',
-    子女关系: 'children',
-    近期状态: 'recent',
+  const mapping: Record<DirectionValue, string> = {
+    认识自己: 'self',
+    事业路径: 'career',
+    你的财富: 'wealth',
+    爱与关系: 'love',
+    家人与社交: 'social',
+    身体与能量: 'energy',
+    人生周期: 'cycle',
+    重大选择: 'choice',
   }
-  return mapping[dir] || 'recent'
+  return mapping[dir]
 }
 </script>
 

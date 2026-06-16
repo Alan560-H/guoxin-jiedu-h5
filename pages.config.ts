@@ -25,7 +25,12 @@ export default defineUniPages({
     },
     guoxinPage('pages/jiedu/processing', '心语老师正在为您整理'),
     guoxinPage('pages/jiedu/complete', '解读已完成'),
-    guoxinPage('pages/jiedu/detail', '专属解读详情'),
+    {
+      path: 'pages/jiedu/detail',
+      type: 'page' as const,
+      layout: 'guoxinReport',
+      style: { navigationBarTitleText: '专属解读详情' },
+    },
     guoxinPage('pages/jiedu/records', '解读记录'),
     guoxinPage('pages/credits/index', '解读权益'),
     guoxinPage('pages/legal/service', '用户服务协议'),

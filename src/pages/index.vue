@@ -230,7 +230,7 @@ async function handleLoginSuccess() {
     <!-- Home Banner Section -->
     <view class="home-banner">
       <view class="home-logo">国心解读</view>
-      <view class="home-subtitle">东方文化视角下的生活与心理参考</view>
+      <view class="home-subtitle">个人洞察下的生活与心理参考</view>
     </view>
 
     <scroll-view scroll-y class="gx-scroll">

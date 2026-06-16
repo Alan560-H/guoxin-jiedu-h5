@@ -11,6 +11,8 @@ const props = defineProps<{
   /** 无法 navigateBack 时的 fallback，默认首页 */
   fallbackUrl?: string
   dark?: boolean
+  /** 报告详情页：与全站浅色顶栏一致 */
+  report?: boolean
   rightText?: string
 }>()
 
@@ -28,7 +30,7 @@ function goBack() {
 </script>
 
 <template>
-  <view class="gx-nav" :class="{ dark }">
+  <view class="gx-nav" :class="{ dark, report }">
     <view class="gx-nav-inner">
       <!-- Standard text-based back button `< 返回` -->
       <view v-if="showBack !== false" class="gx-nav-back-text" @tap="goBack">
@@ -71,6 +73,19 @@ function goBack() {
   .gx-nav-back-text,
   .gx-nav-right {
     color: #fff !important;
+  }
+}
+
+.gx-nav.report {
+  background:
+    linear-gradient(180deg, rgba(255, 250, 239, 0.98), rgba(246, 235, 213, 0.94)),
+    var(--gx-bg, #FCF5E9);
+  border-bottom: 1px solid rgba(135, 100, 58, 0.28);
+
+  .gx-nav-title,
+  .gx-nav-back-text,
+  .gx-nav-right {
+    color: var(--gx-green) !important;
   }
 }
 

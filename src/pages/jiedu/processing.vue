@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { onHide, onUnload } from '@dcloudio/uni-app'
+import { useI18n } from 'vue-i18n'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
@@ -8,6 +9,18 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 
 const store = useGuoxinStore()
+const { t } = useI18n()
+
+/** 点选方向 + 自定义问题，与 setup 展示逻辑一致 */
+const previewFocusSummary = computed(() => {
+  const dirs = store.selectedDirections.join('、')
+  const question = store.userQuestion.trim()
+  if (dirs && question)
+    return `${dirs}、${question}`
+  if (question)
+    return question
+  return dirs
+})
 const step = ref(1)
 let timer: ReturnType<typeof setInterval> | null = null
 const completed = ref(false)
@@ -182,7 +195,7 @@ function goRecords() {
       <view class="loading-banner">
         <view class="loading-circle"></view>
         <view class="banner-title">心语老师正在深度整理</view>
-        <view class="banner-desc">我正在调阅东方传统哲学观点，结合心理学模型为您整理更完整的内容。预计需要一些时间，完成后会通知您查看完整解读。</view>
+        <view class="banner-desc">我正在整理档案信息、关注方向和补充信息，结合心理学模型为您整理更完整的内容。预计需要一些时间，完成后会通知您查看完整解读。</view>
       </view>
 
       <!-- Preview card -->
@@ -191,7 +204,8 @@ function goRecords() {
           初步预览
         </view>
         <view class="preview-text">
-          根据您提供的信息，心语老师已经开始整理本次专属解读。<strong>初步来看，本次内容会重点围绕您的阶段状态、家庭关系和生活节奏展开。</strong>
+          {{ t('jiedu.processing.previewText') }}
+          <strong>{{ t('jiedu.processing.previewHighlight', { directions: previewFocusSummary }) }}</strong>
         </view>
       </GxCard>
 
@@ -221,8 +235,13 @@ function goRecords() {
         </view>
       </view>
 
-      <view v-if="animationComplete && !pollDone" class="polling-hint">
-        报告仍在生成中，请稍候…
+      <view v-if="animationComplete && !pollDone" class="polling-hint-wrap">
+        <view class="polling-hint">
+          报告仍在生成中，请稍候…
+        </view>
+        <view class="polling-tip">
+          {{ t('jiedu.processing.goRecordsTip') }}
+        </view>
       </view>
 
       <!-- Action buttons -->
@@ -306,12 +325,22 @@ function goRecords() {
   }
 }
 
-.polling-hint {
+.polling-hint-wrap {
   margin: 0 32rpx;
   text-align: center;
+}
+
+.polling-hint {
   font-size: 26rpx;
   color: #153F33;
   font-weight: 700;
+}
+
+.polling-tip {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--gx-text-hint, #958878);
 }
 
 /* Timeline vertical checklists */

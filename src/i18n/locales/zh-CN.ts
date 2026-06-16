@@ -38,16 +38,17 @@ export default {
       send: '发送',
       toast: {
         inputRequired: '请输入提问内容',
-        directionRequired: '请至少选择一个关注方向',
+        directionRequired: '请至少选择一个解读方向',
+        inputPending: '请先点击发送，或清空输入框后再继续',
       },
     },
     processing: {
       title: '正在为您整理',
       bannerTitle: '心语老师正在深度整理',
-      bannerDesc: '我正在调阅东方传统哲学观点，结合心理学模型为您整理更完整的内容。预计需要一些时间，完成后会通知您查看完整解读。',
+      bannerDesc: '我正在整理档案信息、关注方向和补充信息，结合心理学模型为您整理更完整的内容。预计需要一些时间，完成后会通知您查看完整解读。',
       previewLabel: '初步预览',
       previewText: '根据您提供的信息，心语老师已经开始整理本次专属解读。',
-      previewHighlight: '初步来看，本次内容会重点围绕您的阶段状态、家庭关系和生活节奏展开。',
+      previewHighlight: '初步来看，本次内容会重点围绕您的{directions}展开。',
       steps: {
         s1Title: '已确认档案信息',
         s1Desc: '档案与关注方向已记录',
@@ -60,6 +61,7 @@ export default {
       },
       later: '稍后查看',
       viewRecords: '查看解读记录',
+      goRecordsTip: '报告预计需要3分钟，完成后会收到服务号提醒',
       interrupted: '整理已中断，可重新解读',
     },
     complete: {

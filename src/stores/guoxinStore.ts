@@ -332,7 +332,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
 
   async function confirmJiedu(directions: DirectionValue[], question?: string): Promise<boolean> {
     if (directions.length === 0) {
-      uni.showToast({ title: '请至少选择一个关注方向', icon: 'none' })
+      uni.showToast({ title: '请至少选择一个解读方向', icon: 'none' })
       return false
     }
     userQuestion.value = question?.trim() || ''
@@ -892,6 +892,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       time: report.time || report.createTime || '',
       directions,
       content: (report._content?.length ? report._content : COMPLETE_PLACEHOLDER_SECTIONS),
+      reportDocument: null,
       status: report.status,
     }
   }
