@@ -1,25 +1,25 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
 import type { FontScale } from '@/constants/guoxin'
-import { SMS_LOGIN_ENABLED } from '@/constants/guoxin'
-import { useGuoxinStore } from '@/stores/guoxinStore'
-import { RouterPaths } from '@/routerPaths'
+import { computed, onMounted, ref } from 'vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 import { ImageConfig } from '@/config/assets'
-import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
+import { SMS_LOGIN_ENABLED } from '@/constants/guoxin'
+import { RouterPaths } from '@/routerPaths'
+import { useGuoxinStore } from '@/stores/guoxinStore'
 import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
-import { useActionLock } from '@/utils/guoxin/useActionLock'
 import { navigateToJieduSetup } from '@/utils/guoxin/navigation'
+import { useActionLock } from '@/utils/guoxin/useActionLock'
+import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
 import {
-  redirectToWxOAuth,
-  markOAuthPendingStart,
+  clearOAuthParamsFromUrl,
   consumeOAuthPendingStart,
   getGuoxinOAuthCode,
-  clearOAuthParamsFromUrl,
   GUOXIN_OAUTH_STATE,
+  markOAuthPendingStart,
+  redirectToWxOAuth,
 } from '@/utils/weixin/oauth'
 
 const store = useGuoxinStore()
@@ -48,13 +48,13 @@ async function continueJieduAfterLogin() {
   showProfileSelect.value = true
 }
 
-/** 微信授权回调：code 交 Java wxLogin，返回 token（及用户信息含 openid） */
+/** 微信授权回调：code → wxLogin，换取 token */
 async function handleOAuthCallback(code: string) {
   if (oauthCodeHandled.value === code)
     return
   oauthCodeHandled.value = code
   try {
-    uni.showLoading({ title: '登录中...' })
+    uni.showLoading({ title: '登录中...', mask: true })
     const result = await store.doWxLogin(code)
     clearOAuthParamsFromUrl()
     uni.hideLoading()
@@ -79,18 +79,20 @@ async function handleOAuthCallback(code: string) {
 onMounted(async () => {
   store.initSeedData()
 
-  // ① 本地有 token → getUserInfo 换用户信息（响应里含 openid）
-  if (await store.tryRestoreSession())
-    return
-
-  // ② URL 有 code（微信授权 redirect_uri?code=CODE&state=STATE）→ wxLogin 换 token
-  const code = getGuoxinOAuthCode()
-  if (code) {
-    await handleOAuthCallback(code)
+  if (await store.tryRestoreSession()) {
+    if (consumeOAuthPendingStart())
+      await continueJieduAfterLogin()
     return
   }
 
-  // ③ 无 token、无 code → 正常展示首页（未登录）
+  const code = getGuoxinOAuthCode()
+  if (code)
+    await handleOAuthCallback(code)
+  else if (store.isLoggedIn && consumeOAuthPendingStart())
+    await continueJieduAfterLogin()
+
+  if (!store.isLoggedIn)
+    promptLogin()
 })
 
 function promptBindMobile(intent: 'none' | 'start' = 'none') {
@@ -220,8 +222,8 @@ async function handleLoginSuccess() {
   await store.bootstrapAfterLogin()
   const shouldContinue = loginIntent.value === 'start' || consumeOAuthPendingStart()
   loginIntent.value = 'none'
-    if (shouldContinue)
-      await continueJieduAfterLogin()
+  if (shouldContinue)
+    await continueJieduAfterLogin()
 }
 </script>
 
@@ -229,12 +231,15 @@ async function handleLoginSuccess() {
   <view class="gx-page flex_column page-container">
     <!-- Home Banner Section -->
     <view class="home-banner">
-      <view class="home-logo">国心解读</view>
-      <view class="home-subtitle">个人洞察下的生活与心理参考</view>
+      <view class="home-logo">
+        国心解读
+      </view>
+      <view class="home-subtitle">
+        个人洞察下的生活与心理参考
+      </view>
     </view>
 
     <scroll-view scroll-y class="gx-scroll">
-
       <!-- Teacher Intro Card -->
       <view class="teacher-intro-card">
         <view class="avatar-wrapper">
@@ -243,12 +248,18 @@ async function handleLoginSuccess() {
           </view>
         </view>
         <view class="teacher-details">
-          <view class="teacher-name">心语老师</view>
-          <view class="teacher-desc">我会通过几个简单问题，帮您为自己或家人整理一份生活与心理参考。</view>
+          <view class="teacher-name">
+            心语老师
+          </view>
+          <view class="teacher-desc">
+            我会通过几个简单问题，帮您为自己或家人整理一份生活与心理参考。
+          </view>
 
           <!-- Remaining credits badge -->
           <view class="credit-badge" @tap.stop="goCredits">
-            剩余解读次数：<text class="credit-count">{{ store.isLoggedIn ? store.displayCredits : '--' }}</text>次
+            剩余解读次数：<text class="credit-count">
+              {{ store.isLoggedIn ? store.displayCredits : '--' }}
+            </text>次
           </view>
         </view>
       </view>
@@ -313,13 +324,21 @@ async function handleLoginSuccess() {
     </scroll-view>
 
     <!-- 微信授权登录弹窗（点击「开始解读」时） -->
-    <view v-if="showWxAuth" class="modal-overlay">
+    <view v-if="showWxAuth" class="modal-overlay wx-auth-overlay">
       <view class="modal-card wx-auth-card">
-        <view class="close-x" @tap="showWxAuth = false">×</view>
+        <view class="close-x" @tap="showWxAuth = false">
+          ×
+        </view>
         <view class="wx-auth-header">
-          <view class="wx-auth-icon">微</view>
-          <view class="wx-auth-title">微信授权登录</view>
-          <view class="wx-auth-desc">使用微信账号登录后，即可开始专属解读</view>
+          <view class="wx-auth-icon">
+            微
+          </view>
+          <view class="wx-auth-title">
+            微信授权登录
+          </view>
+          <view class="wx-auth-desc">
+            使用微信账号登录后，即可开始专属解读
+          </view>
         </view>
         <view class="gx-btn-group wx-auth-actions">
           <GxButton type="primary" @click="confirmWxAuth">
@@ -344,11 +363,17 @@ async function handleLoginSuccess() {
     <view v-if="showProfileSelect" class="modal-overlay select-modal-overlay">
       <view class="modal-card select-modal-card">
         <!-- Close button X -->
-        <view class="close-x" @tap="showProfileSelect = false">×</view>
+        <view class="close-x" @tap="showProfileSelect = false">
+          ×
+        </view>
 
         <view class="modal-header">
-          <view class="modal-title">选择心语档案</view>
-          <view class="modal-subtitle">请选择要进行本次解读的家人档案：</view>
+          <view class="modal-title">
+            选择心语档案
+          </view>
+          <view class="modal-subtitle">
+            请选择要进行本次解读的家人档案：
+          </view>
         </view>
 
         <scroll-view scroll-y class="modal-scroll-area">
@@ -360,11 +385,17 @@ async function handleLoginSuccess() {
               @tap="handleSelectProfile(p.id)"
             >
               <view class="profile-item-left">
-                <view class="profile-item-name">{{ p.name }}</view>
-                <view class="profile-item-sub">{{ p.genderText }} · {{ getProfileBirthYear(p) }}年 · {{ p.birthPlace }}</view>
+                <view class="profile-item-name">
+                  {{ p.name }}
+                </view>
+                <view class="profile-item-sub">
+                  {{ p.genderText }} · {{ getProfileBirthYear(p) }}年 · {{ p.birthPlace }}
+                </view>
               </view>
               <view class="profile-item-right">
-                <view class="gx-badge gx-badge-gold">{{ p.relationText }}</view>
+                <view class="gx-badge gx-badge-gold">
+                  {{ p.relationText }}
+                </view>
               </view>
             </view>
           </view>
@@ -378,7 +409,6 @@ async function handleLoginSuccess() {
         </view>
       </view>
     </view>
-
   </view>
 </template>
 
@@ -563,6 +593,11 @@ async function handleLoginSuccess() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.wx-auth-overlay {
+  background-color: #ffffff;
+  backdrop-filter: none;
 }
 
 .modal-card {

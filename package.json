@@ -9,7 +9,7 @@
     "dev:app-android": "uni -p app-android",
     "dev:app-ios": "uni -p app-ios",
     "dev:custom": "uni -p",
-    "dev:h5": "uni",
+    "dev:h5": "node scripts/ensure-pages-json.mjs && uni",
     "dev:h5:ssr": "uni --ssr",
     "dev:mp-alipay": "uni -p mp-alipay",
     "dev:mp-baidu": "uni -p mp-baidu",
@@ -27,7 +27,7 @@
     "build:app-android": "uni build -p app-android",
     "build:app-ios": "uni build -p app-ios",
     "build:custom": "uni build -p",
-    "build:h5": "uni build",
+    "build:h5": "node scripts/ensure-pages-json.mjs && uni build",
     "build:h5:ssr": "uni build --ssr",
     "preview:h5": "serve -s dist/build/h5",
     "build:mp-alipay": "uni build -p mp-alipay",
@@ -124,7 +124,11 @@
       "core-js",
       "esbuild",
       "vue-demi"
-    ]
+    ],
+    "patchedDependencies": {
+      "@uni-helper/vite-plugin-uni-layouts@0.1.11": "patches/@uni-helper__vite-plugin-uni-layouts@0.1.11.patch",
+      "@uni-ku/root@1.4.1": "patches/@uni-ku__root@1.4.1.patch"
+    }
   },
   "overrides": {
     "unconfig": "7.3.2",

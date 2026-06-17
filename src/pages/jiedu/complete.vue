@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
 import type { RecordVo } from '@/models/guoxin/record'
-import { useGuoxinStore } from '@/stores/guoxinStore'
-import { RouterPaths } from '@/routerPaths'
-import GxNavBar from '@/components/guoxin/GxNavBar.vue'
+import { onLoad } from '@dcloudio/uni-app'
+import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
+import GxNavBar from '@/components/guoxin/GxNavBar.vue'
+import { RouterPaths } from '@/routerPaths'
+import { useGuoxinStore } from '@/stores/guoxinStore'
+import { navigateToProfileList } from '@/utils/guoxin/navigation'
 
 const store = useGuoxinStore()
+const { t } = useI18n()
 const reportIdParam = ref('')
 const record = ref<RecordVo | null>(null)
 const loading = ref(true)
@@ -50,7 +53,7 @@ function goDetail() {
 }
 
 function goRecords() {
-  uni.navigateTo({ url: RouterPaths.jieduRecords })
+  navigateToProfileList(record.value?.profileId || store.activeProfileId || undefined)
 }
 
 function goHome() {
@@ -62,7 +65,9 @@ function goHome() {
   <view v-if="loading" class="gx-page flex_column page-container">
     <GxNavBar title="解读已完成" :show-back="true" />
     <view class="gx-empty-state">
-      <view class="empty-text">加载中...</view>
+      <view class="empty-text">
+        加载中...
+      </view>
     </view>
   </view>
 
@@ -71,9 +76,15 @@ function goHome() {
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="complete-banner">
-        <view class="success-mark">✓</view>
-        <view class="banner-title">本次专属解读已整理完成</view>
-        <view class="banner-subtitle">心语老师已根据您的档案信息和关注方向，为您整理了本次专属解读建议。</view>
+        <view class="success-mark">
+          ✓
+        </view>
+        <view class="banner-title">
+          本次专属解读已整理完成
+        </view>
+        <view class="banner-subtitle">
+          心语老师已根据您的档案信息和关注方向，为您整理了本次专属解读建议。
+        </view>
       </view>
 
       <GxCard class="content-checklist-card">
@@ -88,9 +99,13 @@ function goHome() {
             class="checklist-row flex_row f_a_center"
           >
             <view class="bullet-dot">
-              <text class="dot-num">{{ idx + 1 }}</text>
+              <text class="dot-num">
+                {{ idx + 1 }}
+              </text>
             </view>
-            <text class="checklist-title">{{ sec.title.replace(/^[^、]+、/, '') }}</text>
+            <text class="checklist-title">
+              {{ sec.title.replace(/^[^、]+、/, '') }}
+            </text>
           </view>
         </view>
       </GxCard>
@@ -103,7 +118,7 @@ function goHome() {
           继续和心语老师聊聊
         </GxButton>
         <GxButton type="outline" @click="goRecords">
-          查看解读记录
+          {{ t('jiedu.complete.viewProfileRecords') }}
         </GxButton>
       </view>
 
@@ -114,8 +129,12 @@ function goHome() {
   <view v-else class="gx-page flex_column page-container">
     <GxNavBar title="解读已完成" :show-back="true" />
     <view class="gx-empty-state">
-      <view class="empty-icon">📋</view>
-      <view class="empty-text">未找到本次解读记录，您可以返回首页重新发起。</view>
+      <view class="empty-icon">
+        📋
+      </view>
+      <view class="empty-text">
+        未找到本次解读记录，您可以返回首页重新发起。
+      </view>
       <GxButton type="primary" @click="goHome">
         返回首页
       </GxButton>

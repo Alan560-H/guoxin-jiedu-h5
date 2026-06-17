@@ -1,0 +1,33 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 01d7bbb3cf27b742e9e040546ee319c24cc0dc0d..bf1a1194ec44983ae7bfe40d12dc54e9c571d259 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -65,7 +65,10 @@ function loadPagesJson(path2 = "src/pages.json", cwd = process.cwd()) {
+   const pagesJsonRaw = readFileSync(resolve(cwd, path2), {
+     encoding: "utf-8"
+   });
+-  const { pages = [], subPackages = [] } = parse(pagesJsonRaw);
++  const parsed = parse(pagesJsonRaw);
++  if (!parsed || typeof parsed !== "object")
++    return [];
++  const { pages = [], subPackages = [] } = parsed;
+   return [
+     ...pages,
+     ...subPackages.map(({ pages: pages2 = {}, root = "" }) => {
+@@ -138,8 +141,14 @@ class Context {
+   }
+   async setupWatcher(watcher) {
+     watcher.on("change", async (path) => {
+-      if (path.includes("pages.json"))
+-        this.pages = loadPagesJson(this.pageJsonPath, this.options.cwd);
++      if (path.includes("pages.json")) {
++        try {
++          this.pages = loadPagesJson(this.pageJsonPath, this.options.cwd);
++        }
++        catch {
++          // pages.json 重写瞬间可能为空，忽略本次变更
++        }
++      }
+     });
+   }
+   async transform(code, path) {

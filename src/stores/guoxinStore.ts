@@ -1,10 +1,39 @@
 import type { DirectionValue, FontScale } from '@/constants/guoxin'
 import type { CreateProfileDto, ProfileVo } from '@/models/guoxin/profile'
 import type { RecordVo } from '@/models/guoxin/record'
+import type { GuoxinLoginSession } from '@/utils/guoxin/parseLoginResponse'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+import {
+  bindMobile as apiBindMobile,
+  createProfile as apiCreateProfile,
+  deleteProfile as apiDeleteProfile,
+  generateReport as apiGenerateReport,
+  getDictData as apiGetDictData,
+  getProfiles as apiGetProfiles,
+  login as apiLogin,
+  loginBySms as apiLoginBySms,
+  sendSmsCode as apiSendSmsCode,
+  updateProfile as apiUpdateProfile,
+  wxLogin as apiWxLogin,
+  getAvailableCount,
+  getConsumeRecords,
+  getCredits,
+  getOrders,
+  getProducts,
+  getProfileDetail,
+  getReadingRecords,
+  getReportDetail,
+  getTaskStatus,
+  getUserInfo,
+} from '@/api/guoxin'
 import { RouterPaths } from '@/routerPaths'
-import { wxChoosePay, formatWxPayError } from '@/utils/weixin/pay'
+import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
+import { navigateToJieduSetup, navigateToProfileList } from '@/utils/guoxin/navigation'
 import { normalizeProfileVo } from '@/utils/guoxin/normalizeProfile'
-import { parseGuoxinLoginData, clearGuoxinUserSessionSnapshot, writeGuoxinUserSessionSnapshot, type GuoxinLoginSession } from '@/utils/guoxin/parseLoginResponse'
+import { clearGuoxinUserSessionSnapshot, parseGuoxinLoginData, writeGuoxinUserSessionSnapshot } from '@/utils/guoxin/parseLoginResponse'
+import { mapReportDetailToRecordVo, parseReportDirections } from '@/utils/guoxin/parseReportDetail'
+import { createRemoteDataCache } from '@/utils/guoxin/remoteDataCache'
 import {
   buildReportInputJson,
   extractReportIdFromTask,
@@ -14,35 +43,7 @@ import {
   normalizeGenerateResult,
   toTaskIdNumber,
 } from '@/utils/guoxin/reportGenerate'
-import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
-import { mapReportDetailToRecordVo, parseReportDirections } from '@/utils/guoxin/parseReportDetail'
-import { createRemoteDataCache } from '@/utils/guoxin/remoteDataCache'
-import { navigateToJieduSetup } from '@/utils/guoxin/navigation'
-import {
-  login as apiLogin,
-  wxLogin as apiWxLogin,
-  loginBySms as apiLoginBySms,
-  sendSmsCode as apiSendSmsCode,
-  bindMobile as apiBindMobile,
-  getUserInfo,
-  getProducts,
-  getOrders,
-  getAvailableCount,
-  generateReport as apiGenerateReport,
-  getTaskStatus,
-  getReadingRecords,
-  getCredits,
-  getConsumeRecords,
-  getReportDetail,
-  getProfiles as apiGetProfiles,
-  getProfileDetail,
-  createProfile as apiCreateProfile,
-  updateProfile as apiUpdateProfile,
-  deleteProfile as apiDeleteProfile,
-  getDictData as apiGetDictData,
-} from '@/api/guoxin'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { formatWxPayError, wxChoosePay } from '@/utils/weixin/pay'
 
 /** 档案增删改由页面展示 loading，关闭拦截器默认 loading 避免双层 */
 const PROFILE_MUTATION_META = { meta: { loading: false } }
@@ -67,12 +68,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const serverProducts = ref<any[]>([])
   const serverOrders = ref<any[]>([])
   const consumeRecords = ref<any[]>([])
-  /** 解读记录页：当前档案列表；首页「上次解读」单独存 homeLatestRecord */
+  /** 档案列表内嵌：当前档案解读记录；首页「上次解读」单独存 homeLatestRecord */
   const readingRecords = ref<any[]>([])
   const homeLatestRecord = ref<any | null>(null)
   const totalAvailableCount = ref<number>(0)
   const activeProductId = ref<number | null>(null)
-  const relationOptions = ref<Array<{ value: string; label: string }>>([]) // 关系选项（从字典加载）
+  const relationOptions = ref<Array<{ value: string, label: string }>>([]) // 关系选项（从字典加载）
   const remoteCache = createRemoteDataCache()
   /** setup 确认后、进入整理页前已提交的生成任务 */
   const pendingGenerateTask = ref<{ taskId: number, reportId: number | null } | null>(null)
@@ -375,11 +376,11 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       console.error('提交报告生成失败', e)
       const action = await showApiErrorModal(e, {
         fallback: '提交失败，请重试',
-        confirmText: '查看解读记录',
+        confirmText: '查看档案与记录',
         cancelText: '知道了',
       })
       if (action === 'confirm')
-        uni.navigateTo({ url: RouterPaths.jieduRecords })
+        navigateToProfileList(activeProfileId.value || undefined)
       return false
     }
 
@@ -435,13 +436,16 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       const res = await apiSendSmsCode({ mobile: mobileStr })
       if (res.code === 200) {
         return true
-      } else {
+      }
+      else {
+        console.log('发送短信验证码失败', res);
         uni.showToast({ title: res.msg || '发送失败', icon: 'none' })
         return false
       }
-    } catch (e: any) {
+    }
+    catch (e: any) {
       console.error('发送验证码失败', e)
-      uni.showToast({ title: e?.message || '发送失败', icon: 'none' })
+      uni.showToast({ title: e?.msg || '发送失败', icon: 'none' })
       return false
     }
   }
@@ -456,10 +460,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
           mobile: res.data.mobile ?? mobileStr,
         })
         await loadUserInfo({ skipSessionClear: true })
-      } else {
+      }
+      else {
         throw new Error(res.msg || '登录失败')
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('短信登录失败', e)
       throw e
     }
@@ -477,7 +483,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         return
       }
       throw new Error(res.msg || '登录失败')
-    } catch (e) {
+    }
+    catch (e) {
       console.error('登录失败', e)
       throw e
     }
@@ -492,10 +499,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         applySessionFromLoginData(session)
         await loadUserInfo({ skipSessionClear: true })
         return { needBindMobile: !!session.needBindMobile }
-      } else {
+      }
+      else {
         throw new Error(res.msg || '微信登录失败')
       }
-    }     catch (e) {
+    }
+    catch (e) {
       throw e
     }
   }
@@ -508,7 +517,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         mobile.value = mobileStr
         bindStatus.value = 1
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('绑定手机号失败', e)
     }
   }
@@ -524,7 +534,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         token.value = res.data.token
         uni.setStorageSync('apph5Token', res.data.token)
       }
-    } else {
+    }
+    else {
       throw new Error(res.msg || '绑定失败')
     }
   }
@@ -536,7 +547,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       if (res.code === 200 && res.data) {
         serverProducts.value = res.data
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('加载商品失败', e)
     }
   }
@@ -546,13 +558,15 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     if (!productId && serverProducts.value.length > 0) {
       productId = serverProducts.value[0].id
     }
-    if (!productId) return
+    if (!productId)
+      return
     try {
       const res = await getAvailableCount(productId)
       if (res.code === 200 && res.data) {
         totalAvailableCount.value = res.data.availableCount || 0
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('刷新可用次数失败', e)
     }
   }
@@ -564,7 +578,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       if (res.code === 200 && res.data) {
         return res.data.map((d: any) => ({ value: d.dictValue, label: d.dictLabel }))
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('加载字典数据失败', e)
     }
     return null
@@ -621,7 +636,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
           profiles.value.push(mapped)
         return mapped
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('加载档案详情失败', e)
     }
     return null
@@ -667,7 +683,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         if (res.data.productId != null)
           activeProductId.value = Number(res.data.productId)
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('加载可用次数失败', e)
     }
   }
@@ -735,7 +752,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       const res = await getOrders()
       if (res.code === 200 && res.data)
         serverOrders.value = res.data
-    } catch (e) {
+    }
+    catch (e) {
       console.error('加载订单列表失败', e)
     }
   }
@@ -748,7 +766,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       const res = await getConsumeRecords()
       if (res.code === 200 && res.data)
         consumeRecords.value = res.data
-    } catch (e) {
+    }
+    catch (e) {
       console.error('加载消费记录失败', e)
     }
   }

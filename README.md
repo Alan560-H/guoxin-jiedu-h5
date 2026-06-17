@@ -15,7 +15,7 @@ pnpm build:h5
 - **首页**：开始解读、档案入口、上次解读、字号调节、充值
 - **心语档案**：列表、创建（Chip + 下拉表单）
 - **解读流程**：选方向 → 整理页轮询任务 → 完成概览 → 详情报告
-- **解读记录**：走后端 `readingRecords` / `report/detail`
+- **解读记录**：档案列表页内嵌展示，走后端 `readingRecords` / `report/detail`
 - **心语档案**：走后端 `profiles`，页面按需 `loadProfiles()`，不做本地缓存
 - **解读权益**：商品来自 `getProducts`；微信 JSAPI 支付（`pay/create` → `chooseWXPay`），成功后刷新 `getCredits`
 - **数据**：登录/商品/次数/报告/档案均走 Java `/api/yiqixue/app/guoxin`；Pinia 仅持久化会话与 UI 偏好（不含档案列表）
@@ -59,7 +59,7 @@ src/
 ├── pages/
 │   ├── index.vue
 │   ├── profile/list|create
-│   ├── jiedu/setup|processing|complete|detail|records
+│   ├── jiedu/setup|processing|complete|detail
 │   └── credits/index
 └── utils/weixin/            # OAuth、JSSDK、支付
 ```

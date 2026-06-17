@@ -14,6 +14,7 @@ declare module 'vue' {
     GxLoginModal: typeof import('./src/components/guoxin/GxLoginModal.vue')['default']
     GxNavBar: typeof import('./src/components/guoxin/GxNavBar.vue')['default']
     GxRegionPicker: typeof import('./src/components/guoxin/GxRegionPicker.vue')['default']
+    ProfileReadingRecordList: typeof import('./src/components/guoxin/ProfileReadingRecordList.vue')['default']
     ReportChapter: typeof import('./src/components/guoxin/report/ReportChapter.vue')['default']
     ReportComponentRenderer: typeof import('./src/components/guoxin/report/ReportComponentRenderer.vue')['default']
     ReportFooter: typeof import('./src/components/guoxin/report/ReportFooter.vue')['default']

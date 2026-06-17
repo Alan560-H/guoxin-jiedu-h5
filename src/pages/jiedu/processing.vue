@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { onHide, onUnload } from '@dcloudio/uni-app'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGuoxinStore } from '@/stores/guoxinStore'
-import { RouterPaths } from '@/routerPaths'
-import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
+import GxNavBar from '@/components/guoxin/GxNavBar.vue'
+import { RouterPaths } from '@/routerPaths'
+import { useGuoxinStore } from '@/stores/guoxinStore'
+import { navigateToProfileList } from '@/utils/guoxin/navigation'
 
 const store = useGuoxinStore()
 const { t } = useI18n()
@@ -71,7 +72,7 @@ function handlePollFailure(msg: string) {
   pollErrorMsg.value = msg
   if (animationComplete.value) {
     uni.showToast({ title: msg, icon: 'none' })
-    uni.redirectTo({ url: RouterPaths.jieduRecords })
+    navigateToProfileList(store.activeProfileId || undefined, { replace: true })
   }
 }
 
@@ -104,7 +105,7 @@ async function pollRemoteTask() {
   pollDone.value = true
   if (!result) {
     pollSuccess.value = false
-    pollErrorMsg.value = '报告仍在生成中，请稍后在解读记录查看'
+    pollErrorMsg.value = t('jiedu.processing.pollPendingTip')
     clearSimulationTimer()
     step.value = 4
     animationComplete.value = true
@@ -179,10 +180,9 @@ onBeforeUnmount(() => {
   deactivatePage()
 })
 
-
 function goRecords() {
   deactivatePage()
-  uni.navigateTo({ url: RouterPaths.jieduRecords })
+  navigateToProfileList(store.activeProfileId || undefined, { replace: true })
 }
 </script>
 
@@ -193,9 +193,14 @@ function goRecords() {
     <scroll-view scroll-y class="gx-scroll">
       <!-- Loading Banner -->
       <view class="loading-banner">
-        <view class="loading-circle"></view>
-        <view class="banner-title">心语老师正在深度整理</view>
-        <view class="banner-desc">我正在整理档案信息、关注方向和补充信息，结合心理学模型为您整理更完整的内容。预计需要一些时间，完成后会通知您查看完整解读。</view>
+        <view class="loading-circle" />
+        <view class="banner-title">
+          心语老师正在深度整理
+        </view>
+        <view class="banner-desc">
+          {{ t('jiedu.processing.bannerDescPrefix') }}
+          <strong>{{ t('jiedu.processing.bannerDescBoldTime') }}</strong>{{ t('jiedu.processing.bannerDescMid1') }}<strong>{{ t('jiedu.processing.bannerDescBoldWechat') }}</strong>{{ t('jiedu.processing.bannerDescMid2') }}<strong>{{ t('jiedu.processing.bannerDescBoldClick') }}</strong>{{ t('jiedu.processing.bannerDescSuffix') }}
+        </view>
       </view>
 
       <!-- Preview card -->
@@ -221,8 +226,12 @@ function goRecords() {
           }"
         >
           <view class="timeline-icon">
-            <text v-if="idx + 1 < step">✓</text>
-            <text v-else>{{ idx + 1 }}</text>
+            <text v-if="idx + 1 < step">
+              ✓
+            </text>
+            <text v-else>
+              {{ idx + 1 }}
+            </text>
           </view>
           <view class="step-content">
             <view class="step-title">
@@ -239,15 +248,12 @@ function goRecords() {
         <view class="polling-hint">
           报告仍在生成中，请稍候…
         </view>
-        <view class="polling-tip">
-          {{ t('jiedu.processing.goRecordsTip') }}
-        </view>
       </view>
 
       <!-- Action buttons -->
       <view class="gx-btn-group action-buttons">
         <GxButton type="secondary" @click="goRecords">
-          先去解读记录，稍后查看
+          {{ t('jiedu.processing.goProfileList') }}
         </GxButton>
       </view>
 
@@ -298,6 +304,11 @@ function goRecords() {
   font-size: 24rpx;
   line-height: 1.6;
   opacity: 0.85;
+
+  strong {
+    font-weight: 700;
+    opacity: 1;
+  }
 }
 
 .preview-card {
@@ -334,13 +345,6 @@ function goRecords() {
   font-size: 26rpx;
   color: #153F33;
   font-weight: 700;
-}
-
-.polling-tip {
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  line-height: 1.6;
-  color: var(--gx-text-hint, #958878);
 }
 
 /* Timeline vertical checklists */

@@ -2,16 +2,19 @@
 import type { RecordVo } from '@/models/guoxin/record'
 import { onLoad } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxFontScaleNav from '@/components/guoxin/GxFontScaleNav.vue'
 import GxNavBar from '@/components/guoxin/GxNavBar.vue'
 import ReportView from '@/components/guoxin/report/ReportView.vue'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { navigateToProfileList } from '@/utils/guoxin/navigation'
 import { useActionLock } from '@/utils/guoxin/useActionLock'
 
 const store = useGuoxinStore()
 const { runLocked } = useActionLock()
+const { t } = useI18n()
 const record = ref<RecordVo | null>(null)
 const loading = ref(true)
 
@@ -52,7 +55,7 @@ onLoad(async (query) => {
 })
 
 function goBack() {
-  uni.navigateBack()
+  navigateToProfileList(record.value?.profileId || store.activeProfileId || undefined)
 }
 
 function goHome() {
@@ -124,7 +127,7 @@ function goSetupAgain() {
           再次解读 / 重新生成
         </GxButton>
         <GxButton type="secondary" @click="goBack">
-          返回解读记录
+          {{ t('profile.list.backToProfileList') }}
         </GxButton>
         <GxButton type="outline" @click="goHome">
           返回首页

@@ -10,6 +10,14 @@ overrides:
   '@intlify/message-compiler': 9.6.2
   '@intlify/shared': 9.6.2
 
+patchedDependencies:
+  '@uni-helper/vite-plugin-uni-layouts@0.1.11':
+    hash: 6cc9f5155f454f0d3430d69d0512b1ea814b90cfa9b473d564b142f0ec3d9e74
+    path: patches/@uni-helper__vite-plugin-uni-layouts@0.1.11.patch
+  '@uni-ku/root@1.4.1':
+    hash: e581b26339087c9c4fd289856c897449adb597d42b7756df3078382659d6911c
+    path: patches/@uni-ku__root@1.4.1.patch
+
 importers:
 
   .:
@@ -149,7 +157,7 @@ importers:
         version: 0.2.3(rollup@4.52.2)
       '@uni-helper/vite-plugin-uni-layouts':
         specifier: ^0.1.11
-        version: 0.1.11(rollup@4.52.2)
+        version: 0.1.11(patch_hash=6cc9f5155f454f0d3430d69d0512b1ea814b90cfa9b473d564b142f0ec3d9e74)(rollup@4.52.2)
       '@uni-helper/vite-plugin-uni-manifest':
         specifier: ^0.2.8
         version: 0.2.8(vite@5.2.8(@types/node@24.5.2)(sass@1.64.2)(terser@5.44.0))
@@ -167,7 +175,7 @@ importers:
         version: 0.0.2
       '@uni-ku/root':
         specifier: ^1.4.0
-        version: 1.4.1(vite@5.2.8(@types/node@24.5.2)(sass@1.64.2)(terser@5.44.0))
+        version: 1.4.1(patch_hash=e581b26339087c9c4fd289856c897449adb597d42b7756df3078382659d6911c)(vite@5.2.8(@types/node@24.5.2)(sass@1.64.2)(terser@5.44.0))
       '@vue/runtime-core':
         specifier: 3.4.21
         version: 3.4.21
@@ -7687,7 +7695,7 @@ snapshots:
       - rollup
       - supports-color
 
-  '@uni-helper/vite-plugin-uni-layouts@0.1.11(rollup@4.52.2)':
+  '@uni-helper/vite-plugin-uni-layouts@0.1.11(patch_hash=6cc9f5155f454f0d3430d69d0512b1ea814b90cfa9b473d564b142f0ec3d9e74)(rollup@4.52.2)':
     dependencies:
       '@babel/types': 7.28.4
       '@uni-helper/uni-env': 0.1.8
@@ -7756,7 +7764,7 @@ snapshots:
     dependencies:
       '@uni-helper/uni-env': 0.1.8
 
-  '@uni-ku/root@1.4.1(vite@5.2.8(@types/node@24.5.2)(sass@1.64.2)(terser@5.44.0))':
+  '@uni-ku/root@1.4.1(patch_hash=e581b26339087c9c4fd289856c897449adb597d42b7756df3078382659d6911c)(vite@5.2.8(@types/node@24.5.2)(sass@1.64.2)(terser@5.44.0))':
     dependencies:
       '@vue/compiler-sfc': 3.4.21
       chokidar: 3.6.0

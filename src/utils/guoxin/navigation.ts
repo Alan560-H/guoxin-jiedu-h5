@@ -1,4 +1,5 @@
 import { RouterPaths } from '@/routerPaths'
+import { useGuoxinStore } from '@/stores/guoxinStore'
 
 /** 直接回首页（整理页返回等场景） */
 export function navigateToHome(fallbackUrl = RouterPaths.home) {
@@ -69,4 +70,15 @@ export function navigateToJieduSetup() {
       uni.redirectTo({ url })
     },
   })
+}
+
+/** 进入档案列表；可选选中档案；replace 用于 processing 等需清栈场景 */
+export function navigateToProfileList(profileId?: string, options?: { replace?: boolean }) {
+  if (profileId)
+    useGuoxinStore().setActiveProfile(profileId)
+  const url = RouterPaths.profileList
+  if (options?.replace)
+    uni.redirectTo({ url })
+  else
+    uni.navigateTo({ url })
 }

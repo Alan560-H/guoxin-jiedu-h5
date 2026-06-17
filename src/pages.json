@@ -41,14 +41,6 @@
       "layout": "guoxin"
     },
     {
-      "path": "pages/jiedu/records",
-      "type": "page",
-      "style": {
-        "navigationBarTitleText": "解读记录"
-      },
-      "layout": "guoxin"
-    },
-    {
       "path": "pages/jiedu/setup",
       "type": "page",
       "style": {
