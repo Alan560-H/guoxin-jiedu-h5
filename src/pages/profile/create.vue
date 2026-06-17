@@ -164,10 +164,12 @@ function resetTimeState() {
   storedBirthMinute.value = 0
 }
 
-watch(calendarType, () => {
+watch(calendarType, (type) => {
   resetDateIndex()
   if (!isEditMode.value)
     resetTimeState()
+  if (type === 'lunar')
+    useTrueSolarTime.value = false
 })
 
 function applyProfileToForm(p: ProfileVo) {
@@ -177,7 +179,7 @@ function applyProfileToForm(p: ProfileVo) {
   calendarType.value = p.calendarType
   birthPlace.value = p.birthPlace
   areaCode.value = p.areaCode
-  useTrueSolarTime.value = !!p.useTrueSolarTime
+  useTrueSolarTime.value = p.calendarType === 'lunar' ? false : !!p.useTrueSolarTime
 
   const sourceDay = p.calendarType === 'lunar' ? p.birthDayLunar : p.birthDaySolar
   const parts = parseBirthDay(sourceDay || p.birthDay)
@@ -365,7 +367,7 @@ function buildDto() {
     areaCode: areaCode.value,
     calendarType: cal.value,
     calendarTypeText: cal.label,
-    useTrueSolarTime: useTrueSolarTime.value,
+    useTrueSolarTime: calendarType.value === 'solar' && useTrueSolarTime.value,
   }
 }
 
@@ -540,7 +542,7 @@ async function save(startImmediately: boolean) {
             </picker>
           </view>
 
-          <view class="form-item">
+          <view v-if="calendarType === 'solar'" class="form-item">
             <view class="gx-form-label item-label">
               真太阳时校对
             </view>

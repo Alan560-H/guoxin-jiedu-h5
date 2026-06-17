@@ -68,9 +68,9 @@ export function getJssdkSignUrl(): string {
 
 /** OAuth 回调：生产用地址栏 origin+pathname；开发可在 .env.development 设 VITE_OAUTH_REDIRECT_URI（如 ngrok） */
 export function getOAuthRedirectUri(): string {
-    // const devOverride = import.meta.env.DEV && import.meta.env.VITE_OAUTH_REDIRECT_URI
-    // if (devOverride)
-    //     return devOverride
+    const devOverride = import.meta.env.DEV && import.meta.env.VITE_OAUTH_REDIRECT_URI
+    if (devOverride)
+        return devOverride
 
     if (typeof window === 'undefined')
         return ''
