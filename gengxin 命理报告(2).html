@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>八字财运深度分析报告</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #0a0a1a;
+            color: #e0e0e0;
+            line-height: 1.8;
+            font-size: 15px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 0 16px 40px;
+        }
+
+        /* 顶部封面 */
+        .hero {
+            position: relative;
+            text-align: center;
+            padding: 60px 20px 40px;
+            background: linear-gradient(180deg, #1a0a2e 0%, #0d1b3e 50%, #0a0a1a 100%);
+            margin: 0 -16px 30px;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255,170,50,0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .hero-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero h1 {
+            font-size: 26px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffd700, #ff8c00, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-subtitle {
+            font-size: 13px;
+            color: #8899aa;
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-info {
+            margin-top: 24px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-tag {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #ffd700;
+        }
+
+        /* 基本信息卡片 */
+        .info-card {
+            background: linear-gradient(135deg, #1a1a3e, #0d1b3e);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .info-item {
+            text-align: center;
+            padding: 12px 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #8899aa;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #ffd700;
+        }
+
+        /* 章节标题 */
+        .section {
+            margin-bottom: 32px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+        }
+
+        .section-number {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a2e;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .section-icon {
+            font-size: 20px;
+        }
+
+        /* 前言样式 */
+        .preface {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(255, 140, 0, 0.05));
+            border-left: 3px solid #ffd700;
+            border-radius: 0 12px 12px 0;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .preface-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffd700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preface p {
+            color: #c0c8d8;
+            font-size: 14px;
+            line-height: 2;
+            text-align: justify;
+        }
+
+        /* 子标题 */
+        .sub-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e8c547;
+            margin: 20px 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sub-title::before {
+            content: '';
+            width: 4px;
+            height: 16px;
+            background: linear-gradient(180deg, #ffd700, #ff8c00);
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        /* 正文段落 */
+        .text-block {
+            color: #c0c8d8;
+            font-size: 14px;
+            line-height: 2;
+            margin-bottom: 16px;
+            text-align: justify;
+        }
+
+        .text-block strong {
+            color: #ffd700;
+        }
+
+        /* 进度条 */
+        .progress-group {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .progress-item {
+            margin-bottom: 14px;
+        }
+
+        .progress-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .progress-name {
+            font-size: 13px;
+            color: #b0b8c8;
+        }
+
+        .progress-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffd700;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1.5s ease;
+        }
+
+        .fill-gold { background: linear-gradient(90deg, #ffd700, #ff8c00); }
+        .fill-blue { background: linear-gradient(90deg, #4a9eff, #0066ff); }
+        .fill-green { background: linear-gradient(90deg, #4ade80, #16a34a); }
+        .fill-red { background: linear-gradient(90deg, #f87171, #dc2626); }
+        .fill-purple { background: linear-gradient(90deg, #a78bfa, #7c3aed); }
+        .fill-cyan { background: linear-gradient(90deg, #22d3ee, #0891b2); }
+        .fill-orange { background: linear-gradient(90deg, #fb923c, #ea580c); }
+        .fill-pink { background: linear-gradient(90deg, #f472b6, #db2777); }
+
+        /* 综合评分圆环 */
+        .score-ring-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            gap: 24px;
+        }
+
+        .score-ring {
+            position: relative;
+            width: 120px;
+            height: 120px;
+        }
+
+        .score-ring svg {
+            transform: rotate(-90deg);
+        }
+
+        .score-ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.08);
+            stroke-width: 8;
+        }
+
+        .score-ring-fill {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke: url(#goldGradient);
+        }
+
+        .score-ring-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .score-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffd700;
+            display: block;
+        }
+
+        .score-label {
+            font-size: 11px;
+            color: #8899aa;
+        }
+
+        /* 饼图容器 */
+        .pie-chart-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .pie-chart {
+            width: 140px;
+            height: 140px;
+            position: relative;
+        }
+
+        .pie-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pie-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #b0b8c8;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* 表格 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 13px;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+
+        .data-table thead {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 140, 0, 0.1));
+        }
+
+        .data-table th {
+            padding: 10px 12px;
+            text-align: left;
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 12px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #c0c8d8;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tbody tr {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(255, 215, 0, 0.05);
+        }
+
+        /* 标签 */
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .tag-gold { background: rgba(255,215,0,0.15); color: #ffd700; }
+        .tag-green { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .tag-red { background: rgba(248,113,113,0.15); color: #f87171; }
+        .tag-blue { background: rgba(74,158,255,0.15); color: #4a9eff; }
+        .tag-purple { background: rgba(167,139,250,0.15); color: #a78bfa; }
+        .tag-orange { background: rgba(251,146,60,0.15); color: #fb923c; }
+
+        /* 卡片列表 */
+        .card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .card-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .card-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ffd700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-item-text {
+            font-size: 13px;
+            color: #a0a8b8;
+            line-height: 1.8;
+        }
+
+        /* 时间轴 */
+        .timeline {
+            position: relative;
+            padding-left: 24px;
+            margin: 16px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, #ffd700, #ff8c00, #dc2626, #4ade80);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 18px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid #ffd700;
+            background: #0a0a1a;
+        }
+
+        .timeline-year {
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffd700;
+            margin-bottom: 6px;
+        }
+
+        .timeline-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        .timeline-text {
+            font-size: 13px;
+            color: #a0a8b8;
+            line-height: 1.8;
+        }
+
+        /* 警告框 */
+        .alert-box {
+            background: rgba(248, 113, 113, 0.08);
+            border: 1px solid rgba(248, 113, 113, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .alert-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f87171;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .alert-text {
+            font-size: 13px;
+            color: #d0a0a0;
+            line-height: 1.8;
+        }
+
+        /* 成功框 */
+        .success-box {
+            background: rgba(74, 222, 128, 0.08);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .success-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4ade80;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .success-text {
+            font-size: 13px;
+            color: #a0d0b0;
+            line-height: 1.8;
+        }
+
+        /* 引用框 */
+        .quote-box {
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.08), rgba(124, 58, 237, 0.05));
+            border-left: 3px solid #a78bfa;
+            border-radius: 0 12px 12px 0;
+            padding: 16px 20px;
+            margin: 20px 0;
+        }
+
+        .quote-text {
+            font-size: 15px;
+            color: #c8b8e8;
+            font-style: italic;
+            line-height: 1.9;
+        }
+
+        .quote-source {
+            font-size: 12px;
+            color: #8878a8;
+            margin-top: 8px;
+            text-align: right;
+        }
+
+        /* 心理疏导特殊样式 */
+        .counsel-section {
+            background: linear-gradient(180deg, rgba(255, 215, 0, 0.05), rgba(255, 140, 0, 0.02), transparent);
+            border: 1px solid rgba(255, 215, 0, 0.1);
+            border-radius: 16px;
+            padding: 24px 20px;
+            margin: 30px 0;
+        }
+
+        .counsel-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+
+        .counsel-text {
+            font-size: 14px;
+            color: #c8c0a0;
+            line-height: 2.2;
+            text-align: justify;
+        }
+
+        .counsel-text strong {
+            color: #ffd700;
+        }
+
+        /* 行动路线图 */
+        .action-section {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .action-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #4ade80;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .action-list li {
+            position: relative;
+            padding: 8px 0 8px 24px;
+            font-size: 13px;
+            color: #b0b8c8;
+            line-height: 1.8;
+        }
+
+        .action-list li::before {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 14px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+        }
+
+        /* 底部 */
+        .footer {
+            text-align: center;
+            padding: 30px 0;
+            color: #555;
+            font-size: 12px;
+        }
+
+        .footer-divider {
+            width: 60px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ffd700, transparent);
+            margin: 0 auto 16px;
+        }
+
+        /* 横向对比条 */
+        .comparison-bar {
+            margin: 16px 0;
+        }
+
+        .comp-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 8px;
+        }
+
+        .comp-label-left {
+            width: 60px;
+            text-align: right;
+            font-size: 12px;
+            color: #a0a8b8;
+            flex-shrink: 0;
+        }
+
+        .comp-bar-wrapper {
+            flex: 1;
+            display: flex;
+            height: 24px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .comp-bar-left {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 6px;
+            font-size: 10px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .comp-bar-right {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding-left: 6px;
+            font-size: 10px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .comp-label-right {
+            width: 60px;
+            font-size: 12px;
+            color: #a0a8b8;
+            flex-shrink: 0;
+        }
+
+        /* 雷达图替代 - 多维度展示 */
+        .radar-substitute {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 16px 0;
+        }
+
+        .radar-item {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .radar-item-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffd700;
+        }
+
+        .radar-item-label {
+            font-size: 11px;
+            color: #8899aa;
+            margin-top: 4px;
+        }
+
+        .radar-item-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .radar-item-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        /* 双列卡片 */
+        .dual-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .dual-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .dual-card-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .dual-card-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .dual-card-text {
+            font-size: 11px;
+            color: #8899aa;
+            line-height: 1.6;
+        }
+
+        /* 阶段进度 */
+        .phase-progress {
+            margin: 20px 0;
+        }
+
+        .phase-item {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: flex-start;
+        }
+
+        .phase-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+            border: 2px solid;
+        }
+
+        .phase-content {
+            flex: 1;
+        }
+
+        .phase-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .phase-desc {
+            font-size: 12px;
+            color: #8899aa;
+            line-height: 1.7;
+        }
+
+        /* 水平分割线 */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,215,0,0.3), transparent);
+            margin: 30px 0;
+        }
+
+        /* 总结框 */
+        .summary-box {
+            background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,140,0,0.05));
+            border: 1px solid rgba(255,215,0,0.2);
+            border-radius: 16px;
+            padding: 24px 20px;
+            margin: 24px 0;
+        }
+
+        .summary-box h3 {
+            font-size: 18px;
+            color: #ffd700;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .keyword-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin: 16px 0;
+        }
+
+        .keyword-tag {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 封面 -->
+        <div class="hero">
+            <div class="hero-icon">🏔️</div>
+            <h1>财运维度·八维深度架构分析</h1>
+            <div class="hero-subtitle">WEALTH DIMENSION · EIGHT-LAYER DEEP ANALYSIS</div>
+            <div class="hero-info">
+                <span class="hero-tag">戊土日元</span>
+                <span class="hero-tag">卯月生人</span>
+                <span class="hero-tag">2026+规划</span>
+            </div>
+        </div>
+
+        <!-- 基本信息 -->
+        <div class="info-card">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">日元</div>
+                    <div class="info-value">戊土</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">生月</div>
+                    <div class="info-value">卯月</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">时柱</div>
+                    <div class="info-value">辛酉</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">年柱</div>
+                    <div class="info-value">庚辰</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 前言 -->
+        <div class="preface">
+            <div class="preface-title">📜 前言：财富作为你生命能量的显化</div>
+            <p>对于戊土日元而言，财富不仅仅是账户数字的增减，更是你驾驭资源、转化价值能力的直接体现。你的命盘呈现出一种"金木交战、土居其中"的独特格局。卯月木旺，官星当令，本应生发万物，但时柱辛酉强金横亘，形成"伤官冲官"之势。在财运维度上，这意味着你的求财之路绝非风平浪静的坦途，而是一场需要在"规则（官）"与"突破（伤官）"、"守成（土）"与"变革（金）"之间寻找微妙平衡的修行。2026 年丙午年之后，你将步入人生关键的火土大运，这不仅是运势的转折，更是财富逻辑重构的起点。本报告将带你穿透表象，从八个维度深度解构你的财富基因。</p>
+        </div>
+
+        <!-- 命局格局对比图 -->
+        <div class="progress-group">
+            <div style="text-align:center;font-size:13px;color:#8899aa;margin-bottom:12px;">命局核心力量对比</div>
+            <div class="comparison-bar">
+                <div class="comp-item">
+                    <div class="comp-label-left" style="color:#ffd700;">规则(官)</div>
+                    <div class="comp-bar-wrapper">
+                        <div class="comp-bar-left" style="width:45%;background:linear-gradient(90deg,#4a9eff,#0066ff);">45%</div>
+                        <div class="comp-bar-right" style="width:55%;background:linear-gradient(90deg,#ff8c00,#ffd700);">55%</div>
+                    </div>
+                    <div class="comp-label-right" style="color:#ff8c00;">突破(伤官)</div>
+                </div>
+                <div class="comp-item">
+                    <div class="comp-label-left" style="color:#4ade80;">守成(土)</div>
+                    <div class="comp-bar-wrapper">
+                        <div class="comp-bar-left" style="width:40%;background:linear-gradient(90deg,#4ade80,#16a34a);">40%</div>
+                        <div class="comp-bar-right" style="width:60%;background:linear-gradient(90deg,#a78bfa,#7c3aed);">60%</div>
+                    </div>
+                    <div class="comp-label-right" style="color:#a78bfa;">变革(金)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 第一维 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-number">壹</div>
+                <div class="section-title">财运本原能量解码</div>
+            </div>
+
+            <div class="sub-title">1. 财星定位与能量属性</div>
+            <div class="text-block">
+                在你的命盘中，水为财星。年支辰中藏有癸水正财，这是你命中唯一的明现财库根源。然而，全局并无壬水偏财透出，且水元素在原局中处于相对弱势地位（仅藏于湿土之中）。这意味着你的先天财运并非来自投机取巧或爆发式的横财，而是源于"正财"，即通过专业技能、稳定职位或长期积累获得的财富。
+            </div>
+
+            <!-- 财星来源表格 -->
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>财星类型</th>
+                        <th>五行</th>
+                        <th>位置</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>正财（癸水）</td>
+                        <td>水</td>
+                        <td>辰中暗藏</td>
+                        <td><span class="tag tag-gold">唯一财根</span></td>
+                    </tr>
+                    <tr>
+                        <td>偏财（壬水）</td>
+                        <td>水</td>
+                        <td>无透出</td>
+                        <td><span class="tag tag-red">缺失</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="sub-title">2. 五行旺衰与得分</div>
+
+            <!-- 五行能量进度条 -->
+            <div class="progress-group">
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">💧 财星强度（水）</span>
+                        <span class="progress-value">4/10</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-blue" style="width:40%"></div>
+                    </div>
+                    <div style="font-size:11px;color:#6688aa;margin-top:4px;">水弱且藏，先天现金流不充裕，容易感到资金紧张或周转压力</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">⚡ 食伤·财源（金）</span>
+                        <span class="progress-value">8/10</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-gold" style="width:80%"></div>
+                    </div>
+                    <div style="font-size:11px;color:#6688aa;margin-top:4px;">年干庚金、时柱辛酉，金气极旺。才华、技术和创造力极强</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">🏔️ 日主承载（土）</span>
+                        <span class="progress-value">6/10</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-orange" style="width:60%"></div>
+                    </div>
+                    <div style="font-size:11px;color:#6688aa;margin-top:4px;">戊土偏弱但有根，能担一部分财，难以承受巨财冲击</div>
+                </div>
+            </div>
+
+            <!-- 综合先天财运评分 -->
+            <div class="score-ring-container">
+                <div class="score-ring">
+                    <svg width="120" height="120" viewBox="0 0 120 120">
+                        <defs>
+                            <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#ffd700"/>
+                                <stop offset="100%" style="stop-color:#ff8c00"/>
+                            </linearGradient>
+                        </defs>
+                        <circle class="score-ring-bg" cx="60" cy="60" r="50"/>
+                        <circle class="score-ring-fill" cx="60" cy="60" r="50"
+                            stroke-dasharray="204 314"
+                            stroke-dashoffset="0"/>
+                    </svg>
+                    <div class="score-ring-text">
+                        <span class="score-number">65</span>
+                        <span class="score-label">综合先天财运</span>
+                    </div>
+                </div>
+                <div style="font-size:13px;color:#a0a8b8;max-width:180px;line-height:1.8;">
+                    先天财运中等偏上，<strong style="color:#ffd700;">才华极高</strong>但<strong style="color:#4a9eff;">财星偏弱</strong>，需后天运势配合方可大成。
+                </div>
+            </div>
+
+            <div class="sub-title">3. 原始驱动力性质</div>
+            <div class="text-block">
+                你的求财驱动力属于典型的"<strong>危机驱动型"叠加"证明驱动型</strong>"。由于财星微弱且官星受冲，潜意识里常有一种"资源匮乏"的不安全感，迫使你不断通过输出才华（食伤）来换取生存资源。同时，伤官旺相让你渴望通过独特的技能打破常规，用非传统的方式证明自我价值，从而获取财富。
+            </div>
+
+            <!-- 驱动力构成饼图 -->
+            <div class="pie-chart-container">
+                <div class="pie-chart">
+                    <svg viewBox="0 0 140 140">
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="20"/>
+                        <!-- 危机驱动 55% -->
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#f87171" stroke-width="20"
+                            stroke-dasharray="190 345" stroke-dashoffset="86" transform="rotate(-90 70 70)"/>
+                        <!-- 证明驱动 35% -->
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#ffd700" stroke-width="20"
+                            stroke-dasharray="121 345" stroke-dashoffset="-104" transform="rotate(-90 70 70)"/>
+                        <!-- 其他 10% -->
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#4a9eff" stroke-width="20"
+                            stroke-dasharray="34 345" stroke-dashoffset="-225" transform="rotate(-90 70 70)"/>
+                        <text x="70" y="65" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">驱动力</text>
+                        <text x="70" y="82" text-anchor="middle" fill="#8899aa" font-size="10">构成比例</text>
+                    </svg>
+                </div>
+                <div class="pie-legend">
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#f87171;"></div>
+                        <span>危机驱动型 55%</span>
+                    </div>
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#ffd700;"></div>
+                        <span>证明驱动型 35%</span>
+                    </div>
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#4a9eff;"></div>
+                        <span>其他因素 10%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 第二维 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-number">贰</div>
+                <div class="section-title">财运心理构造剖析</div>
+            </div>
+
+            <div class="sub-title">1. 核心金钱信念</div>
+            <div class="text-block">
+                你内心深处对金钱持有一种矛盾的态度：一方面认为"钱是安全的保障"，极度渴望储蓄和稳定（土的特性）；另一方面又觉得"死工资无法体现我的价值"，总想通过折腾、创新或副业来快速变现（金的特性）。这种"保守"与"冒险"的心理拉锯，常导致你在投资决策上犹豫不决。
+            </div>
+
+            <!-- 心理拉锯对比条 -->
+            <div class="progress-group">
+                <div style="text-align:center;font-size:13px;color:#8899aa;margin-bottom:12px;">内心金钱信念拉锯</div>
+                <div class="comparison-bar">
+                    <div class="comp-item">
+                        <div class="comp-label-left" style="color:#4ade80;">保守储蓄</div>
+                        <div class="comp-bar-wrapper">
+                            <div class="comp-bar-left" style="width:45%;background:linear-gradient(90deg,#4ade80,#16a34a);">45%</div>
+                            <div class="comp-bar-right" style="width:55%;background:linear-gradient(90deg,#f87171,#dc2626);">55%</div>
+                        </div>
+                        <div class="comp-label-right" style="color:#f87171;">冒险变现</div>
+                    </div>
+                    <div class="comp-item">
+                        <div class="comp-label-left" style="color:#4a9eff;">遵守规则</div>
+                        <div class="comp-bar-wrapper">
+                            <div class="comp-bar-left" style="width:40%;background:linear-gradient(90deg,#4a9eff,#0066ff);">40%</div>
+                            <div class="comp-bar-right" style="width:60%;background:linear-gradient(90deg,#ffd700,#ff8c00);">60%</div>
+                        </div>
+                        <div class="comp-label-right" style="color:#ffd700;">挑战权威</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-title">2. 情绪反应模式</div>
+            <div class="card-list">
+                <div class="card-item">
+                    <div class="card-item-title">⚡ 触发机制</div>
+                    <div class="card-item-text">当看到他人轻松获利或自己付出巨大努力却回报微薄时，极易产生焦虑和愤懑。</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-item-title">🛡️ 防御机制</div>
+                    <div class="card-item-text">面对财务风险，你倾向于过度分析（食伤过重导致思虑多），甚至因为害怕失败而迟迟不敢行动，或者在冲动之下进行高风险操作以图"一把翻盘"。</div>
+                </div>
+            </div>
+
+            <div class="sub-title">3. 自我认同与冲突</div>
+            <div class="text-block">
+                你将"赚钱能力"等同于"个人能力"。若财务状况不佳，会深深怀疑自我价值。潜在的心理冲突在于：你既想遵守社会规则去上班拿薪水（顺应官星），又忍不住想要挑战权威、打破体制（伤官见官），这种内耗常常削弱你的聚财能量。
+            </div>
+
+            <!-- 心理冲突能量消耗表 -->
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>冲突维度</th>
+                        <th>正面力量</th>
+                        <th>负面消耗</th>
+                        <th>内耗指数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>规则 vs 突破</td>
+                        <td>官星 (木)</td>
+                        <td>伤官 (金)</td>
+                        <td><span class="tag tag-red">高</span></td>
+                    </tr>
+                    <tr>
+                        <td>安全 vs 自由</td>
+                        <td>正财 (水)</td>
+                        <td>食伤 (金)</td>
+                        <td><span class="tag tag-orange">中高</span></td>
+                    </tr>
+                    <tr>
+                        <td>储蓄 vs 消费</td>
+                        <td>比劫 (土)</td>
+                        <td>食伤 (金)</td>
+                        <td><span class="tag tag-gold">中</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 第三维 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-number">叁</div>
+                <div class="section-title">行为表现层</div>
+            </div>
+
+            <div class="sub-title">1. 习惯性求财模式</div>
+            <div class="card-list">
+                <div class="card-item">
+                    <div class="card-item-title">🔧 技术变现</div>
+                    <div class="card-item-text">你擅长利用专业知识、口才、创意或特殊技能赚钱，而非单纯依靠资本运作。</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-item-title">🔀 多线作战</div>
+                    <div class="card-item-text">由于食伤混杂，你往往不满足于单一收入来源，喜欢尝试副业、兼职或多项目投资，但容易因精力分散而导致"样样通，样样松"。</div>
+                </div>
+            </div>
+
+            <div class="sub-title">2. 优势与限制行为</div>
+
+            <!-- 优势与限制对比表 -->
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>类别</th>
+                        <th>具体表现</th>
+                        <th>等级</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="tag tag-green">优势</span></td>
+                        <td>敏锐的商业嗅觉，善于发现市场漏洞</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag tag-green">优势</span></td>
+                        <td>执行力强，看准机会能迅速出击</td>
+                        <td>⭐⭐⭐⭐</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag tag-green">优势</span></td>
+                        <td>极强的抗压能力和复原力</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag tag-red">限制</span></td>
+                        <td>容易轻视小钱，眼高手低</td>
+                        <td>⚠️⚠️⚠️</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag tag-red">限制</span></td>
+                        <td>言语犀利得罪合作伙伴（比劫争财）</td>
+                        <td>⚠️⚠️⚠️⚠️</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag tag-red">限制</span></td>
+                        <td>缺乏长远规划，"赚了花、花了赚"</td>
+                        <td>⚠️⚠️⚠️</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="sub-title">3. 决策风格</div>
+            <div class="text-block">
+                典型的"数据 + 直觉"混合型，但更偏向于直觉驱动的风险捕捉。在财务决策上，你往往能在危机中看到机会，但也容易忽略潜在的合规风险。
+            </div>
+
+            <!-- 决策风格构成 -->
+            <div class="progress-group">
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">📊 数据分析驱动</span>
+                        <span class="progress-value">35%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-blue" style="width:35%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">🎯 直觉风险捕捉</span>
+                        <span class="progress-value">65%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-gold" style="width:65%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 第四维 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-number">肆</div>
+                <div class="section-title">时间演变层（2026-2035）</div>
+            </div>
+
+            <div class="sub-title">1. 大运周期系统性影响</div>
+            <div class="text-block">
+                你即将进入或正处于<strong>壬午大运</strong>（23-32 岁）及后续的<strong>癸未大运</strong>（33-42 岁）。
+            </div>
+
+            <!-- 时间轴 -->
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-year">2026-2027（丙午、丁未年）<span class="timeline-tag tag-green">筑基期</span></div>
+                    <div class="timeline-text">火土流年，印比助身。这是你财运的"<strong style="color:#4ade80;">筑基期</strong>"。火能制金护官，又能生土，你的判断力将大幅提升，之前的混乱思绪得以理清，适合积累人脉和信誉，财运虽不爆发但稳步增长。</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2028-2030（申、酉、戌年）<span class="timeline-tag tag-orange">波动期</span></div>
+                    <div class="timeline-text">金气复燃，食伤旺盛。这是"<strong style="color:#fb923c;">波动期</strong>"。才华尽显，收入渠道增多，但开销巨大，易有投资失误或口舌破财，需严防"过犹不及"。</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2031-2033（亥、子、丑年）<span class="timeline-tag tag-gold">收获期</span></div>
+                    <div class="timeline-text">水旺财地。这是"<strong style="color:#ffd700;">收获期</strong>"。身强遇财，是你人生中第一波真正的财富高峰，此前积累的资源将在此刻转化为真金白银。</div>
+                </div>
+            </div>
+
+            <!-- 财运趋势进度条 -->
+            <div class="progress-group">
+                <div style="text-align:center;font-size:13px;color:#8899aa;margin-bottom:12px;">各阶段财运能量指数</div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">2026-2027 筑基期</span>
+                        <span class="progress-value">55/100</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-green" style="width:55%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">2028-2030 波动期</span>
+                        <span class="progress-value">70/100</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-orange" style="width:70%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">2031-2033 收获期</span>
+                        <span class="progress-value">88/100</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-gold" style="width:88%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-title">2. 发展阶段划分</div>
+
+            <!-- 阶段卡片 -->
+            <div class="dual-cards">
+                <div class="dual-card">
+                    <div class="dual-card-icon">🔨</div>
+                    <div class="dual-card-title">26-30岁（2026-2030）</div>
+                    <div class="dual-card-text">核心任务："修内功"。不要急于求大财，重点在于打磨核心竞争力，建立个人品牌。</div>
+                </div>
+                <div class="dual-card">
+                    <div class="dual-card-icon">🚀</div>
+                    <div class="dual-card-title">31-40岁（2031-2040）</div>
+                    <div class="dual-card-text">核心任务："扩版图"。将技能规模化，从个人奋斗转向团队作战，实现财富量级跃升。</div>
+                </div>
+            </div>
+
+            <div class="sub-title">3. 关键时间节点预警</div>
+
+            <div class="success-box">
+                <div class="success-title">✨ 2026年（丙午）—— 转折点</div>
+                <div class="success-text">思想成熟度提升，可能有贵人指点迷津，确立新的职业或理财方向。</div>
+            </div>
+
+            <div class="alert-box">
+                <div class="alert-title">⚠️ 2029年（己酉）—— 风险点</div>
+                <div class="alert-text">酉金加重卯酉冲，注意因合同纠纷、人际冲突导致的破财，切勿担保借贷。</div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 第五维 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-number">伍</div>
+                <div class="section-title">环境互动层</div>
+            </div>
+
+            <div class="sub-title">1. 最佳求财环境</div>
+
+            <!-- 行业属性表格 -->
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>五行属性</th>
+                        <th>推荐行业</th>
+                        <th>适合度</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="tag tag-red">🔥 火</span></td>
+                        <td>文化传媒、教育培训、互联网科技</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag tag-orange">🏔️ 土</span></td>
+                        <td>房地产、建筑工程、行政管理</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag tag-purple">⚠️ 避免</span></td>
+                        <td>纯金融炒作、流动性过强的投机行业</td>
+                        <td>❌</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="text-block">
+                <strong>地域方位</strong>：南方（火地）和中原/本地（土地）是你的财库方位。向出生地的南方发展，能获得更强的能量支持。
+            </div>
+
+            <!-- 方位能量饼图 -->
+            <div class="pie-chart-container">
+                <div class="pie-chart">
+                    <svg viewBox="0 0 140 140">
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="20"/>
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#f87171" stroke-width="20"
+                            stroke-dasharray="138 345" stroke-dashoffset="86" transform="rotate(-90 70 70)"/>
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#fb923c" stroke-width="20"
+                            stroke-dasharray="104 345" stroke-dashoffset="-52" transform="rotate(-90 70 70)"/>
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#4a9eff" stroke-width="20"
+                            stroke-dasharray="69 345" stroke-dashoffset="-156" transform="rotate(-90 70 70)"/>
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#6b7280" stroke-width="20"
+                            stroke-dasharray="34 345" stroke-dashoffset="-225" transform="rotate(-90 70 70)"/>
+                        <text x="70" y="65" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">方位</text>
+                        <text x="70" y="82" text-anchor="middle" fill="#8899aa" font-size="10">能量分布</text>
+                    </svg>
+                </div>
+                <div class="pie-legend">
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#f87171;"></div>
+                        <span>南方（火地）40%</span>
+                    </div>
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#fb923c;"></div>
+                        <span>中原/本地（土地）30%</span>
+                    </div>
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#4a9eff;"></div>
+                        <span>东方 20%</span>
+                    </div>
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#6b7280;"></div>
+                        <span>其他方位 10%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-title">2. 关键人际关系</div>
+            <div class="card-list">
+                <div class="card-item">
+                    <div class="card-item-title">🌟 贵人类型</div>
+                    <div class="card-item-text">属马、属蛇、属狗的人，或八字火土旺的人。他们能为你提供稳定的平台和资源，弥补你命局中"火"的不足。</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-item-title">🤝 合作伙伴</div>
+                    <div class="card-item-text">需要性格沉稳、做事严谨的互补型伙伴。你负责冲锋陷阵（出点子），对方负责风控落地（守规矩）。</div>
+                </div>
+            </div>
+
+            <div class="sub-title">3. 时代趋势共振</div>
+            <div class="text-block">
+                当前时代知识付费、内容创作、专业技能服务化趋势明显，这与你"食伤生财"的命理结构高度契合。利用新媒体传播专业知识，是你顺应天时的最佳策略。
+            </div>
+
+            <!-- 趋势契合度 -->
+            <div class="progress-group">
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">📱 知识付费/内容创作</span>
+                        <span class="progress-value">95%契合</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-gold" style="width:95%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">🎓 专业技能服务化</span>
+                        <span class="progress-value">90%契合</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-green" style="width:90%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">📡 新媒体传播</span>
+                        <span class="progress-value">85%契合</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-cyan" style="width:85%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 第六维 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-number">陆</div>
+                <div class="section-title">障碍挑战层</div>
+            </div>
+
+            <div class="sub-title">1. 先天短板</div>
+            <div class="card-list">
+                <div class="card-item" style="border-color: rgba(248,113,113,0.2);">
+                    <div class="card-item-title" style="color:#f87171;">🔒 财库不开</div>
+                    <div class="card-item-text">命中财星深藏，若无大运流年冲开，钱财难聚，容易"过手之财"。</div>
+                </div>
+                <div class="card-item" style="border-color: rgba(248,113,113,0.2);">
+                    <div class="card-item-title" style="color:#f87171;">⚖️ 身弱难担</div>
+                    <div class="card-item-text">当大财来临时，往往伴随巨大的健康损耗或精神压力，容易出现"有钱没命花"的隐患。</div>
+                </div>
+            </div>
+
+            <!-- 短板严重度 -->
+            <div class="progress-group">
+                <div style="text-align:center;font-size:13px;color:#8899aa;margin-bottom:12px;">先天短板严重程度</div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">🔒 财库不开</span>
+                        <span class="progress-value">严重度 7/10</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-red" style="width:70%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">⚖️ 身弱难担</span>
+                        <span class="progress-value">严重度 6/10</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-orange" style="width:60%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-title">2. 三类典型问题</div>
+
+            <div class="alert-box">
+                <div class="alert-title">🗣️ 口舌生灾</div>
+                <div class="alert-text">因言语不当得罪客户或上司，导致订单流失或升职受阻。</div>
+            </div>
+            <div class="alert-box">
+                <div class="alert-title">📈 盲目扩张</div>
+                <div class="alert-text">高估自己的承受能力，同时开启多个项目，导致资金链断裂。</div>
+            </div>
+            <div class="alert-box">
+                <div class="alert-title">💔 情感破财</div>
+                <div class="alert-text">因桃花纠纷（双桃花煞）或异性关系处理不当而损失钱财。</div>
+            </div>
+
+            <!-- 风险矩阵表 -->
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>风险类型</th>
+                        <th>发生概率</th>
+                        <th>财务损害</th>
+                        <th>综合风险</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>口舌生灾</td>
+                        <td><span class="tag tag-red">高</span></td>
+                        <td><span class="tag tag-orange">中高</span></td>
+                        <td>⚠️⚠️⚠️⚠️</td>
+                    </tr>
+                    <tr>
+                        <td>盲目扩张</td>
+                        <td><span class="tag tag-orange">中高</span></td>
+                        <td><span class="tag tag-red">高</span></td>
+                        <td>⚠️⚠️⚠️⚠️</td>
+                    </tr>
+                    <tr>
+                        <td>情感破财</td>
+                        <td><span class="tag tag-gold">中</span></td>
+                        <td><span class="tag tag-orange">中高</span></td>
+                        <td>⚠️⚠️⚠️</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="sub-title">3. 认知盲区</div>
+            <div class="text-block">
+                最大的思维陷阱是认为"只要我够聪明、够努力，就能战胜规则"。实际上，你的命局显示，只有在尊重规则（官）的前提下发挥才华（伤官），财富才能长久。
+            </div>
+
+            <div class="quote-box">
+                <div class="quote-text">"只有在尊重规则（官）的前提下发挥才华（伤官），财富才能长久。"</div>
+                <div class="quote-source">—— 命局核心启示</div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 第七维 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-number">柒</div>
+                <div class="section-title">潜能发展层</div>
+            </div>
+
+            <div class="sub-title">1. 隐性优势挖掘</div>
+            <div class="card-list">
+                <div class="card-item">
+                    <div class="card-item-title">🔍 危机公关能力</div>
+                    <div class="card-item-text">你天生对风险敏感，若能从事风险控制、审计、法律咨询等"找茬"类工作，能将劣势转化为巨大的职业优势。</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-item-title">🔗 跨界整合力</div>
+                    <div class="card-item-text">食伤旺代表思维跳跃，适合做资源整合者，将不同领域的信息差转化为利润。</div>
+                </div>
+            </div>
+
+            <div class="sub-title">2. 三级发展目标</div>
+
+            <!-- 三级目标阶梯 -->
+            <div class="phase-progress">
+                <div class="phase-item">
+                    <div class="phase-dot" style="border-color:#4ade80;color:#4ade80;">🌱</div>
+                    <div class="phase-content">
+                        <div class="phase-title" style="color:#4ade80;">基础目标（1-2年）</div>
+                        <div class="phase-desc">建立稳定的主业收入流，强制储蓄率达到收入的 20%，杜绝负债消费。</div>
+                    </div>
+                </div>
+                <div class="phase-item">
+                    <div class="phase-dot" style="border-color:#ffd700;color:#ffd700;">🌿</div>
+                    <div class="phase-content">
+                        <div class="phase-title" style="color:#ffd700;">优化目标（3-5年）</div>
+                        <div class="phase-desc">打造一项具有个人 IP 属性的副业，使其收入占比达到 30%，形成"双引擎"驱动。</div>
+                    </div>
+                </div>
+                <div class="phase-item">
+                    <div class="phase-dot" style="border-color:#a78bfa;color:#a78bfa;">🌳</div>
+                    <div class="phase-content">
+                        <div class="phase-title" style="color:#a78bfa;">卓越目标（5-10年）</div>
+                        <div class="phase-desc">组建小型团队，实现从"卖时间"到"卖系统/产品"的转变，拥有被动收入来源。</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 目标达成进度 -->
+            <div class="progress-group">
+                <div style="text-align:center;font-size:13px;color:#8899aa;margin-bottom:12px;">目标收入结构变化趋势</div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">当前：主业收入占比</span>
+                        <span class="progress-value">100%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-blue" style="width:100%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">3-5年目标：主业占比</span>
+                        <span class="progress-value">70%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-blue" style="width:70%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">3-5年目标：副业IP占比</span>
+                        <span class="progress-value">30%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-gold" style="width:30%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span class="progress-name">5-10年目标：被动收入占比</span>
+                        <span class="progress-value">50%+</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill fill-green" style="width:50%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-title">3. 突破策略</div>
+            <div class="card-list">
+                <div class="card-item">
+                    <div class="card-item-title">🔥 补火行动</div>
+                    <div class="card-item-text">多接触正能量圈子，坚持学习传统文化或哲学，提升心性稳定性（印星）。</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-item-title">📋 制度化生存</div>
+                    <div class="card-item-text">主动为自己设立严格的财务纪律，用外在的规则约束内在的冲动。</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 第八维 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-number">捌</div>
+                <div class="section-title">意义整合层</div>
+            </div>
+
+            <div class="sub-title">1. 财富的生命位置</div>
+            <div class="text-block">
+                对你而言，财富不是终极目的，而是你"安身立命"和"表达自我"的工具。它是你戊土厚重德行的外化，也是你辛金锐利才华的验证。
+            </div>
+
+            <!-- 财富定位饼图 -->
+            <div class="pie-chart-container">
+                <div class="pie-chart">
+                    <svg viewBox="0 0 140 140">
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="20"/>
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#ffd700" stroke-width="20"
+                            stroke-dasharray="138 345" stroke-dashoffset="86" transform="rotate(-90 70 70)"/>
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#a78bfa" stroke-width="20"
+                            stroke-dasharray="121 345" stroke-dashoffset="-52" transform="rotate(-90 70 70)"/>
+                        <circle cx="70" cy="70" r="55" fill="none" stroke="#4ade80" stroke-width="20"
+                            stroke-dasharray="86 345" stroke-dashoffset="-173" transform="rotate(-90 70 70)"/>
+                        <text x="70" y="65" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">财富意义</text>
+                        <text x="70" y="82" text-anchor="middle" fill="#8899aa" font-size="10">生命定位</text>
+                    </svg>
+                </div>
+                <div class="pie-legend">
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#ffd700;"></div>
+                        <span>安身立命之基 40%</span>
+                    </div>
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#a78bfa;"></div>
+                        <span>表达自我之器 35%</span>
+                    </div>
+                    <div class="pie-legend-item">
+                        <div class="legend-dot" style="background:#4ade80;"></div>
+                        <span>利益众生之道 25%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-title">2. 核心人生课题</div>
+            <div class="text-block">
+                你的修行方向在于"<strong>中和</strong>"。如何在张扬个性与遵守秩序之间找到平衡？如何在追求物质丰盛与保持内心宁静之间取得和谐？这是你一生的课题。
+            </div>
+
+            <!-- 中和平衡仪表 -->
+            <div class="radar-substitute">
+                <div class="radar-item">
+                    <div class="radar-item-value">⚖️</div>
+                    <div class="radar-item-label">张扬个性 ↔ 遵守秩序</div>
+                    <div class="radar-item-bar">
+                        <div class="radar-item-fill fill-gold" style="width:50%"></div>
+                    </div>
+                </div>
+                <div class="radar-item">
+                    <div class="radar-item-value">🧘</div>
+                    <div class="radar-item-label">物质丰盛 ↔ 内心宁静</div>
+                    <div class="radar-item-bar">
+                        <div class="radar-item-fill fill-purple" style="width:50%"></div>
+                    </div>
+                </div>
+                <div class="radar-item">
+                    <div class="radar-item-value">🔥</div>
+                    <div class="radar-item-label">锐利才华 ↔ 厚重德行</div>
+                    <div class="radar-item-bar">
+                        <div class="radar-item-fill fill-red" style="width:50%"></div>
+                    </div>
+                </div>
+                <div class="radar-item">
+                    <div class="radar-item-value">💫</div>
+                    <div class="radar-item-label">小我成就 ↔ 大我奉献</div>
+                    <div class="radar-item-bar">
+                        <div class="radar-item-fill fill-cyan" style="width:50%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-title">3. 从"小我"到"大我"</div>
+            <div class="text-block">
+                当你不再仅仅为了填补内心的不安全感而追逐金钱，而是试图用你的才华去解决他人的问题、去传承某种价值时，你的财路反而会越走越宽。正如《易经》所言："厚德载物"，只有戊土的德行厚了，才能承载起更多的财富之水。
+            </div>
+
+            <div class="quote-box">
+                <div class="quote-text">"厚德载物"——只有戊土的德行厚了，才能承载起更多的财富之水。</div>
+                <div class="quote-source">——《易经·坤卦》</div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 总结 -->
+        <div class="summary-box">
+            <h3>📋 你的财富人生架构</h3>
+            <div class="text-block" style="margin-bottom:16px;">
+                你的财运蓝图是一幅"险峰揽胜"的画卷。先天虽有"伤官见官"的波折与财星微弱的局限，但后天大运火土相助，赋予了你扭转乾坤的契机。你的财富不在于守旧，而在于创新中的规范；不在于暴富，而在于细水长流的积累与爆发式的阶段跃升。2026 年起，随着火土能量的注入，你将从迷茫走向清晰，从动荡走向稳固。关键在于：修好心性（补印），管住嘴巴（制伤官），选对赛道（用火土）。只要遵循此道，中年必能富足安康，实现物质与精神的双重丰收。
+            </div>
+
+            <div class="keyword-tags">
+                <span class="keyword-tag tag-red">修好心性（补印）</span>
+                <span class="keyword-tag tag-orange">管住嘴巴（制伤官）</span>
+                <span class="keyword-tag tag-gold">选对赛道（用火土）</span>
+            </div>
+
+            <!-- 综合评分雷达 -->
+            <div class="radar-substitute" style="margin-top:20px;">
+                <div class="radar-item">
+                    <div class="radar-item-value" style="font-size:20px;">65</div>
+                    <div class="radar-item-label">先天财运</div>
+                    <div class="radar-item-bar"><div class="radar-item-fill fill-blue" style="width:65%"></div></div>
+                </div>
+                <div class="radar-item">
+                    <div class="radar-item-value" style="font-size:20px;">85</div>
+                    <div class="radar-item-label">才华潜力</div>
+                    <div class="radar-item-bar"><div class="radar-item-fill fill-gold" style="width:85%"></div></div>
+                </div>
+                <div class="radar-item">
+                    <div class="radar-item-value" style="font-size:20px;">80</div>
+                    <div class="radar-item-label">后天运势</div>
+                    <div class="radar-item-bar"><div class="radar-item-fill fill-green" style="width:80%"></div></div>
+                </div>
+                <div class="radar-item">
+                    <div class="radar-item-value" style="font-size:20px;">70</div>
+                    <div class="radar-item-label">风险控制</div>
+                    <div class="radar-item-bar"><div class="radar-item-fill fill-red" style="width:70%"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 行动路线图 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-number">🗺️</div>
+                <div class="section-title">行动路线图：从认知到实践</div>
+            </div>
+
+            <div class="action-section">
+                <div class="action-title">📌 本月启动</div>
+                <ul class="action-list">
+                    <li>梳理现有收支，制定强制储蓄计划，切断不必要的冲动消费。</li>
+                    <li>寻找一位行业内的资深前辈（火土型人格）请教，确立未来三年的职业深耕方向。</li>
+                    <li>每日静坐或阅读经典 20 分钟，平复焦躁情绪，提升定力。</li>
+                </ul>
+            </div>
+
+            <div class="action-section">
+                <div class="action-title">📅 季度聚焦</div>
+                <ul class="action-list">
+                    <li>专注于提升一项核心专业技能，并尝试将其产品化（如课程、咨询服务、作品集）。</li>
+                    <li>清理无效社交，远离那些鼓吹投机取巧的圈子。</li>
+                </ul>
+            </div>
+
+            <div class="action-section">
+                <div class="action-title">🎯 年度规划</div>
+                <ul class="action-list">
+                    <li>在 2026 年内，争取获得一个稳定的平台背书或资质认证。</li>
+                    <li>完成一次全面的资产配置调整，增加稳健型资产比例，降低高风险投资仓位。</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 心理疏导 -->
+        <div class="counsel-section">
+            <div class="counsel-title">🕊️ 心理疏导与开导</div>
+            <div style="text-align:center;font-size:14px;color:#c8b090;margin-bottom:20px;font-style:italic;">致正在为财运奔波的你</div>
+            <div class="counsel-text">
+                观你命局，戊土生于春月，虽有木克土之忧，更有金泄土之虑，心中常感资源匮乏、前路多阻，此乃"身弱食伤旺"之象，非你能力不足，实乃能量流转尚未通畅。2026 年丙午将至，火气始盛，这正是天地给你的转机。
+            </div>
+            <div class="counsel-text" style="margin-top:16px;">
+                古人云："<strong>君子藏器于身，待时而动。</strong>"（出自《周易·系辞下》）。你过往的种种波折、才华无处施展的苦闷，皆是在磨砺你那把"辛金"宝剑。如今大运火土渐暖，如同春日暖阳照进冻土，不必急于此刻便要大富大贵。你的焦虑，源于想立刻看到结果，却忽略了根基的夯实。
+            </div>
+            <div class="counsel-text" style="margin-top:16px;">
+                你要知晓，戊土之德，贵在厚重。财运如水，水善利万物而不争。你若能放下对"快钱"的执念，收敛锋芒，像大地一样沉稳包容，财富自会汇聚。当下的困顿，不过是黎明前的蓄势。请向内观看，修补内心的安全感，而非向外抓取。相信时节因缘，你的每一份努力，都在为未来的丰盛铺路。安心当下，自有花开。
+            </div>
+        </div>
+
+        <div class="quote-box" style="margin-top:24px;">
+            <div class="quote-text">"君子藏器于身，待时而动。"</div>
+            <div class="quote-source">——《周易·系辞下》</div>
+        </div>
+
+        <!-- 底部 -->
+        <div class="footer">
+            <div class="footer-divider"></div>
+            <div>财运维度 · 八维深度架构分析报告</div>
+            <div style="margin-top:4px;">戊土日元 · 卯月生人 · 2026+规划</div>
+            <div style="margin-top:8px;color:#444;">— 厚德载物 · 安心当下 · 自有花开 —</div>
+        </div>
+    </div>
+</body>
+</html>
