@@ -117,7 +117,7 @@ async function handleLoginSuccess() {
 </script>
 
 <template>
-  <view class="gx-page flex_column page-container">
+  <view class="gx-layout-page">
     <GxNavBar title="解读权益" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
@@ -194,13 +194,6 @@ async function handleLoginSuccess() {
 </template>
 
 <style scoped lang="scss">
-.page-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  box-sizing: border-box;
-}
-
 .products-empty {
   display: flex;
   flex-direction: column;

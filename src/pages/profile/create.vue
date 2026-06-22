@@ -410,7 +410,7 @@ async function save(startImmediately: boolean) {
 </script>
 
 <template>
-  <view class="gx-page flex_column page-container">
+  <view class="gx-layout-page">
     <GxNavBar :show-back="true" :title="isEditMode ? '修改心语档案' : '创建心语档案'" />
 
     <scroll-view scroll-y class="gx-scroll">
@@ -588,13 +588,6 @@ async function save(startImmediately: boolean) {
 </template>
 
 <style scoped lang="scss">
-.page-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  box-sizing: border-box;
-}
-
 .create-explain {
   font-size: 26rpx;
   color: #665b4e;

@@ -12,7 +12,7 @@ function openAliyunBailianTerms() {
 </script>
 
 <template>
-  <view class="gx-page flex_column legal-page">
+  <view class="gx-layout-page legal-page">
     <GxNavBar title="隐私协议" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
@@ -115,7 +115,6 @@ function openAliyunBailianTerms() {
 
 <style scoped lang="scss">
 .legal-page {
-  min-height: 100vh;
   background:
     url("@/static/assets/rice-paper-bg.svg") center / cover no-repeat,
     linear-gradient(140deg, rgba(255, 252, 244, 0.95), rgba(249, 239, 220, 0.9)),

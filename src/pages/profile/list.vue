@@ -103,7 +103,7 @@ function confirmDelete(id: string) {
 </script>
 
 <template>
-  <view class="gx-page flex_column page-container">
+  <view class="gx-layout-page">
     <GxNavBar :title="t('profile.list.title')" :show-back="true" :right-text="t('profile.list.new')" @right-click="goCreate" />
 
     <scroll-view scroll-y class="gx-scroll">
@@ -230,13 +230,6 @@ function confirmDelete(id: string) {
 </template>
 
 <style scoped lang="scss">
-.page-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  box-sizing: border-box;
-}
-
 .profile-explain {
   font-size: 26rpx;
   color: #665B4E;

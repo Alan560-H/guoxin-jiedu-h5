@@ -187,7 +187,7 @@ function goRecords() {
 </script>
 
 <template>
-  <view class="gx-page flex_column page-container">
+  <view class="gx-layout-page">
     <GxNavBar title="正在为您整理" :show-back="true" back-home />
 
     <scroll-view scroll-y class="gx-scroll">
@@ -263,13 +263,6 @@ function goRecords() {
 </template>
 
 <style scoped lang="scss">
-.page-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  box-sizing: border-box;
-}
-
 .loading-banner {
   background: linear-gradient(160deg, #153F33, #255648);
   padding: 60rpx 40rpx 48rpx;

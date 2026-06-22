@@ -47,9 +47,21 @@ page {
   overflow: hidden;
 }
 
+/* guoxin layout 内页面：flex 占满剩余高度，勿用 100vh，避免底栏免责被挤出视口 */
+.gx-layout-page {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: transparent;
+}
+
 .gx-scroll {
   flex: 1;
-  height: 100%;
+  min-height: 0;
+  height: 0;
 }
 
 .gx-text-sub {
@@ -287,11 +299,20 @@ page {
 }
 
 .gx-disclaimer {
+  flex-shrink: 0;
   padding: 24rpx 32rpx 40rpx;
   font-size: calc(22rpx * var(--gx-font-scale));
   color: var(--gx-text-hint);
   line-height: 1.6;
   text-align: center;
+}
+
+.gx-disclaimer-link {
+  margin-top: 16rpx;
+  color: var(--gx-green);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .gx-btn-group {

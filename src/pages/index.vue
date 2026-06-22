@@ -6,7 +6,7 @@ import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 import { ImageConfig } from '@/config/assets'
-import { SMS_LOGIN_ENABLED } from '@/constants/guoxin'
+import { FEEDBACK_FORM_TITLE, FEEDBACK_FORM_URL, SMS_LOGIN_ENABLED } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
@@ -218,6 +218,10 @@ function setScale(scale: FontScale) {
   store.setFontScale(scale)
 }
 
+function openFeedbackForm() {
+  window.location.href = FEEDBACK_FORM_URL
+}
+
 async function handleLoginSuccess() {
   await store.bootstrapAfterLogin()
   const shouldContinue = loginIntent.value === 'start' || consumeOAuthPendingStart()
@@ -228,7 +232,7 @@ async function handleLoginSuccess() {
 </script>
 
 <template>
-  <view class="gx-page flex_column page-container">
+  <view class="gx-layout-page">
     <!-- Home Banner Section -->
     <view class="home-banner">
       <view class="home-logo">
@@ -315,13 +319,14 @@ async function handleLoginSuccess() {
         </view>
       </GxCard>
 
-      <!-- Footer Disclaimer -->
-      <view class="home-disclaimer">
-        内容仅供传统文化学习与生活参考，<br>不作为医疗、法律、理财等任何现实决策依据。
-      </view>
-
       <view class="gx-safe-bottom" />
     </scroll-view>
+
+    <view class="home-feedback">
+      <view class="gx-disclaimer-link" @tap="openFeedbackForm">
+        {{ FEEDBACK_FORM_TITLE }}
+      </view>
+    </view>
 
     <!-- 微信授权登录弹窗（点击「开始解读」时） -->
     <view v-if="showWxAuth" class="modal-overlay wx-auth-overlay">
@@ -413,13 +418,6 @@ async function handleLoginSuccess() {
 </template>
 
 <style scoped lang="scss">
-.page-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  box-sizing: border-box;
-}
-
 .home-banner {
   text-align: center;
   padding: 60rpx 32rpx 40rpx;
@@ -572,12 +570,10 @@ async function handleLoginSuccess() {
   flex-wrap: wrap;
 }
 
-.home-disclaimer {
-  font-size: 24rpx;
-  color: #958878;
+.home-feedback {
+  flex-shrink: 0;
+  padding: 8rpx 32rpx 16rpx;
   text-align: center;
-  margin: 48rpx 32rpx 32rpx;
-  line-height: 1.5;
 }
 
 /* Modals styles */

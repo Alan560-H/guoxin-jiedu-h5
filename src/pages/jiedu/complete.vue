@@ -62,7 +62,7 @@ function goHome() {
 </script>
 
 <template>
-  <view v-if="loading" class="gx-page flex_column page-container">
+  <view v-if="loading" class="gx-layout-page">
     <GxNavBar title="解读已完成" :show-back="true" />
     <view class="gx-empty-state">
       <view class="empty-text">
@@ -71,7 +71,7 @@ function goHome() {
     </view>
   </view>
 
-  <view v-else-if="record" class="gx-page flex_column page-container">
+  <view v-else-if="record" class="gx-layout-page">
     <GxNavBar title="解读已完成" :show-back="true" />
 
     <scroll-view scroll-y class="gx-scroll">
@@ -126,7 +126,7 @@ function goHome() {
     </scroll-view>
   </view>
 
-  <view v-else class="gx-page flex_column page-container">
+  <view v-else class="gx-layout-page">
     <GxNavBar title="解读已完成" :show-back="true" />
     <view class="gx-empty-state">
       <view class="empty-icon">
@@ -143,13 +143,6 @@ function goHome() {
 </template>
 
 <style scoped lang="scss">
-.page-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  box-sizing: border-box;
-}
-
 .complete-banner {
   background: linear-gradient(160deg, #153F33, #255648);
   padding: 60rpx 40rpx;

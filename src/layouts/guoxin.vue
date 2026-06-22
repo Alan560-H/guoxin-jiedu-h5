@@ -24,6 +24,7 @@ onMounted(() => {
 .gx-layout {
   min-height: 100vh;
   min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--gx-bg);
@@ -34,5 +35,6 @@ onMounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 </style>
