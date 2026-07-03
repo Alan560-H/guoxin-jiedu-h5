@@ -63,12 +63,31 @@ function normalizeJsapiPayParams(data: WxPayCreateVo | Record<string, unknown>):
   return { appId, timeStamp, nonceStr, package: packageVal, signType, paySign }
 }
 
+function pickMwebRedirectUrl(raw: Record<string, unknown>): string {
+  const url = raw.mwebUrl ?? raw.mweb_url ?? raw.h5Url ?? raw.h5_url
+  return url != null ? String(url) : ''
+}
+
+/** 从 pay/create MWEB 的 data 提取跳转链接（兼容 req_data 与 res_data 结构） */
 function extractMwebUrl(data: WxPayMwebCreateVo | Record<string, unknown> | null | undefined): string {
   if (!data || typeof data !== 'object')
     return ''
   const raw = data as Record<string, unknown>
-  const url = raw.mwebUrl ?? raw.mweb_url ?? raw.h5Url ?? raw.h5_url
-  return url != null ? String(url) : ''
+
+  const direct = pickMwebRedirectUrl(raw)
+  if (direct)
+    return direct
+
+  for (const key of ['res_data', 'resData', 'response'] as const) {
+    const nested = raw[key]
+    if (nested && typeof nested === 'object') {
+      const url = pickMwebRedirectUrl(nested as Record<string, unknown>)
+      if (url)
+        return url
+    }
+  }
+
+  return ''
 }
 
 /** 等待 WeixinJSBridge 就绪后唤起收银台 */

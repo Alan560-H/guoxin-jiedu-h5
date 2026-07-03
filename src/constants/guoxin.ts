@@ -61,5 +61,14 @@ export const FEEDBACK_FORM_URL = 'https://wcnzvwcua4e6.feishu.cn/share/base/form
 
 export const CREDITS_PAYWALL_TEXT = '权益开通后不支持退款，请根据实际需要选择。'
 
+/**
+ * 轻舟云课堂「发现页」外链入口：首页 URL 带 ?source=1 时，顶部展示返回栏，
+ * 点击返回轻舟云课堂发现页（易朴国学养生站）。
+ */
+export const SOURCE_ENTRY_QUERY_VALUE = '1'
+
+/** 轻舟云课堂发现页地址（source=1 时「返回上一页」跳转目标） */
+export const SOURCE_ENTRY_BACK_URL = 'https://nr.cxfangtang.cn/'
+
 /** 是否开放短信验证码登录（绑定手机号仍使用短信验证码） */
 export const SMS_LOGIN_ENABLED = false

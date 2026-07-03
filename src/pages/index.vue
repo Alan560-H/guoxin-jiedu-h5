@@ -5,6 +5,7 @@ import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
+import GxSourceBackBar from '@/components/guoxin/GxSourceBackBar.vue'
 import { ImageConfig } from '@/config/assets'
 import { FEEDBACK_FORM_TITLE, FEEDBACK_FORM_URL, SMS_LOGIN_ENABLED } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
@@ -12,6 +13,7 @@ import { useGuoxinStore } from '@/stores/guoxinStore'
 import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
 import { navigateToJieduSetup } from '@/utils/guoxin/navigation'
 import { isSmsLoginAvailable } from '@/utils/guoxin/smsLoginAvailability'
+import { isSourceEntryFromExternal } from '@/utils/guoxin/sourceEntry'
 import { useActionLock } from '@/utils/guoxin/useActionLock'
 import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
 import {
@@ -34,6 +36,9 @@ const showProfileSelect = ref(false)
 const loginIntent = ref<'none' | 'start'>('none')
 /** 防止同一 code 被重复兑换（HMR/重复挂载会导致 invalid code） */
 const oauthCodeHandled = ref<string | null>(null)
+
+/** 轻舟云课堂发现页入口（?source=1）：首页顶部显示返回栏 */
+const showSourceBackBar = ref(isSourceEntryFromExternal())
 
 /** 登录/授权成功后，继续「开始解读」后续步骤 */
 async function continueJieduAfterLogin() {
@@ -246,6 +251,8 @@ async function handleLoginSuccess() {
 
 <template>
   <view class="gx-layout-page">
+    <GxSourceBackBar v-if="showSourceBackBar" />
+
     <!-- Home Banner Section -->
     <view class="home-banner">
       <view class="home-logo">

@@ -13,8 +13,8 @@ import {
   getDictData as apiGetDictData,
   getProfiles as apiGetProfiles,
   login as apiLogin,
-  loginBySms as apiLoginBySms,
   sendSmsCode as apiSendSmsCode,
+  smsLogin as apiSmsLogin,
   updateProfile as apiUpdateProfile,
   wxLogin as apiWxLogin,
   getAvailableCount,
@@ -457,7 +457,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   /** 短信验证码登录 */
   async function doLoginBySms(mobileStr: string, smsCode: string) {
     try {
-      const res = await apiLoginBySms({ mobile: mobileStr, smsCode })
+      const res = await apiSmsLogin({ mobile: mobileStr, smsCode })
       if (res.code === 200 && res.data) {
         applySessionFromLoginData({
           ...parseGuoxinLoginData(res.data),

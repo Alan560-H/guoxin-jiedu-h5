@@ -9,9 +9,12 @@ const BASE = '/api/yiqixue/app/guoxin'
 export const sendSmsCode = (data: { mobile: string }): Promise<ResponseData<any>> =>
   http.post(`${BASE}/sendSms`, data)
 
-/** 短信验证码登录 */
-export const loginBySms = (data: { mobile: string; smsCode: string }): Promise<ResponseData<any>> =>
-  http.post(`${BASE}/loginBySms`, data)
+/** 短信验证码登录（非微信 H5 / App） */
+export const smsLogin = (data: { mobile: string; smsCode: string }): Promise<ResponseData<any>> =>
+  http.post(`${BASE}/smsLogin`, data)
+
+/** @deprecated 请用 smsLogin */
+export const loginBySms = smsLogin
 
 /** 微信网页授权登录（GET，code 拼在 query） */
 export const wxLogin = (data: { code: string }): Promise<ResponseData<any>> =>
