@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { SMS_LOGIN_ENABLED } from '@/constants/guoxin'
-import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
-import GxButton from './GxButton.vue'
+import { useGuoxinStore } from '@/stores/guoxinStore'
+import { isSmsLoginAvailable } from '@/utils/guoxin/smsLoginAvailability'
 import { useActionLock } from '@/utils/guoxin/useActionLock'
+import GxButton from './GxButton.vue'
 
 const props = defineProps<{
   show: boolean
@@ -80,7 +80,7 @@ async function handleSubmit() {
         uni.showToast({ title: '绑定成功', icon: 'success' })
       }
       else {
-        if (!SMS_LOGIN_ENABLED) {
+        if (!isSmsLoginAvailable()) {
           uni.hideLoading()
           uni.showToast({ title: '短信登录暂未开放，请使用微信授权', icon: 'none' })
           return
@@ -113,12 +113,20 @@ function openPrivacyAgreement() {
   <view v-if="props.show" class="modal-overlay">
     <view class="modal-card">
       <!-- Top Close Button -->
-      <view class="close-x" @tap="emit('close')">×</view>
+      <view class="close-x" @tap="emit('close')">
+        ×
+      </view>
 
       <view class="login-header">
-        <view class="login-logo">国心解读</view>
-        <view class="login-welcome">{{ titleText }}</view>
-        <view class="login-subtitle">{{ subtitleText }}</view>
+        <view class="login-logo">
+          国心解读
+        </view>
+        <view class="login-welcome">
+          {{ titleText }}
+        </view>
+        <view class="login-subtitle">
+          {{ subtitleText }}
+        </view>
       </view>
 
       <view class="login-form">
@@ -130,7 +138,7 @@ function openPrivacyAgreement() {
             :maxlength="11"
             class="custom-input"
             placeholder="请输入手机号码"
-          />
+          >
         </view>
 
         <!-- SMS Code Input -->
@@ -141,7 +149,7 @@ function openPrivacyAgreement() {
             :maxlength="6"
             class="custom-input flex_1"
             placeholder="请输入短信验证码"
-          />
+          >
           <button
             class="sms-btn"
             :disabled="countdown > 0 || sendingCode"
@@ -154,12 +162,18 @@ function openPrivacyAgreement() {
         <!-- Agreement checkbox -->
         <view class="agreement-row flex_row f_a_center" @tap="agreed = !agreed">
           <view class="custom-checkbox" :class="{ checked: agreed }">
-            <text v-if="agreed" class="check-mark">✓</text>
+            <text v-if="agreed" class="check-mark">
+              ✓
+            </text>
           </view>
           <view class="agreement-text">
             我已阅读并同意
-            <text class="link-text" @tap.stop="openServiceAgreement">《用户协议》</text>与
-            <text class="link-text" @tap.stop="openPrivacyAgreement">《隐私政策》</text>
+            <text class="link-text" @tap.stop="openServiceAgreement">
+              《用户协议》
+            </text>与
+            <text class="link-text" @tap.stop="openPrivacyAgreement">
+              《隐私政策》
+            </text>
           </view>
         </view>
 

@@ -11,6 +11,7 @@ import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
 import { navigateToJieduSetup } from '@/utils/guoxin/navigation'
+import { isSmsLoginAvailable } from '@/utils/guoxin/smsLoginAvailability'
 import { useActionLock } from '@/utils/guoxin/useActionLock'
 import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
 import {
@@ -114,12 +115,17 @@ function requireLoggedInAndBound(intent: 'none' | 'start' = 'none'): boolean {
 }
 
 /**
- * 未登录时：微信内弹授权；非微信提示复制链接到微信打开。
+ * 未登录时：微信内弹授权；非微信 H5 / App 短信登录；其余提示复制链接到微信。
  */
 function promptLogin(intent: 'none' | 'start' = 'none') {
   loginIntent.value = intent
   if (isWeChatBrowser()) {
     showWxAuth.value = true
+    return
+  }
+  if (isSmsLoginAvailable()) {
+    loginMode.value = 'smsLogin'
+    showLogin.value = true
     return
   }
   promptOpenInWeChat({ force: true })
@@ -144,6 +150,13 @@ function switchToSmsLogin() {
 }
 
 const showSmsLoginEntry = SMS_LOGIN_ENABLED
+
+/** 仅微信内、已登录且 userInfo 无手机号时展示 */
+const showBindMobileHint = computed(() => {
+  if (!isWeChatBrowser() || !store.isLoggedIn)
+    return false
+  return !store.mobile?.trim()
+})
 
 const latestRecord = computed(() => store.latestRecord)
 const profiles = computed(() => store.profiles)
@@ -265,6 +278,15 @@ async function handleLoginSuccess() {
               {{ store.isLoggedIn ? store.displayCredits : '--' }}
             </text>次
           </view>
+        </view>
+      </view>
+
+      <view v-if="showBindMobileHint" class="bind-mobile-hint" @tap="promptBindMobile()">
+        <view class="bind-mobile-hint-text">
+          还未绑定手机号？
+        </view>
+        <view class="bind-mobile-link">
+          绑定手机号
         </view>
       </view>
 
@@ -528,6 +550,35 @@ async function handleLoginSuccess() {
   .credit-count {
     color: #B7654A;
     margin: 0 4rpx;
+  }
+}
+
+.bind-mobile-hint {
+  margin: -12rpx 32rpx 28rpx;
+  padding: 24rpx 28rpx;
+  min-height: 80rpx;
+  box-sizing: border-box;
+  border-radius: 24rpx;
+  background: #E8F0EC;
+  border: 2rpx solid rgba(21, 63, 51, 0.28);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  font-size: 28rpx;
+  color: #665B4E;
+  line-height: 1.5;
+
+  .bind-mobile-hint-text,
+  .bind-mobile-link {
+    display: inline-block;
+  }
+
+  .bind-mobile-link {
+    color: #153F33;
+    font-weight: 700;
+    text-decoration: underline;
   }
 }
 

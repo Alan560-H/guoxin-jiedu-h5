@@ -2,6 +2,7 @@ import type { DirectionValue, FontScale } from '@/constants/guoxin'
 import type { CreateProfileDto, ProfileVo } from '@/models/guoxin/profile'
 import type { RecordVo } from '@/models/guoxin/record'
 import type { GuoxinLoginSession } from '@/utils/guoxin/parseLoginResponse'
+import type { WxPayMwebRedirect } from '@/utils/weixin/pay'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import {
@@ -43,7 +44,7 @@ import {
   normalizeGenerateResult,
   toTaskIdNumber,
 } from '@/utils/guoxin/reportGenerate'
-import { formatWxPayError, wxChoosePay } from '@/utils/weixin/pay'
+import { formatWxPayError, wxPay } from '@/utils/weixin/pay'
 
 /** 档案增删改由页面展示 loading，关闭拦截器默认 loading 避免双层 */
 const PROFILE_MUTATION_META = { meta: { loading: false } }
@@ -388,15 +389,18 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return true
   }
 
-  /** 远程：微信公众号 JSAPI 购买商品套餐 */
-  async function purchaseRemoteProduct(productId: number): Promise<boolean> {
+  /** 远程购买：微信内 JSAPI；App/外链 MWEB 跳转 */
+  async function purchaseRemoteProduct(productId: number): Promise<boolean | WxPayMwebRedirect> {
     if (!isLoggedIn.value) {
       uni.showToast({ title: '请先登录后再购买', icon: 'none' })
       return false
     }
     try {
-      await wxChoosePay({ productId })
+      const outcome = await wxPay({ productId })
       activeProductId.value = productId
+      if (outcome === 'mweb_redirect')
+        return 'mweb_redirect'
+
       invalidateRemoteCache(['credits', 'orders', 'consumeRecords'])
       await Promise.all([
         ensureCreditsLoaded(true),

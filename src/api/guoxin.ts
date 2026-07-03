@@ -1,7 +1,7 @@
 import { http } from 'uview-pro'
 import type { ResponseData } from '@/models/responseData'
 import type { ProfileVo } from '@/models/guoxin/profile'
-import type { WxPayCreateParam, WxPayCreateVo } from '@/models/weixin'
+import type { WxPayCreateParam, WxPayCreateVo, WxPayMwebCreateVo } from '@/models/weixin'
 
 const BASE = '/api/yiqixue/app/guoxin'
 
@@ -95,6 +95,6 @@ export const updateProfile = (id: number, data: any, config?: Record<string, unk
 export const deleteProfile = (id: number, config?: Record<string, unknown>): Promise<ResponseData<any>> =>
   http.delete(`${BASE}/profile/${id}`, config)
 
-/** 创建微信支付订单（JSAPI），返回 WeixinJSBridge 唤起参数 */
-export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayCreateVo>> =>
+/** 创建微信支付订单（JSAPI / MWEB 共用 pay/create，必传 payChannel） */
+export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayCreateVo | WxPayMwebCreateVo>> =>
   http.post(`${BASE}/pay/create`, data, { meta: { loading: false, toast: true } })

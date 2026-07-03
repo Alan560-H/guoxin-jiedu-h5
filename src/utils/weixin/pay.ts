@@ -1,7 +1,8 @@
-import type { WxPayCreateParam, WxPayCreateVo, WxPayParamsVo } from '@/models/weixin'
-import { createWxPayOrder } from '@/api/guoxin'
+import type { WxPayCreateVo, WxPayMwebCreateVo, WxPayOrderInput, WxPayParamsVo } from '@/models/weixin'
 import { wxAppId } from '@/api/env'
+import { createWxPayOrder } from '@/api/guoxin'
 import { isWeChatBrowser, OPEN_IN_WECHAT_MESSAGE, promptOpenInWeChat } from '@/utils/weixin/env'
+import { resolveH5ScenceType } from '@/utils/weixin/h5ScenceType'
 
 interface WeixinJSBridgeInvokeResult {
   err_msg?: string
@@ -20,6 +21,9 @@ declare global {
     WeixinJSBridge?: WeixinJSBridge
   }
 }
+
+/** MWEB 跳转微信收银台后，无同步成功回调 */
+export type WxPayMwebRedirect = 'mweb_redirect'
 
 /** getBrandWCPayRequest 的 package 须为 prepay_id=wx... */
 function resolveWxPayPackage(data: Record<string, unknown>): string {
@@ -43,10 +47,8 @@ function resolveWxPayPackage(data: Record<string, unknown>): string {
   return `prepay_id=${prepay}`
 }
 
-function normalizePayParams(data: WxPayCreateVo | Record<string, unknown>): WxPayParamsVo {
+function normalizeJsapiPayParams(data: WxPayCreateVo | Record<string, unknown>): WxPayParamsVo {
   const raw = data as Record<string, unknown>
-  if (raw.mwebUrl ?? raw.mweb_url ?? raw.h5Url ?? raw.h5_url)
-    throw new Error('backend_mweb_response')
 
   const appId = String(raw.appId ?? wxAppId)
   const timeStamp = String(raw.timeStamp ?? raw.timestamp ?? '')
@@ -59,6 +61,14 @@ function normalizePayParams(data: WxPayCreateVo | Record<string, unknown>): WxPa
     throw new Error('invalid_jsapi_params')
 
   return { appId, timeStamp, nonceStr, package: packageVal, signType, paySign }
+}
+
+function extractMwebUrl(data: WxPayMwebCreateVo | Record<string, unknown> | null | undefined): string {
+  if (!data || typeof data !== 'object')
+    return ''
+  const raw = data as Record<string, unknown>
+  const url = raw.mwebUrl ?? raw.mweb_url ?? raw.h5Url ?? raw.h5_url
+  return url != null ? String(url) : ''
 }
 
 /** 等待 WeixinJSBridge 就绪后唤起收银台 */
@@ -79,8 +89,9 @@ function invokeWeixinPay(params: WxPayParamsVo): Promise<void> {
         paySign: params.paySign,
       }, (res) => {
         const msg = res.err_msg ?? ''
-        if (msg.includes(':ok'))
+        if (msg.includes(':ok')) {
           resolve()
+        }
         else if (msg.includes(':cancel')) {
           uni.showToast({ title: '已取消支付', icon: 'none' })
           reject(new Error('cancel'))
@@ -100,7 +111,7 @@ function invokeWeixinPay(params: WxPayParamsVo): Promise<void> {
 }
 
 /** 公众号 JSAPI：pay/create → WeixinJSBridge 唤起支付 */
-export async function wxChoosePay(param: WxPayCreateParam): Promise<void> {
+export async function wxChoosePay(param: WxPayOrderInput): Promise<void> {
   if (!isWeChatBrowser()) {
     promptOpenInWeChat({ force: true })
     return Promise.reject(new Error('not_wechat'))
@@ -109,10 +120,10 @@ export async function wxChoosePay(param: WxPayCreateParam): Promise<void> {
   uni.showLoading({ title: '创建订单...', mask: true })
   let payParams: WxPayParamsVo
   try {
-    const res = await createWxPayOrder({ productId: param.productId })
+    const res = await createWxPayOrder({ productId: param.productId, payChannel: 'jsapi' })
     if (res.code !== 200 || !res.data)
       throw new Error('pay_create_failed')
-    payParams = normalizePayParams(res.data)
+    payParams = normalizeJsapiPayParams(res.data)
   }
   finally {
     uni.hideLoading()
@@ -121,8 +132,37 @@ export async function wxChoosePay(param: WxPayCreateParam): Promise<void> {
   return invokeWeixinPay(payParams)
 }
 
-/** @deprecated 请用 wxChoosePay */
-export const wxMwebPay = wxChoosePay
+/** 非微信环境 H5/MWEB：pay/create + payChannel=mweb → 跳转 mweb_url */
+export async function wxMwebPay(param: WxPayOrderInput): Promise<WxPayMwebRedirect> {
+  if (isWeChatBrowser())
+    return Promise.reject(new Error('mweb_in_wechat'))
+
+  uni.showLoading({ title: '创建订单...', mask: true })
+  try {
+    const res = await createWxPayOrder({
+      productId: param.productId,
+      payChannel: 'mweb',
+      h5ScenceType: resolveH5ScenceType(),
+    })
+    if (res.code !== 200 || !res.data)
+      throw new Error('pay_create_failed')
+    const mwebUrl = extractMwebUrl(res.data)
+    if (!mwebUrl)
+      throw new Error('mweb_url_missing')
+    window.location.href = mwebUrl
+    return 'mweb_redirect'
+  }
+  finally {
+    uni.hideLoading()
+  }
+}
+
+/** 按环境分流：微信内 JSAPI，否则 MWEB */
+export async function wxPay(param: WxPayOrderInput): Promise<void | WxPayMwebRedirect> {
+  if (isWeChatBrowser())
+    return wxChoosePay(param)
+  return wxMwebPay(param)
+}
 
 export function formatWxPayError(err: unknown): string {
   const code = err instanceof Error ? err.message : ''
@@ -134,8 +174,10 @@ export function formatWxPayError(err: unknown): string {
     return '已取消支付'
   if (code === 'pay_create_failed')
     return '创建订单失败，请稍后重试'
-  if (code === 'backend_mweb_response')
-    return '后端返回 MWEB 链接，请 Java 改为 JSAPI 并返回 paySign 等参数'
+  if (code === 'mweb_url_missing')
+    return '未获取到支付链接，请稍后重试'
+  if (code === 'mweb_in_wechat')
+    return '当前环境请使用微信内支付'
   if (code === 'invalid_jsapi_params')
     return '支付参数不完整，请确认 pay/create 返回有效 prepay_id 与 paySign'
   return '支付失败，请稍后重试'

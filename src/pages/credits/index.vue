@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { CREDITS_PAYWALL_TEXT } from '@/constants/guoxin'
-import { useGuoxinStore } from '@/stores/guoxinStore'
-import { RouterPaths } from '@/routerPaths'
-import GxNavBar from '@/components/guoxin/GxNavBar.vue'
+import { computed, onMounted, ref } from 'vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
+import GxNavBar from '@/components/guoxin/GxNavBar.vue'
+import { CREDITS_PAYWALL_TEXT } from '@/constants/guoxin'
+import { RouterPaths } from '@/routerPaths'
+import { useGuoxinStore } from '@/stores/guoxinStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 
 const store = useGuoxinStore()
@@ -59,6 +59,9 @@ function syncDefaultProductSelection() {
 onShow(() => {
   if (!store.isLoggedIn)
     return
+  // #ifdef H5
+  clearPayReturnQueryIfNeeded()
+  // #endif
   showCount.value++
   const force = showCount.value > 1
   void store.ensureProductsLoaded(force)
@@ -67,6 +70,19 @@ onShow(() => {
   if (force)
     syncDefaultProductSelection()
 })
+
+/** MWEB redirect_url 回跳时去掉 payReturn 并提示刷新 */
+function clearPayReturnQueryIfNeeded() {
+  if (typeof window === 'undefined')
+    return
+  const url = new URL(window.location.href)
+  if (url.searchParams.get('payReturn') !== '1')
+    return
+  url.searchParams.delete('payReturn')
+  const next = `${url.pathname}${url.search}${url.hash}`
+  window.history.replaceState({}, '', next)
+  uni.showToast({ title: '支付处理中，请稍候', icon: 'none' })
+}
 
 function selectPkg(id: string, productId?: number) {
   selectedId.value = id
@@ -95,11 +111,14 @@ async function purchase() {
     return
   purchasing.value = true
   try {
-    const ok = await store.purchaseRemoteProduct(productId)
-    if (ok) {
+    const result = await store.purchaseRemoteProduct(productId)
+    if (result === true) {
       setTimeout(() => {
         uni.reLaunch({ url: RouterPaths.home })
       }, 600)
+    }
+    else if (result === 'mweb_redirect') {
+      uni.showToast({ title: '正在跳转微信支付', icon: 'none' })
     }
   }
   finally {
@@ -122,7 +141,9 @@ async function handleLoginSuccess() {
 
     <scroll-view scroll-y class="gx-scroll">
       <view class="paywall-intro">
-        <view class="intro-icon">🌸</view>
+        <view class="intro-icon">
+          🌸
+        </view>
         <view class="intro-title">
           {{ store.hasNoCredits() ? '您的解读次数已用完' : '开通更多解读权益' }}
         </view>
@@ -130,13 +151,19 @@ async function handleLoginSuccess() {
           继续让心语老师为您整理专属生活与心理建议
         </view>
         <view class="intro-credits">
-          当前剩余解读次数：<text class="credit-num">{{ store.displayCredits }}</text> 次
+          当前剩余解读次数：<text class="credit-num">
+            {{ store.displayCredits }}
+          </text> 次
         </view>
       </view>
 
       <view v-if="productsReady && displayProducts.length === 0" class="products-empty">
-        <view class="empty-icon">📦</view>
-        <view class="empty-text">暂无可购买的解读套餐，请稍后再试或联系客服。</view>
+        <view class="empty-icon">
+          📦
+        </view>
+        <view class="empty-text">
+          暂无可购买的解读套餐，请稍后再试或联系客服。
+        </view>
       </view>
 
       <view
@@ -146,24 +173,38 @@ async function handleLoginSuccess() {
         :class="{ selected: selectedId === pkg.id }"
         @tap="selectPkg(pkg.id, pkg.productId)"
       >
-        <view v-if="'hot' in pkg && pkg.hot" class="recommended-badge">推荐</view>
+        <view v-if="'hot' in pkg && pkg.hot" class="recommended-badge">
+          推荐
+        </view>
 
         <view class="flex_row f_j_sb f_a_center card-header">
-          <text class="package-name">{{ pkg.name }}</text>
+          <text class="package-name">
+            {{ pkg.name }}
+          </text>
           <view class="custom-radio" :class="{ checked: selectedId === pkg.id }">
             <view class="radio-inner" />
           </view>
         </view>
 
-        <view class="package-desc">{{ pkg.desc }}</view>
+        <view class="package-desc">
+          {{ pkg.desc }}
+        </view>
 
         <view class="price-row flex_row f_j_sb f_a_end">
           <view class="price-left flex_row f_a_end">
-            <text class="price-symbol">¥</text>
-            <text class="price-val">{{ pkg.price }}</text>
-            <text class="price-original">原价 ¥{{ pkg.originPrice }}</text>
+            <text class="price-symbol">
+              ¥
+            </text>
+            <text class="price-val">
+              {{ pkg.price }}
+            </text>
+            <text class="price-original">
+              原价 ¥{{ pkg.originPrice }}
+            </text>
           </view>
-          <text class="package-meta">包含 {{ pkg.amount }} 次解读 · 永久有效</text>
+          <text class="package-meta">
+            包含 {{ pkg.amount }} 次解读 · 永久有效
+          </text>
         </view>
       </view>
 

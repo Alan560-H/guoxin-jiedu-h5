@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
+import { promptOpenInWeChat, shouldPromptOpenInWeChat } from '@/utils/weixin/env'
 
 onMounted(() => {
-  if (!isWeChatBrowser())
+  if (shouldPromptOpenInWeChat())
     promptOpenInWeChat()
 })
 </script>

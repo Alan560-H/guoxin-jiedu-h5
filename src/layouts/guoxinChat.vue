@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
+import { promptOpenInWeChat, shouldPromptOpenInWeChat } from '@/utils/weixin/env'
 
 /** 对话类全屏页：无底部免责声明，避免与固定输入栏争抢高度 */
 
 onMounted(() => {
-  if (!isWeChatBrowser())
+  if (shouldPromptOpenInWeChat())
     promptOpenInWeChat()
 })
 </script>
