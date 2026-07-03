@@ -1,6 +1,7 @@
 import type { WxPayCreateVo, WxPayMwebCreateVo, WxPayOrderInput, WxPayParamsVo } from '@/models/weixin'
 import { wxAppId } from '@/api/env'
 import { createWxPayOrder } from '@/api/guoxin'
+import { buildCreditsPayReturnUrl } from '@/utils/guoxin/h5RouterBase'
 import { isWeChatBrowser, OPEN_IN_WECHAT_MESSAGE, promptOpenInWeChat } from '@/utils/weixin/env'
 import { resolveH5ScenceType } from '@/utils/weixin/h5ScenceType'
 
@@ -162,6 +163,7 @@ export async function wxMwebPay(param: WxPayOrderInput): Promise<WxPayMwebRedire
       productId: param.productId,
       payChannel: 'mweb',
       h5ScenceType: resolveH5ScenceType(),
+      redirectUrl: buildCreditsPayReturnUrl(),
     })
     if (res.code !== 200 || !res.data)
       throw new Error('pay_create_failed')

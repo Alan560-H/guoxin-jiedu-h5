@@ -18,7 +18,7 @@ export type H5ScenceType = 'Wap' | 'iOS' | 'Android'
 /** 创建支付订单请求（pay/create）；openid 由后端从登录态获取 */
 export type WxPayCreateParam = WxPayOrderInput & (
   | { payChannel: 'jsapi' }
-  | { payChannel: 'mweb', h5ScenceType: H5ScenceType }
+  | { payChannel: 'mweb', h5ScenceType: H5ScenceType, redirectUrl?: string }
 )
 
 /** pay/create 响应 data（Java 统一下单后返回） */

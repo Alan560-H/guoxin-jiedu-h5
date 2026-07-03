@@ -8,6 +8,7 @@ import { CREDITS_PAYWALL_TEXT } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { ensureH5RouterBasePath } from '@/utils/guoxin/h5RouterBase'
 
 const store = useGuoxinStore()
 const selectedId = ref('')
@@ -57,6 +58,10 @@ function syncDefaultProductSelection() {
 
 /** 首次用缓存；支付回跳再次展示时强制刷新 */
 onShow(() => {
+  // #ifdef H5
+  if (ensureH5RouterBasePath())
+    return
+  // #endif
   if (!store.isLoggedIn)
     return
   // #ifdef H5
