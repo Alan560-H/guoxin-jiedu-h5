@@ -62,15 +62,16 @@ export const FEEDBACK_FORM_URL = 'https://wcnzvwcua4e6.feishu.cn/share/base/form
 export const CREDITS_PAYWALL_TEXT = '权益开通后不支持退款，请根据实际需要选择。'
 
 /**
- * 轻舟 App 发现页入口：URL 带 ?source=1 时展示返回栏，并视同 App 内嵌（h5ScenceType / custom-eader）。
+ * 轻舟发现页入口：URL 带 ?isShowBack=1 时首页展示「返回上一页」栏。
  */
-export const SOURCE_ENTRY_QUERY_VALUE = '1'
+export const IS_SHOW_BACK_QUERY_KEY = 'isShowBack'
+export const IS_SHOW_BACK_QUERY_VALUE = '1'
 
-/** 轻舟云课堂发现页地址（source=1 时「返回上一页」跳转目标） */
-export const SOURCE_ENTRY_BACK_URL = 'https://nr.cxfangtang.cn/'
+/** 轻舟云课堂发现页地址（isShowBack=1 时「返回上一页」跳转目标） */
+export const SHOW_BACK_ENTRY_URL = 'https://nr.cxfangtang.cn/'
 
-/** 来源统计：URL query / 请求头字段名（如 ?source_user=1） */
-export const SOURCE_USER_QUERY_KEY = 'source_user'
+/** 来源统计：URL query / 请求头字段名（如 ?source=1） */
+export const SOURCE_QUERY_KEY = 'source'
 
 /** 是否开放短信验证码登录（绑定手机号仍使用短信验证码） */
 export const SMS_LOGIN_ENABLED = false

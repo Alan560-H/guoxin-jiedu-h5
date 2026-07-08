@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
- * 轻舟云课堂发现页（?source=1）进入时，首页顶部白底「返回上一页」栏。
+ * 轻舟发现页（?isShowBack=1）进入时，首页顶部白底「返回上一页」栏。
  */
-import { SOURCE_ENTRY_BACK_URL } from '@/constants/guoxin'
+import { SHOW_BACK_ENTRY_URL } from '@/constants/guoxin'
 
 const props = withDefaults(defineProps<{
   backUrl?: string
 }>(), {
-  backUrl: SOURCE_ENTRY_BACK_URL,
+  backUrl: SHOW_BACK_ENTRY_URL,
 })
 
 function goBack() {

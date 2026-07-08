@@ -6,7 +6,7 @@ import { useGuoxinStore } from '@/stores/guoxinStore'
 import { RouterPaths } from '@/routerPaths'
 import { isAppEmbeddedWebView } from '@/utils/appWebView'
 import { extractHttpResponseMsg } from '@/utils/guoxin/apiError'
-import { getSourceUser } from '@/utils/guoxin/sourceUser'
+import { getSource } from '@/utils/guoxin/source'
 // 示例：演示如何使用token
 const isDevelopment = process.env.NODE_ENV === 'development';
 const baseUrl = isDevelopment ? dev.baseUrl : prod.baseUrl;
@@ -39,9 +39,9 @@ const httpInterceptor : RequestInterceptor = {
 		
 		let token = uni.getStorageSync('apph5Token')
 		config.header['custom-eader'] = isAppEmbeddedWebView() ? 'app' : 'apph5'
-		const sourceUser = getSourceUser()
-		if (sourceUser)
-			config.header['source_user'] = sourceUser
+		const source = getSource()
+		if (source)
+			config.header.source = source
 		if (token) {
 			// 确保Token以 Bearer 格式发送
 			config.header.Authorization = token.startsWith('Bearer ') ? token : `Bearer ${token}`
