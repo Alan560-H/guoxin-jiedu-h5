@@ -15,7 +15,7 @@ function detectMobileOs(): 'ios' | 'android' | null {
 /**
  * MWEB 场景类型（后端 h5ScenceType）：
  * - Wap：PC 或手机普通浏览器
- * - iOS / Android：App 内嵌 WebView
+ * - iOS / Android：App 内嵌 WebView（含 ?source=1 / ?inApp=1，见 appWebView.ts）
  */
 export function resolveH5ScenceType(): H5ScenceType {
   const os = detectMobileOs()

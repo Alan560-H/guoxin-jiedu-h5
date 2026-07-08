@@ -62,8 +62,7 @@ export const FEEDBACK_FORM_URL = 'https://wcnzvwcua4e6.feishu.cn/share/base/form
 export const CREDITS_PAYWALL_TEXT = '权益开通后不支持退款，请根据实际需要选择。'
 
 /**
- * 轻舟云课堂「发现页」外链入口：首页 URL 带 ?source=1 时，顶部展示返回栏，
- * 点击返回轻舟云课堂发现页（易朴国学养生站）。
+ * 轻舟 App 发现页入口：URL 带 ?source=1 时展示返回栏，并视同 App 内嵌（h5ScenceType / custom-eader）。
  */
 export const SOURCE_ENTRY_QUERY_VALUE = '1'
 
