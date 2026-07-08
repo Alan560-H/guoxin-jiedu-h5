@@ -69,5 +69,8 @@ export const SOURCE_ENTRY_QUERY_VALUE = '1'
 /** 轻舟云课堂发现页地址（source=1 时「返回上一页」跳转目标） */
 export const SOURCE_ENTRY_BACK_URL = 'https://nr.cxfangtang.cn/'
 
+/** 来源统计：URL query / 请求头字段名（如 ?source_user=1） */
+export const SOURCE_USER_QUERY_KEY = 'source_user'
+
 /** 是否开放短信验证码登录（绑定手机号仍使用短信验证码） */
 export const SMS_LOGIN_ENABLED = false
