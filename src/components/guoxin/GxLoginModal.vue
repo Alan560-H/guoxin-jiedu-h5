@@ -28,9 +28,9 @@ const countdown = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
 
 const isBindMode = computed(() => props.mode === 'bindMobile')
-const titleText = computed(() => isBindMode.value ? '绑定手机号' : '欢迎登录心语小助手')
+const titleText = computed(() => isBindMode.value ? '请绑定手机号' : '欢迎登录心语小助手')
 const subtitleText = computed(() =>
-  isBindMode.value ? '请绑定手机号以继续使用' : '输入手机号和验证码即可登录',
+  isBindMode.value ? '用来存储报告，接受报告完成通知' : '输入手机号和验证码即可登录',
 )
 const btnText = computed(() => isBindMode.value ? '确认绑定' : '立即登录')
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FontScale } from '@/constants/guoxin'
 import { computed, onMounted, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
@@ -42,6 +43,7 @@ const showSourceBackBar = ref(isShowBackEntry())
 
 /** 登录/授权成功后，继续「开始解读」后续步骤 */
 async function continueJieduAfterLogin() {
+  await store.ensureCreditsLoaded(true)
   if (store.hasNoCredits()) {
     uni.navigateTo({ url: RouterPaths.credits })
     return
@@ -99,6 +101,12 @@ onMounted(async () => {
 
   if (!store.isLoggedIn)
     promptLogin()
+})
+
+/** 回到首页时刷新权益次数（解读提交后可能已从档案页/整理页返回） */
+onShow(() => {
+  if (store.isLoggedIn)
+    void store.ensureCreditsLoaded(true)
 })
 
 function promptBindMobile(intent: 'none' | 'start' = 'none') {
@@ -181,6 +189,7 @@ async function handleStartJieduAsync() {
     return
   }
 
+  await store.ensureCreditsLoaded(true)
   if (store.hasNoCredits()) {
     uni.navigateTo({ url: RouterPaths.credits })
     return
@@ -280,10 +289,15 @@ async function handleLoginSuccess() {
           </view>
 
           <!-- Remaining credits badge -->
-          <view class="credit-badge" @tap.stop="goCredits">
-            剩余解读次数：<text class="credit-count">
-              {{ store.isLoggedIn ? store.displayCredits : '--' }}
-            </text>次
+          <view class="credit-row" @tap.stop="goCredits">
+            <view class="credit-badge">
+              剩余解读次数：<text class="credit-count">
+                {{ store.isLoggedIn ? store.displayCredits : '--' }}
+              </text>次
+            </view>
+            <view class="credit-buy">
+              购买次数<text class="credit-buy-arrow">›</text>
+            </view>
           </view>
         </view>
       </view>
@@ -542,8 +556,14 @@ async function handleLoginSuccess() {
   }
 }
 
-.credit-badge {
+.credit-row {
   align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.credit-badge {
   display: inline-flex;
   align-items: center;
   background-color: rgba(239, 226, 202, 0.72);
@@ -557,6 +577,25 @@ async function handleLoginSuccess() {
   .credit-count {
     color: #B7654A;
     margin: 0 4rpx;
+  }
+}
+
+.credit-buy {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 10rpx 20rpx;
+  border-radius: 40rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #B7654A;
+  background-color: rgba(183, 101, 74, 0.1);
+  border: 2rpx solid rgba(183, 101, 74, 0.5);
+
+  .credit-buy-arrow {
+    margin-left: 4rpx;
+    font-size: 28rpx;
+    line-height: 1;
   }
 }
 

@@ -23,6 +23,7 @@ onShow(async () => {
   }
   store.initSeedData()
   await store.loadProfiles()
+  void store.ensureCreditsLoaded(true)
   await reloadRecordsForActive()
 })
 

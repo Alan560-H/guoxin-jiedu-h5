@@ -30,7 +30,7 @@ import {
 } from '@/api/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
-import { navigateToJieduSetup, navigateToProfileList } from '@/utils/guoxin/navigation'
+import { navigateToHome, navigateToJieduSetup, navigateToProfileList } from '@/utils/guoxin/navigation'
 import { normalizeProfileVo } from '@/utils/guoxin/normalizeProfile'
 import { clearGuoxinUserSessionSnapshot, parseGuoxinLoginData, writeGuoxinUserSessionSnapshot } from '@/utils/guoxin/parseLoginResponse'
 import { mapReportDetailToRecordVo, parseReportDirections } from '@/utils/guoxin/parseReportDetail'
@@ -372,16 +372,20 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         taskId,
         reportId: reportIdRaw != null && !Number.isNaN(reportIdRaw) ? reportIdRaw : null,
       }
+      invalidateRemoteCache(['credits'])
+      void ensureCreditsLoaded(true)
     }
     catch (e) {
       console.error('提交报告生成失败', e)
       const action = await showApiErrorModal(e, {
         fallback: '提交失败，请重试',
         confirmText: '查看档案与记录',
-        cancelText: '知道了',
+        cancelText: '首页',
       })
       if (action === 'confirm')
         navigateToProfileList(activeProfileId.value || undefined)
+      else if (action === 'cancel')
+        navigateToHome()
       return false
     }
 

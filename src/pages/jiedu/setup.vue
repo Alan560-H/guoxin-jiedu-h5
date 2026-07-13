@@ -50,6 +50,7 @@ onMounted(() => {
     return
   }
   store.initSeedData()
+  void store.ensureCreditsLoaded(true)
   if (!store.activeProfile)
     uni.redirectTo({ url: RouterPaths.profileCreate })
 })

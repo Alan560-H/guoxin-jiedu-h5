@@ -182,6 +182,8 @@ onBeforeUnmount(() => {
 
 function goRecords() {
   deactivatePage()
+  store.invalidateRemoteCache(['credits'])
+  void store.ensureCreditsLoaded(true)
   navigateToProfileList(store.activeProfileId || undefined, { replace: true })
 }
 </script>
