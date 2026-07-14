@@ -61,6 +61,28 @@ export const FEEDBACK_FORM_URL = 'https://wcnzvwcua4e6.feishu.cn/share/base/form
 
 export const CREDITS_PAYWALL_TEXT = '权益开通后不支持退款，请根据实际需要选择。'
 
+/** 权益页信任标识（展示用，非接口字段） */
+export const CREDITS_TRUST_BADGES = [
+  { title: '微信支付', desc: '安全保障', icon: 'trust-wechat' },
+  { title: 'AI生成', desc: '可追溯', icon: 'trust-ai' },
+  { title: '仅供参考', desc: '不决策', icon: 'trust-info' },
+] as const
+
+/** 套餐卡图标：按次数档位映射，其余按列表顺序兜底 */
+export const CREDITS_PACKAGE_ICON_BY_AMOUNT: Record<number, string> = {
+  1: 'pkg-gift',
+  10: 'pkg-family',
+  20: 'pkg-calendar',
+}
+
+export const CREDITS_PACKAGE_ICON_FALLBACK = ['pkg-gift', 'pkg-family', 'pkg-calendar'] as const
+
+export const CREDITS_INSUFFICIENT_HINT
+  = '开通后可用于任意心语档案；每次完整解读消耗 1 次。'
+
+export const CREDITS_PAY_HINT
+  = '支付前请确认次数、有效期、适用档案与扣次规则。'
+
 /**
  * 轻舟发现页入口：URL 带 ?isShowBack=1 时首页展示「返回上一页」栏。
  */
