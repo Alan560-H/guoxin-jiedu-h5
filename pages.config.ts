@@ -23,7 +23,7 @@ export default defineUniPages({
       layout: 'guoxinChat',
       style: { navigationBarTitleText: '心语老师' },
     },
-    guoxinPage('pages/jiedu/processing', '心语老师正在为您整理'),
+    guoxinPage('pages/jiedu/processing', '正在整理'),
     guoxinPage('pages/jiedu/complete', '解读已完成'),
     {
       path: 'pages/jiedu/detail',

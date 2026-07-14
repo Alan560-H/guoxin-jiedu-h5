@@ -36,7 +36,7 @@
       "path": "pages/jiedu/processing",
       "type": "page",
       "style": {
-        "navigationBarTitleText": "心语老师正在为您整理"
+        "navigationBarTitleText": "正在整理"
       },
       "layout": "guoxin"
     },
