@@ -4,6 +4,7 @@ import { DAILY_QUESTION_LIMIT } from '@/constants/chatHome'
 defineProps<{
   remaining: number
   progressRatio: number
+  unlimited?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -18,7 +19,10 @@ const emit = defineEmits<{
         <text class="qa-label">
           今日问答
         </text>
-        <text class="qa-remain">
+        <text v-if="unlimited" class="qa-remain">
+          套餐期内不限次
+        </text>
+        <text v-else class="qa-remain">
           还可问
           <text class="qa-num">
             {{ remaining }}
@@ -30,11 +34,16 @@ const emit = defineEmits<{
         购买套餐
       </view>
     </view>
-    <view class="qa-meter">
+    <view v-if="!unlimited" class="qa-meter">
       <view class="qa-meter-fill" :style="{ width: `${Math.round(progressRatio * 100)}%` }" />
     </view>
     <text class="qa-foot">
-      每日可问 {{ DAILY_QUESTION_LIMIT }} 次 · 明日 00:00 恢复
+      <template v-if="unlimited">
+        当前问答套餐有效期内不限制次数
+      </template>
+      <template v-else>
+        每日可问 {{ DAILY_QUESTION_LIMIT }} 次 · 明日 00:00 恢复
+      </template>
     </text>
   </view>
 </template>

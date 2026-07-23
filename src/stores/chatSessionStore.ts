@@ -14,6 +14,8 @@ export interface ChatMessage {
   feedback?: FeedbackState
   feedbackReason?: string
   feedbackNote?: string
+  /** 流式生成中 */
+  streaming?: boolean
   createdAt: number
 }
 
@@ -31,20 +33,15 @@ function uid(prefix: string) {
 
 export const useChatSessionStore = defineStore('chatSession', () => {
   const messagesByProfileId = ref<Record<string, ChatMessage[]>>({})
+  const conversationIdByProfileId = ref<Record<string, string>>({})
   const quotaDate = ref(todayKey())
+  /** 仅本地兜底 / 开发 mock；正式以 guoxinStore.chatRemaining 为准 */
   const dailyRemaining = ref(DAILY_QUESTION_LIMIT)
   const followupBatchIndex = ref(0)
 
-  const remaining = computed(() => {
+  const localRemaining = computed(() => {
     ensureQuotaDay()
     return dailyRemaining.value
-  })
-
-  const quotaUsedUp = computed(() => remaining.value <= 0)
-
-  const progressRatio = computed(() => {
-    const used = DAILY_QUESTION_LIMIT - remaining.value
-    return Math.min(1, Math.max(0, used / DAILY_QUESTION_LIMIT))
   })
 
   function ensureQuotaDay() {
@@ -66,6 +63,29 @@ export const useChatSessionStore = defineStore('chatSession', () => {
       ...messagesByProfileId.value,
       [profileId]: list,
     }
+  }
+
+  function getConversationId(profileId: string): string {
+    if (!profileId)
+      return ''
+    return conversationIdByProfileId.value[profileId] || ''
+  }
+
+  function setConversationId(profileId: string, conversationId: string) {
+    if (!profileId || !conversationId)
+      return
+    conversationIdByProfileId.value = {
+      ...conversationIdByProfileId.value,
+      [profileId]: conversationId,
+    }
+  }
+
+  function clearConversationId(profileId: string) {
+    if (!profileId)
+      return
+    const next = { ...conversationIdByProfileId.value }
+    delete next[profileId]
+    conversationIdByProfileId.value = next
   }
 
   function ensureIntro(profileId: string, profileName: string) {
@@ -96,13 +116,14 @@ export const useChatSessionStore = defineStore('chatSession', () => {
   function appendAssistant(
     profileId: string,
     content: string,
-    options?: { showFeedback?: boolean },
+    options?: { showFeedback?: boolean, streaming?: boolean },
   ): ChatMessage {
     const msg: ChatMessage = {
       id: uid('a'),
       role: 'assistant',
       content,
-      showFeedback: options?.showFeedback !== false,
+      showFeedback: options?.showFeedback === true,
+      streaming: options?.streaming === true,
       feedback: '',
       createdAt: Date.now(),
     }
@@ -110,13 +131,38 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     return msg
   }
 
-  /** mock 一轮成功后扣次；失败勿调用 */
-  function consumeOneQuota(): boolean {
+  function patchMessage(
+    profileId: string,
+    messageId: string,
+    patch: Partial<Pick<ChatMessage, 'content' | 'showFeedback' | 'streaming' | 'feedback'>>,
+  ) {
+    const list = getMessages(profileId).map((m) => {
+      if (m.id !== messageId)
+        return m
+      return { ...m, ...patch }
+    })
+    setMessages(profileId, list)
+  }
+
+  function removeMessage(profileId: string, messageId: string) {
+    setMessages(
+      profileId,
+      getMessages(profileId).filter(m => m.id !== messageId),
+    )
+  }
+
+  /** 仅本地兜底扣次；服务端权威路径请刷 credits */
+  function consumeLocalQuota(): boolean {
     ensureQuotaDay()
     if (dailyRemaining.value <= 0)
       return false
     dailyRemaining.value -= 1
     return true
+  }
+
+  function syncLocalRemaining(n: number) {
+    ensureQuotaDay()
+    dailyRemaining.value = Math.max(0, n)
   }
 
   function setFeedback(
@@ -143,33 +189,38 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     followupBatchIndex.value += 1
   }
 
-  function buildMockAnswer(profileName: string, question: string): string {
-    const name = profileName || '你'
-    return `先把「${question}」拆成事实、担心和期待三部分来看。结合${name}的八字节奏，眼下更适合先确认关键条件，再决定推进还是暂缓；下面给你几个可继续追问的方向。`
-  }
-
   return {
     messagesByProfileId,
+    conversationIdByProfileId,
     quotaDate,
     dailyRemaining,
     followupBatchIndex,
-    remaining,
-    quotaUsedUp,
-    progressRatio,
+    localRemaining,
     DAILY_QUESTION_LIMIT,
     ensureQuotaDay,
     getMessages,
     ensureIntro,
     appendUser,
     appendAssistant,
-    consumeOneQuota,
+    patchMessage,
+    removeMessage,
+    getConversationId,
+    setConversationId,
+    clearConversationId,
+    consumeLocalQuota,
+    syncLocalRemaining,
     setFeedback,
     nextFollowupBatch,
-    buildMockAnswer,
   }
 }, {
   persist: {
     key: 'guoxin-chat-session',
-    pick: ['messagesByProfileId', 'quotaDate', 'dailyRemaining', 'followupBatchIndex'],
+    pick: [
+      'messagesByProfileId',
+      'conversationIdByProfileId',
+      'quotaDate',
+      'dailyRemaining',
+      'followupBatchIndex',
+    ],
   },
 })

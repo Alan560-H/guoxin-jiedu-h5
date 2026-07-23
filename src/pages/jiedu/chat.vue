@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { FeedbackState } from '@/stores/chatSessionStore'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, nextTick, ref, watch } from 'vue'
+import { streamChatMessage } from '@/api/chat'
 import GxAvatarSwitcher from '@/components/guoxin/chat/GxAvatarSwitcher.vue'
 import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
 import GxChatComposer from '@/components/guoxin/chat/GxChatComposer.vue'
@@ -14,13 +15,18 @@ import GxChatQuotaCard from '@/components/guoxin/chat/GxChatQuotaCard.vue'
 import GxChatReportAd from '@/components/guoxin/chat/GxChatReportAd.vue'
 import GxInviteModal from '@/components/guoxin/chat/GxInviteModal.vue'
 import {
+  CHAT_BIZ_SOURCE,
+  CHAT_CREDITS_LOCAL_FALLBACK,
   CHAT_PENDING_QUESTION_KEY,
+  DAILY_QUESTION_LIMIT,
   FOLLOWUP_BANKS,
 } from '@/constants/chatHome'
+import { isChatStreamQuotaError } from '@/models/guoxin/chat'
 import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { createStreamTypewriter } from '@/utils/guoxin/streamTypewriter'
 
 const store = useGuoxinStore()
 const chatStore = useChatSessionStore()
@@ -34,6 +40,8 @@ const showFeedback = ref(false)
 const feedbackMessageId = ref('')
 const scrollIntoView = ref('')
 const bootstrapped = ref(false)
+const abortController = ref<AbortController | null>(null)
+const clearActiveTypewriter = ref<(() => void) | null>(null)
 
 const profiles = computed(() => store.profiles)
 const activeId = computed(() => store.activeProfileId)
@@ -49,9 +57,19 @@ const hasConversation = computed(() =>
   messages.value.some(m => m.role === 'user'),
 )
 
-const remaining = computed(() => chatStore.remaining)
-const quotaUsedUp = computed(() => chatStore.quotaUsedUp)
-const progressRatio = computed(() => chatStore.progressRatio)
+const chatUnlimited = computed(() => store.chatUnlimited)
+const remaining = computed(() => {
+  if (store.chatCreditsFromServer || !CHAT_CREDITS_LOCAL_FALLBACK)
+    return store.chatRemaining
+  return chatStore.localRemaining
+})
+const quotaUsedUp = computed(() => !chatUnlimited.value && remaining.value <= 0)
+const progressRatio = computed(() => {
+  if (chatUnlimited.value)
+    return 0
+  const used = DAILY_QUESTION_LIMIT - remaining.value
+  return Math.min(1, Math.max(0, used / DAILY_QUESTION_LIMIT))
+})
 
 const followupBank = computed(() => {
   const banks = FOLLOWUP_BANKS
@@ -63,9 +81,11 @@ const followupItems = computed(() =>
   (followupBank.value?.items ?? []).map(([question, tip]) => ({ question, tip })),
 )
 
-const followupMeta = computed(() =>
-  quotaUsedUp.value ? '明日恢复' : `还可问 ${remaining.value} 次`,
-)
+const followupMeta = computed(() => {
+  if (chatUnlimited.value)
+    return '不限次'
+  return quotaUsedUp.value ? '明日恢复' : `还可问 ${remaining.value} 次`
+})
 
 const composerPlaceholder = computed(() =>
   quotaUsedUp.value ? '今日问答已用完' : '继续追问',
@@ -77,8 +97,17 @@ onLoad(() => {
 
 onShow(() => {
   chatStore.ensureQuotaDay()
-  if (bootstrapped.value)
+  if (bootstrapped.value) {
+    void refreshCreditsQuiet()
     consumePendingQuestion()
+  }
+})
+
+onUnload(() => {
+  abortController.value?.abort()
+  abortController.value = null
+  clearActiveTypewriter.value?.()
+  clearActiveTypewriter.value = null
 })
 
 watch(activeId, (id) => {
@@ -87,6 +116,44 @@ watch(activeId, (id) => {
   chatStore.ensureIntro(id, profileName.value)
   scrollToBottom()
 })
+
+async function refreshCreditsQuiet() {
+  try {
+    await store.ensureCreditsLoaded(true)
+    if (store.chatCreditsFromServer)
+      chatStore.syncLocalRemaining(store.chatRemaining)
+  }
+  catch {
+    // ignore
+  }
+}
+
+/** 发送前强制拉权益；失败则拒绝发送 */
+async function precheckChatQuota(): Promise<'ok' | 'empty' | 'fail'> {
+  const ok = await store.ensureCreditsLoaded(true)
+  if (!ok) {
+    if (CHAT_CREDITS_LOCAL_FALLBACK) {
+      chatStore.ensureQuotaDay()
+      return chatStore.localRemaining > 0 ? 'ok' : 'empty'
+    }
+    return 'fail'
+  }
+
+  if (!store.chatCreditsFromServer) {
+    if (!CHAT_CREDITS_LOCAL_FALLBACK)
+      return 'fail'
+    chatStore.ensureQuotaDay()
+    return chatStore.localRemaining > 0 ? 'ok' : 'empty'
+  }
+
+  if (store.chatUnlimited)
+    return 'ok'
+  if (store.chatRemaining > 0) {
+    chatStore.syncLocalRemaining(store.chatRemaining)
+    return 'ok'
+  }
+  return 'empty'
+}
 
 async function bootstrapChat() {
   chatStore.ensureQuotaDay()
@@ -103,6 +170,7 @@ async function bootstrapChat() {
   if (!store.activeProfileId || !store.profiles.some(p => p.id === store.activeProfileId))
     store.setActiveProfile(store.profiles[0].id)
 
+  await refreshCreditsQuiet()
   chatStore.ensureIntro(store.activeProfileId, profileName.value)
   bootstrapped.value = true
   consumePendingQuestion()
@@ -176,6 +244,26 @@ function onSubmitComposer() {
   void askQuestion(q)
 }
 
+function buildChatInputs(profileId: string) {
+  const p = activeProfile.value
+  const baziInfo = [
+    p?.name,
+    p?.genderText,
+    p?.calendarTypeText,
+    p?.birthDaySolar || p?.birthDay,
+    p?.birthPlace,
+  ].filter(Boolean).join(' · ')
+
+  return {
+    reportTime: 0,
+    bizSource: CHAT_BIZ_SOURCE,
+    baziUserId: profileId,
+    baziInfo: baziInfo || profileName.value,
+    relation: p?.relationText || p?.relation || '',
+    profileName: profileName.value,
+  }
+}
+
 async function askQuestion(question: string) {
   const q = question.trim()
   if (!q || asking.value)
@@ -187,8 +275,17 @@ async function askQuestion(question: string) {
     return
   }
 
-  chatStore.ensureQuotaDay()
-  if (chatStore.quotaUsedUp) {
+  if (typeof fetch !== 'function') {
+    uni.showToast({ title: '当前环境不支持流式问答，请使用浏览器打开', icon: 'none' })
+    return
+  }
+
+  const gate = await precheckChatQuota()
+  if (gate === 'fail') {
+    uni.showToast({ title: '权益校验失败，请稍后重试', icon: 'none' })
+    return
+  }
+  if (gate === 'empty') {
     showLimit.value = true
     return
   }
@@ -197,15 +294,99 @@ async function askQuestion(question: string) {
   draft.value = ''
   chatStore.ensureIntro(profileId, profileName.value)
   chatStore.appendUser(profileId, q)
+  const assistant = chatStore.appendAssistant(profileId, '', {
+    showFeedback: false,
+    streaming: true,
+  })
   scrollToBottom()
 
-  // Step2：mock 一轮；真 Dify SSE 留 Step3
-  await new Promise(resolve => setTimeout(resolve, 480))
-  const answer = chatStore.buildMockAnswer(profileName.value, q)
-  chatStore.appendAssistant(profileId, answer, { showFeedback: true })
-  chatStore.consumeOneQuota()
-  asking.value = false
-  scrollToBottom()
+  const controller = new AbortController()
+  abortController.value = controller
+
+  const typewriter = createStreamTypewriter({
+    intervalMs: 16,
+    onUpdate: (displayed) => {
+      chatStore.patchMessage(profileId, assistant.id, {
+        content: displayed,
+        streaming: true,
+      })
+    },
+    onScroll: scrollToBottom,
+  })
+  clearActiveTypewriter.value = () => typewriter.clear()
+
+  try {
+    const text = await streamChatMessage(
+      {
+        query: q,
+        conversationId: chatStore.getConversationId(profileId),
+        baziUserId: profileId,
+        inputs: buildChatInputs(profileId),
+      },
+      {
+        onDelta: (full) => {
+          typewriter.setTarget(full)
+        },
+        onSession: (session) => {
+          chatStore.setConversationId(profileId, session.conversationId)
+        },
+      },
+      controller.signal,
+    )
+
+    if (controller.signal.aborted)
+      throw new DOMException('Aborted', 'AbortError')
+
+    const buffered = (text || '').trim()
+    if (buffered)
+      typewriter.setTarget(buffered)
+    await typewriter.flush()
+
+    if (controller.signal.aborted)
+      throw new DOMException('Aborted', 'AbortError')
+
+    const finalText = (typewriter.getDisplayed() || buffered).trim()
+    if (!finalText)
+      throw new Error('当前回复失败，请重试')
+
+    chatStore.patchMessage(profileId, assistant.id, {
+      content: finalText,
+      streaming: false,
+      showFeedback: true,
+    })
+  }
+  catch (e) {
+    typewriter.clear()
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      const kept = chatStore.getMessages(profileId).find(m => m.id === assistant.id)?.content?.trim()
+      chatStore.patchMessage(profileId, assistant.id, {
+        content: kept || '已停止生成',
+        streaming: false,
+        showFeedback: false,
+      })
+    }
+    else if (isChatStreamQuotaError(e)) {
+      chatStore.removeMessage(profileId, assistant.id)
+      showLimit.value = true
+      uni.showToast({ title: e.message || '今日问答已用完', icon: 'none' })
+    }
+    else {
+      const msg = e instanceof Error ? e.message : '当前回复失败，请重试'
+      chatStore.patchMessage(profileId, assistant.id, {
+        content: msg || '当前回复失败，请重试',
+        streaming: false,
+        showFeedback: false,
+      })
+      uni.showToast({ title: '当前回复失败，请重试', icon: 'none' })
+    }
+  }
+  finally {
+    clearActiveTypewriter.value = null
+    abortController.value = null
+    asking.value = false
+    await refreshCreditsQuiet()
+    scrollToBottom()
+  }
 }
 
 function onFeedback(payload: { messageId: string, feedback: FeedbackState }) {
@@ -302,6 +483,7 @@ function scrollToBottom() {
         <GxChatQuotaCard
           :remaining="remaining"
           :progress-ratio="progressRatio"
+          :unlimited="chatUnlimited"
           @buy="onBuy"
         />
 

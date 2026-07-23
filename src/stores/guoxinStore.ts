@@ -32,6 +32,7 @@ import { RouterPaths } from '@/routerPaths'
 import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
 import { navigateToHome, navigateToJieduSetup, navigateToProfileList } from '@/utils/guoxin/navigation'
 import { normalizeProfileVo } from '@/utils/guoxin/normalizeProfile'
+import { parseCreditsPayload } from '@/utils/guoxin/parseCredits'
 import { clearGuoxinUserSessionSnapshot, parseGuoxinLoginData, writeGuoxinUserSessionSnapshot } from '@/utils/guoxin/parseLoginResponse'
 import { mapReportDetailToRecordVo, parseReportDirections } from '@/utils/guoxin/parseReportDetail'
 import { createRemoteDataCache } from '@/utils/guoxin/remoteDataCache'
@@ -73,6 +74,12 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const readingRecords = ref<any[]>([])
   const homeLatestRecord = ref<any | null>(null)
   const totalAvailableCount = ref<number>(0)
+  /** 问答剩余次数（统一 credits 接口） */
+  const chatRemaining = ref<number>(0)
+  /** 套餐期内问答不限次 */
+  const chatUnlimited = ref(false)
+  /** credits 是否已带问答字段；未带时开发期可走本地兜底 */
+  const chatCreditsFromServer = ref(false)
   const activeProductId = ref<number | null>(null)
   const relationOptions = ref<Array<{ value: string, label: string }>>([]) // 关系选项（从字典加载）
   const remoteCache = createRemoteDataCache()
@@ -86,6 +93,19 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const displayCredits = computed(() =>
     isLoggedIn.value ? totalAvailableCount.value : 0,
   )
+
+  /** 能否继续发问：只看问答权益，绝不看报告次 */
+  function canAskChat(): boolean {
+    if (!isLoggedIn.value)
+      return false
+    if (chatUnlimited.value)
+      return true
+    return chatRemaining.value > 0
+  }
+
+  function hasNoChatQuota(): boolean {
+    return !canAskChat()
+  }
 
   const latestRecord = computed(() => {
     if (isLoggedIn.value && homeLatestRecord.value)
@@ -171,6 +191,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     readingRecords.value = []
     homeLatestRecord.value = null
     totalAvailableCount.value = 0
+    chatRemaining.value = 0
+    chatUnlimited.value = false
+    chatCreditsFromServer.value = false
     activeProductId.value = null
     profiles.value = []
     activeProfileId.value = ''
@@ -263,6 +286,13 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       ...dto,
     }
     profiles.value[idx] = updated
+    try {
+      const { useChatSessionStore } = await import('@/stores/chatSessionStore')
+      useChatSessionStore().clearConversationId(id)
+    }
+    catch {
+      // ignore
+    }
     return updated
   }
 
@@ -446,7 +476,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         return true
       }
       else {
-        console.log('发送短信验证码失败', res);
+        console.log('发送短信验证码失败', res)
         uni.showToast({ title: res.msg || '发送失败', icon: 'none' })
         return false
       }
@@ -681,19 +711,31 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  /** 加载用户总可用次数（首页/权益展示；不依赖商品列表） */
-  async function loadCredits() {
+  /** 加载用户权益：报告次数 + 问答次数（同一接口） */
+  async function loadCredits(): Promise<boolean> {
     try {
       const res = await getCredits()
       if (res.code === 200 && res.data) {
-        const count = res.data.credits ?? res.data.availableCount ?? 0
-        totalAvailableCount.value = count
-        if (res.data.productId != null)
-          activeProductId.value = Number(res.data.productId)
+        const parsed = parseCreditsPayload(res.data)
+        totalAvailableCount.value = parsed.credits
+        if (parsed.productId != null)
+          activeProductId.value = parsed.productId
+
+        if (parsed.chatFieldsPresent) {
+          chatRemaining.value = parsed.chatRemaining
+          chatUnlimited.value = parsed.chatUnlimited
+          chatCreditsFromServer.value = true
+        }
+        else {
+          chatCreditsFromServer.value = false
+        }
+        return true
       }
+      return false
     }
     catch (e) {
       console.error('加载可用次数失败', e)
+      return false
     }
   }
 
@@ -705,10 +747,20 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return remoteCache.ensure('products', () => loadProducts(), { force })
   }
 
-  async function ensureCreditsLoaded(force = false) {
+  async function ensureCreditsLoaded(force = false): Promise<boolean> {
     if (!isLoggedIn.value)
-      return
-    return remoteCache.ensure('credits', () => loadCredits(), { force })
+      return false
+    try {
+      await remoteCache.ensure('credits', async () => {
+        const ok = await loadCredits()
+        if (!ok)
+          throw new Error('credits-load-failed')
+      }, { force })
+      return true
+    }
+    catch {
+      return false
+    }
   }
 
   /** 生成报告前解析商品 id（credits → 解读提交时按需拉 products 兜底） */
@@ -966,6 +1018,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     activeProfile,
     latestRecord,
     displayCredits,
+    canAskChat,
+    hasNoChatQuota,
     hasNoCredits,
     needsBindMobile,
     clearJieduSession,
@@ -1004,6 +1058,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     consumeRecords,
     readingRecords,
     totalAvailableCount,
+    chatRemaining,
+    chatUnlimited,
+    chatCreditsFromServer,
     activeProductId,
     doSendSmsCode,
     doLoginBySms,

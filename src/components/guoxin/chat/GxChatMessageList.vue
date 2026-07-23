@@ -29,7 +29,7 @@ const emit = defineEmits<{
         <text class="bubble-body">
           {{ m.content }}
         </text>
-        <view v-if="m.role === 'assistant' && m.showFeedback" class="feedback">
+        <view v-if="m.role === 'assistant' && m.showFeedback && !m.streaming" class="feedback">
           <text class="feedback-label">
             {{ m.feedback ? '感谢反馈，我们会继续优化' : '这条回答对你有帮助吗？' }}
           </text>

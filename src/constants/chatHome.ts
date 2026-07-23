@@ -70,3 +70,12 @@ export const FEEDBACK_REASONS = [
 export const DAILY_QUESTION_LIMIT = 3
 
 export const CHAT_PENDING_QUESTION_KEY = 'guoxin-chat-pending-question'
+
+/**
+ * 开发期：credits 未下发问答字段时，用本地日额度兜底展示/预检。
+ * 生产默认 false，避免把报告次误当问答次。
+ */
+export const CHAT_CREDITS_LOCAL_FALLBACK
+  = import.meta.env.DEV && import.meta.env.VITE_CHAT_CREDITS_LOCAL_FALLBACK !== '0'
+
+export const CHAT_BIZ_SOURCE = 'guoxin_h5'
