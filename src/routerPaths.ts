@@ -3,6 +3,7 @@ export class RouterPaths {
   public static readonly profileList = '/pages/profile/list'
   public static readonly profileCreate = '/pages/profile/create'
   public static readonly jieduSetup = '/pages/jiedu/setup'
+  public static readonly jieduChat = '/pages/jiedu/chat'
   public static readonly jieduProcessing = '/pages/jiedu/processing'
   public static readonly jieduComplete = '/pages/jiedu/complete'
   public static readonly jieduDetail = '/pages/jiedu/detail'

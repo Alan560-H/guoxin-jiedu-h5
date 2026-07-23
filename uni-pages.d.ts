@@ -6,6 +6,7 @@
 type _LocationUrl =
   "/pages/index" |
   "/pages/credits/index" |
+  "/pages/jiedu/chat" |
   "/pages/jiedu/complete" |
   "/pages/jiedu/detail" |
   "/pages/jiedu/processing" |

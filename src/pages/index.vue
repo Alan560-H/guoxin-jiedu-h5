@@ -10,6 +10,7 @@ import GxInviteModal from '@/components/guoxin/chat/GxInviteModal.vue'
 import GxQuestionBoard from '@/components/guoxin/chat/GxQuestionBoard.vue'
 import GxSourceBackBar from '@/components/guoxin/GxSourceBackBar.vue'
 import { CHAT_PENDING_QUESTION_KEY, HOME_QUESTION_BANKS } from '@/constants/chatHome'
+import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 
@@ -151,7 +152,7 @@ function handleAskWithProfile(question: string) {
   }
   draft.value = ''
   pendingQuestion.value = ''
-  uni.showToast({ title: '对话能力下一步开放', icon: 'none' })
+  uni.navigateTo({ url: RouterPaths.jieduChat })
 }
 
 function onBaziSuccess() {

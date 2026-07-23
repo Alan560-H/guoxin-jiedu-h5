@@ -2,10 +2,13 @@
 import type { ProfileVo } from '@/models/guoxin/profile'
 import { computed } from 'vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   profiles: ProfileVo[]
   activeId: string
-}>()
+  compact?: boolean
+}>(), {
+  compact: false,
+})
 
 const emit = defineEmits<{
   select: [id: string]
@@ -25,7 +28,7 @@ function sealChar(name: string) {
 </script>
 
 <template>
-  <view class="avatar-switcher">
+  <view class="avatar-switcher" :class="{ compact: props.compact }">
     <view class="switcher-head">
       <view>
         <text class="head-label">
@@ -87,6 +90,12 @@ function sealChar(name: string) {
     radial-gradient(circle at 94% 0%, rgba(213, 164, 61, 0.2), transparent 34%),
     rgba(255, 253, 248, 0.97);
   box-shadow: var(--gx-chat-shadow, 0 8rpx 24rpx rgba(121, 38, 32, 0.1));
+
+  &.compact {
+    padding-top: 18rpx;
+    padding-bottom: 16rpx;
+    margin-bottom: 20rpx;
+  }
 }
 
 .switcher-head {

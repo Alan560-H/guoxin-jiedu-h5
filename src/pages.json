@@ -17,6 +17,14 @@
       "layout": "guoxin"
     },
     {
+      "path": "pages/jiedu/chat",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "国心解读"
+      },
+      "layout": "guoxinChat"
+    },
+    {
       "path": "pages/jiedu/complete",
       "type": "page",
       "style": {
