@@ -7,13 +7,20 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    GxAvatarSwitcher: typeof import('./src/components/guoxin/chat/GxAvatarSwitcher.vue')['default']
+    GxBaziProfileModal: typeof import('./src/components/guoxin/chat/GxBaziProfileModal.vue')['default']
     GxButton: typeof import('./src/components/guoxin/GxButton.vue')['default']
     GxCard: typeof import('./src/components/guoxin/GxCard.vue')['default']
+    GxChatComposer: typeof import('./src/components/guoxin/chat/GxChatComposer.vue')['default']
+    GxChatHeader: typeof import('./src/components/guoxin/chat/GxChatHeader.vue')['default']
+    GxChatLoginModal: typeof import('./src/components/guoxin/chat/GxChatLoginModal.vue')['default']
     GxChip: typeof import('./src/components/guoxin/GxChip.vue')['default']
     GxCreditsIcon: typeof import('./src/components/guoxin/GxCreditsIcon.vue')['default']
     GxFontScaleNav: typeof import('./src/components/guoxin/GxFontScaleNav.vue')['default']
+    GxInviteModal: typeof import('./src/components/guoxin/chat/GxInviteModal.vue')['default']
     GxLoginModal: typeof import('./src/components/guoxin/GxLoginModal.vue')['default']
     GxNavBar: typeof import('./src/components/guoxin/GxNavBar.vue')['default']
+    GxQuestionBoard: typeof import('./src/components/guoxin/chat/GxQuestionBoard.vue')['default']
     GxRegionPicker: typeof import('./src/components/guoxin/GxRegionPicker.vue')['default']
     GxSourceBackBar: typeof import('./src/components/guoxin/GxSourceBackBar.vue')['default']
     ProfileReadingRecordList: typeof import('./src/components/guoxin/ProfileReadingRecordList.vue')['default']

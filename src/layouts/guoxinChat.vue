@@ -1,17 +1,9 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { promptOpenInWeChat, shouldPromptOpenInWeChat } from '@/utils/weixin/env'
-
-/** 对话类全屏页：无底部免责声明，避免与固定输入栏争抢高度 */
-
-onMounted(() => {
-  if (shouldPromptOpenInWeChat())
-    promptOpenInWeChat()
-})
+/** 对话类全屏页：丙火红主题底；无底部免责声明 */
 </script>
 
 <template>
-  <view class="gx-chat-layout flex_column fill_width">
+  <view class="gx-chat-layout gx-chat-root flex_column fill_width">
     <view class="gx-chat-layout-body flex_1">
       <slot />
     </view>
@@ -27,7 +19,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: transparent;
 }
 
 .gx-chat-layout-body {

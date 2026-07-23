@@ -12,7 +12,7 @@ export default defineUniPages({
     {
       path: 'pages/index',
       type: 'home',
-      layout: 'guoxin',
+      layout: 'guoxinChat',
       style: { navigationBarTitleText: '国心解读' },
     },
     guoxinPage('pages/profile/list', '我的心语档案'),

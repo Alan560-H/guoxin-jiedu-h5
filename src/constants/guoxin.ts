@@ -96,4 +96,5 @@ export const SHOW_BACK_ENTRY_URL = 'https://nr.cxfangtang.cn/'
 export const SOURCE_QUERY_KEY = 'source'
 
 /** 是否开放短信验证码登录（绑定手机号仍使用短信验证码） */
-export const SMS_LOGIN_ENABLED = false
+/** 对话版：全环境（含微信）启用手机号+短信登录 */
+export const SMS_LOGIN_ENABLED = true

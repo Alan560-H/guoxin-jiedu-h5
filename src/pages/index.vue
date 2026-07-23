@@ -1,854 +1,366 @@
 <script setup lang="ts">
-import type { FontScale } from '@/constants/guoxin'
-import { computed, onMounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import GxButton from '@/components/guoxin/GxButton.vue'
-import GxCard from '@/components/guoxin/GxCard.vue'
-import GxChip from '@/components/guoxin/GxChip.vue'
-import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
+import { computed, onMounted, ref } from 'vue'
+import GxAvatarSwitcher from '@/components/guoxin/chat/GxAvatarSwitcher.vue'
+import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
+import GxChatComposer from '@/components/guoxin/chat/GxChatComposer.vue'
+import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
+import GxChatLoginModal from '@/components/guoxin/chat/GxChatLoginModal.vue'
+import GxInviteModal from '@/components/guoxin/chat/GxInviteModal.vue'
+import GxQuestionBoard from '@/components/guoxin/chat/GxQuestionBoard.vue'
 import GxSourceBackBar from '@/components/guoxin/GxSourceBackBar.vue'
-import { ImageConfig } from '@/config/assets'
-import { FEEDBACK_FORM_TITLE, FEEDBACK_FORM_URL, SMS_LOGIN_ENABLED } from '@/constants/guoxin'
-import { RouterPaths } from '@/routerPaths'
+import { CHAT_PENDING_QUESTION_KEY, HOME_QUESTION_BANKS } from '@/constants/chatHome'
 import { useGuoxinStore } from '@/stores/guoxinStore'
-import { getProfileBirthYear } from '@/utils/guoxin/birthDateTime'
-import { navigateToJieduSetup } from '@/utils/guoxin/navigation'
-import { isSmsLoginAvailable } from '@/utils/guoxin/smsLoginAvailability'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
-import { useActionLock } from '@/utils/guoxin/useActionLock'
-import { isWeChatBrowser, promptOpenInWeChat } from '@/utils/weixin/env'
-import {
-  clearOAuthParamsFromUrl,
-  consumeOAuthPendingStart,
-  getGuoxinOAuthCode,
-  GUOXIN_OAUTH_STATE,
-  markOAuthPendingStart,
-  redirectToWxOAuth,
-} from '@/utils/weixin/oauth'
 
 const store = useGuoxinStore()
-const { locking: startingJiedu, runLocked: runStartJieduLocked } = useActionLock()
 
 const showLogin = ref(false)
-const showWxAuth = ref(false)
-const loginMode = ref<'smsLogin' | 'bindMobile'>('bindMobile')
-const showProfileSelect = ref(false)
-/** 登录完成后是否继续「开始解读」流程 */
-const loginIntent = ref<'none' | 'start'>('none')
-/** 防止同一 code 被重复兑换（HMR/重复挂载会导致 invalid code） */
-const oauthCodeHandled = ref<string | null>(null)
+const showBazi = ref(false)
+const showInvite = ref(false)
+const draft = ref('')
+const bankIndex = ref(0)
+const pendingQuestion = ref('')
+/** 登录成功后打开邀请弹窗 */
+const pendingInvite = ref(false)
+/** 登录成功后是否强制选中档案列表第一个 */
+const forceSelectFirst = ref(false)
 
-/** 轻舟发现页入口（?isShowBack=1）：首页顶部显示返回栏 */
 const showSourceBackBar = ref(isShowBackEntry())
+const profiles = computed(() => store.profiles)
+const activeId = computed(() => store.activeProfileId)
+const questions = computed(() => HOME_QUESTION_BANKS[bankIndex.value] ?? HOME_QUESTION_BANKS[0])
 
-/** 登录/授权成功后，继续「开始解读」后续步骤 */
-async function continueJieduAfterLogin() {
-  await store.ensureCreditsLoaded(true)
-  if (store.hasNoCredits()) {
-    uni.navigateTo({ url: RouterPaths.credits })
+onMounted(() => {
+  void bootstrapHome(false)
+})
+
+onShow(() => {
+  showSourceBackBar.value = isShowBackEntry()
+  if (store.isLoggedIn)
+    void bootstrapHome(false)
+})
+
+async function bootstrapHome(selectFirst: boolean) {
+  if (!store.isLoggedIn)
     return
-  }
   await store.loadProfiles()
   if (store.profiles.length === 0) {
-    uni.navigateTo({ url: RouterPaths.profileCreate })
+    showBazi.value = true
     return
   }
-  showProfileSelect.value = true
+  if (selectFirst || forceSelectFirst.value) {
+    store.setActiveProfile(store.profiles[0].id)
+    forceSelectFirst.value = false
+    return
+  }
+  if (!store.activeProfileId || !store.profiles.some(p => p.id === store.activeProfileId))
+    store.setActiveProfile(store.profiles[0].id)
 }
 
-/** 微信授权回调：code → wxLogin，换取 token */
-async function handleOAuthCallback(code: string) {
-  if (oauthCodeHandled.value === code)
-    return
-  oauthCodeHandled.value = code
-  try {
-    uni.showLoading({ title: '登录中...', mask: true })
-    const result = await store.doWxLogin(code)
-    clearOAuthParamsFromUrl()
-    uni.hideLoading()
-    if (result.needBindMobile) {
-      loginMode.value = 'bindMobile'
-      showLogin.value = true
-      return
-    }
-    await store.bootstrapAfterLogin()
-    if (consumeOAuthPendingStart())
-      await continueJieduAfterLogin()
-  }
-  catch (e: unknown) {
-    uni.hideLoading()
-    clearOAuthParamsFromUrl()
-    console.error('微信登录失败', e)
-    uni.showToast({ title: '微信授权失败，请重试', icon: 'none' })
-    oauthCodeHandled.value = null
-  }
-}
-
-onMounted(async () => {
-  store.initSeedData()
-
-  if (await store.tryRestoreSession()) {
-    if (consumeOAuthPendingStart())
-      await continueJieduAfterLogin()
-    return
-  }
-
-  const code = getGuoxinOAuthCode()
-  if (code)
-    await handleOAuthCallback(code)
-  else if (store.isLoggedIn && consumeOAuthPendingStart())
-    await continueJieduAfterLogin()
-
-  if (!store.isLoggedIn)
-    promptLogin()
-})
-
-/** 回到首页时刷新权益次数（解读提交后可能已从档案页/整理页返回） */
-onShow(() => {
+function requireLogin(): boolean {
   if (store.isLoggedIn)
-    void store.ensureCreditsLoaded(true)
-})
-
-function promptBindMobile(intent: 'none' | 'start' = 'none') {
-  loginIntent.value = intent
-  loginMode.value = 'bindMobile'
+    return true
   showLogin.value = true
+  return false
 }
 
-function requireLoggedInAndBound(intent: 'none' | 'start' = 'none'): boolean {
-  if (!store.isLoggedIn) {
-    promptLogin(intent)
-    return false
-  }
-  if (store.needsBindMobile()) {
-    promptBindMobile(intent)
-    return false
-  }
-  return true
-}
-
-/**
- * 未登录时：微信内弹授权；非微信 H5 / App 短信登录；其余提示复制链接到微信。
- */
-function promptLogin(intent: 'none' | 'start' = 'none') {
-  loginIntent.value = intent
-  if (isWeChatBrowser()) {
-    showWxAuth.value = true
+async function afterLoginSuccess() {
+  forceSelectFirst.value = true
+  await store.bootstrapAfterLogin()
+  await bootstrapHome(true)
+  if (pendingInvite.value) {
+    pendingInvite.value = false
+    showInvite.value = true
     return
   }
-  if (isSmsLoginAvailable()) {
-    loginMode.value = 'smsLogin'
+  if (pendingQuestion.value && store.profiles.length > 0)
+    handleAskWithProfile(pendingQuestion.value)
+}
+
+function onMine() {
+  if (!requireLogin())
+    return
+  uni.showToast({ title: '「我的」下一步开放', icon: 'none' })
+}
+
+function onInvite() {
+  if (!store.isLoggedIn) {
+    pendingInvite.value = true
     showLogin.value = true
     return
   }
-  promptOpenInWeChat({ force: true })
+  showInvite.value = true
 }
 
-function promptLoginForStart() {
-  promptLogin('start')
+function onInvitePreview() {
+  uni.showToast({ title: '好友填写页下一步开放', icon: 'none' })
 }
 
-function confirmWxAuth() {
-  showWxAuth.value = false
-  markOAuthPendingStart()
-  redirectToWxOAuth(GUOXIN_OAUTH_STATE)
-}
-
-function switchToSmsLogin() {
-  if (!SMS_LOGIN_ENABLED)
+function onAdd() {
+  if (!requireLogin())
     return
-  showWxAuth.value = false
-  loginMode.value = 'smsLogin'
-  showLogin.value = true
+  showBazi.value = true
 }
 
-const showSmsLoginEntry = SMS_LOGIN_ENABLED
-
-/** 仅微信内、已登录且 userInfo 无手机号时展示 */
-const showBindMobileHint = computed(() => {
-  if (!isWeChatBrowser() || !store.isLoggedIn)
-    return false
-  return !store.mobile?.trim()
-})
-
-const latestRecord = computed(() => store.latestRecord)
-const profiles = computed(() => store.profiles)
-
-function handleStartJiedu() {
-  void runStartJieduLocked(() => handleStartJieduAsync())
-}
-
-async function handleStartJieduAsync() {
-  if (!store.isLoggedIn) {
-    promptLoginForStart()
+function onSelectProfile(id: string) {
+  if (!requireLogin())
     return
-  }
-
-  if (store.needsBindMobile()) {
-    promptBindMobile('start')
-    return
-  }
-
-  await store.ensureCreditsLoaded(true)
-  if (store.hasNoCredits()) {
-    uni.navigateTo({ url: RouterPaths.credits })
-    return
-  }
-
-  await store.loadProfiles()
-
-  // Go to profile creation if no profiles exist
-  if (profiles.value.length === 0) {
-    uni.navigateTo({ url: RouterPaths.profileCreate })
-    return
-  }
-
-  // Open the custom choose profile modal
-  showProfileSelect.value = true
-}
-
-function handleSelectProfile(id: string) {
   store.setActiveProfile(id)
-  showProfileSelect.value = false
-  navigateToJieduSetup()
 }
 
-function handleCreateProfileFromModal() {
-  showProfileSelect.value = false
-  uni.navigateTo({ url: RouterPaths.profileCreate })
+function onRefreshQuestions() {
+  bankIndex.value = (bankIndex.value + 1) % HOME_QUESTION_BANKS.length
 }
 
-function goProfiles() {
-  void goProfilesAsync()
+function onPickQuestion(q: string) {
+  void handleAsk(q)
 }
 
-async function goProfilesAsync() {
-  if (!requireLoggedInAndBound('none'))
+function onSubmitComposer() {
+  const q = draft.value.trim()
+  if (!q) {
+    uni.showToast({ title: '请输入你的问题', icon: 'none' })
     return
-  await store.loadProfiles()
-  uni.navigateTo({ url: RouterPaths.profileList })
+  }
+  void handleAsk(q)
 }
 
-function goCredits() {
-  if (!requireLoggedInAndBound('none'))
+async function handleAsk(question: string) {
+  pendingQuestion.value = question
+  if (!store.isLoggedIn) {
+    showLogin.value = true
     return
-  uni.navigateTo({ url: RouterPaths.credits })
-}
-
-function goLatestDetail() {
-  if (!latestRecord.value)
+  }
+  if (store.profiles.length === 0) {
+    await store.loadProfiles()
+  }
+  if (store.profiles.length === 0) {
+    showBazi.value = true
     return
-  uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${latestRecord.value.id}` })
+  }
+  handleAskWithProfile(question)
 }
 
-function setScale(scale: FontScale) {
-  store.setFontScale(scale)
+function handleAskWithProfile(question: string) {
+  try {
+    uni.setStorageSync(CHAT_PENDING_QUESTION_KEY, question)
+  }
+  catch {
+    // ignore
+  }
+  draft.value = ''
+  pendingQuestion.value = ''
+  uni.showToast({ title: '对话能力下一步开放', icon: 'none' })
 }
 
-function openFeedbackForm() {
-  window.location.href = FEEDBACK_FORM_URL
-}
-
-async function handleLoginSuccess() {
-  await store.bootstrapAfterLogin()
-  const shouldContinue = loginIntent.value === 'start' || consumeOAuthPendingStart()
-  loginIntent.value = 'none'
-  if (shouldContinue)
-    await continueJieduAfterLogin()
+function onBaziSuccess() {
+  const q = pendingQuestion.value
+  pendingQuestion.value = ''
+  if (q)
+    handleAskWithProfile(q)
 }
 </script>
 
 <template>
-  <view class="gx-layout-page">
+  <view class="gx-chat-page home-page">
     <GxSourceBackBar v-if="showSourceBackBar" />
+    <GxChatHeader @mine="onMine" />
 
-    <!-- Home Banner Section -->
-    <view class="home-banner">
-      <view class="home-logo">
-        国心解读
-      </view>
-      <view class="home-subtitle">
-        个人洞察下的生活与心理参考
-      </view>
-    </view>
+    <scroll-view scroll-y class="home-scroll" :show-scrollbar="false">
+      <view class="home-inner">
+        <GxAvatarSwitcher
+          :profiles="profiles"
+          :active-id="activeId"
+          @select="onSelectProfile"
+          @add="onAdd"
+          @invite="onInvite"
+        />
 
-    <scroll-view scroll-y class="gx-scroll">
-      <!-- Teacher Intro Card -->
-      <view class="teacher-intro-card">
-        <view class="avatar-wrapper">
-          <view class="avatar">
-            <image class="avatar-img" :src="ImageConfig.xinyuTeacher" mode="aspectFill" />
+        <view class="conversation-cover">
+          <view class="cover-copy">
+            <text class="cover-eyebrow">
+              AI 命理问答
+            </text>
+            <text class="cover-title">
+              把最近的困惑说给我听
+            </text>
+            <text class="cover-desc">
+              从一个真实问题开始，国心解读会帮你梳理当下状态和下一步方向。
+            </text>
+          </view>
+          <view class="cover-token" aria-hidden="true">
+            问
           </view>
         </view>
-        <view class="teacher-details">
-          <view class="teacher-name">
-            心语老师
-          </view>
-          <view class="teacher-desc">
-            我会通过几个简单问题，帮您为自己或家人整理一份生活与心理参考。
-          </view>
 
-          <!-- Remaining credits badge -->
-          <view class="credit-row" @tap.stop="goCredits">
-            <view class="credit-badge">
-              剩余解读次数：<text class="credit-count">
-                {{ store.isLoggedIn ? store.displayCredits : '--' }}
-              </text>次
-            </view>
-            <view class="credit-buy">
-              购买次数<text class="credit-buy-arrow">›</text>
-            </view>
+        <view class="assistant-row">
+          <view class="assistant-seal">
+            知
+          </view>
+          <view class="bubble">
+            <text class="bubble-name">
+              国心解读
+            </text>
+            <text class="bubble-body">
+              你可以先问一个近期困惑，我会根据你的情况给出清晰、好理解的参考。
+            </text>
           </view>
         </view>
+
+        <GxQuestionBoard
+          :questions="questions"
+          @refresh="onRefreshQuestions"
+          @pick="onPickQuestion"
+        />
       </view>
-
-      <view v-if="showBindMobileHint" class="bind-mobile-hint" @tap="promptBindMobile()">
-        <view class="bind-mobile-hint-text">
-          还未绑定手机号？
-        </view>
-        <view class="bind-mobile-link">
-          绑定手机号
-        </view>
-      </view>
-
-      <!-- Action Buttons -->
-      <view class="gx-btn-group action-buttons">
-        <GxButton type="primary" :disabled="startingJiedu" @click="handleStartJiedu">
-          开始我的专属解读
-        </GxButton>
-        <GxButton type="secondary" @click="goProfiles">
-          查看/管理心语档案
-        </GxButton>
-      </view>
-
-      <!-- Last Interpretation (if exists) -->
-      <GxCard v-if="latestRecord" class="latest-record-card">
-        <view class="gx-form-label section-label">
-          上次解读
-        </view>
-        <view class="flex_row f_j_sb f_a_center">
-          <view class="record-meta">
-            <view class="record-title">
-              <template v-if="latestRecord.profileName">
-                {{ latestRecord.profileName }} · {{ latestRecord.directions.join('、') }}
-              </template>
-              <template v-else>
-                {{ latestRecord.title }}
-              </template>
-            </view>
-            <view class="gx-text-hint record-time">
-              {{ latestRecord.time }}
-            </view>
-          </view>
-          <GxButton type="outline" size="sm" @click="goLatestDetail">
-            查看
-          </GxButton>
-        </view>
-      </GxCard>
-
-      <!-- Font Size Controller -->
-      <GxCard class="font-scale-card">
-        <view class="gx-form-label section-label">
-          字号调节
-        </view>
-        <view class="flex_row gap_05rem font-scale-chips">
-          <GxChip
-            v-for="item in ([['standard', '标准'], ['large', '大字号'], ['xlarge', '特大号']] as const)"
-            :key="item[0]"
-            :label="item[1]"
-            :selected="store.fontScale === item[0]"
-            @toggle="setScale(item[0])"
-          />
-        </view>
-      </GxCard>
-
-      <view class="gx-safe-bottom" />
     </scroll-view>
 
-    <view class="home-feedback">
-      <view class="gx-disclaimer-link" @tap="openFeedbackForm">
-        {{ FEEDBACK_FORM_TITLE }}
-      </view>
-    </view>
-
-    <!-- 微信授权登录弹窗（点击「开始解读」时） -->
-    <view v-if="showWxAuth" class="modal-overlay wx-auth-overlay">
-      <view class="modal-card wx-auth-card">
-        <view class="close-x" @tap="showWxAuth = false">
-          ×
-        </view>
-        <view class="wx-auth-header">
-          <view class="wx-auth-icon">
-            微
-          </view>
-          <view class="wx-auth-title">
-            微信授权登录
-          </view>
-          <view class="wx-auth-desc">
-            使用微信账号登录后，即可开始专属解读
-          </view>
-        </view>
-        <view class="gx-btn-group wx-auth-actions">
-          <GxButton type="primary" @click="confirmWxAuth">
-            微信授权登录
-          </GxButton>
-          <GxButton v-if="showSmsLoginEntry" type="outline" @click="switchToSmsLogin">
-            短信验证码登录
-          </GxButton>
-        </view>
-      </view>
-    </view>
-
-    <!-- 短信 / 绑手机弹窗 -->
-    <GxLoginModal
-      :show="showLogin"
-      :mode="loginMode"
-      @close="showLogin = false"
-      @success="handleLoginSuccess"
+    <GxChatComposer
+      v-model="draft"
+      placeholder="输入你的问题"
+      @submit="onSubmitComposer"
     />
 
-    <!-- Choose Profile Popup Modal (Removable) -->
-    <view v-if="showProfileSelect" class="modal-overlay select-modal-overlay">
-      <view class="modal-card select-modal-card">
-        <!-- Close button X -->
-        <view class="close-x" @tap="showProfileSelect = false">
-          ×
-        </view>
-
-        <view class="modal-header">
-          <view class="modal-title">
-            选择心语档案
-          </view>
-          <view class="modal-subtitle">
-            请选择要进行本次解读的家人档案：
-          </view>
-        </view>
-
-        <scroll-view scroll-y class="modal-scroll-area">
-          <view class="profile-items-list">
-            <view
-              v-for="p in profiles"
-              :key="p.id"
-              class="profile-select-item"
-              @tap="handleSelectProfile(p.id)"
-            >
-              <view class="profile-item-left">
-                <view class="profile-item-name">
-                  {{ p.name }}
-                </view>
-                <view class="profile-item-sub">
-                  {{ p.genderText }} · {{ getProfileBirthYear(p) }}年 · {{ p.birthPlace }}
-                </view>
-              </view>
-              <view class="profile-item-right">
-                <view class="gx-badge gx-badge-gold">
-                  {{ p.relationText }}
-                </view>
-              </view>
-            </view>
-          </view>
-        </scroll-view>
-
-        <!-- Create new profile button -->
-        <view class="create-profile-btn-wrap">
-          <GxButton type="outline" @click="handleCreateProfileFromModal">
-            ＋ 创建新档案
-          </GxButton>
-        </view>
-      </view>
-    </view>
+    <GxChatLoginModal
+      :show="showLogin"
+      @close="showLogin = false"
+      @success="afterLoginSuccess"
+    />
+    <GxBaziProfileModal
+      :show="showBazi"
+      @close="showBazi = false"
+      @success="onBaziSuccess"
+    />
+    <GxInviteModal
+      :show="showInvite"
+      @close="showInvite = false"
+      @preview="onInvitePreview"
+    />
   </view>
 </template>
 
 <style scoped lang="scss">
-.home-banner {
-  text-align: center;
-  padding: 60rpx 32rpx 40rpx;
-  background:
-    radial-gradient(ellipse at 50% 100%, rgba(21, 63, 51, 0.08), transparent 58%),
-    radial-gradient(ellipse at 20% 16%, rgba(185, 148, 95, 0.22), transparent 42%),
-    linear-gradient(180deg, rgba(255, 249, 235, 0.96), rgba(247, 236, 214, 0.72));
-  border-bottom-left-radius: 48rpx;
-  border-bottom-right-radius: 48rpx;
-  border-bottom: 2rpx solid rgba(185, 148, 95, 0.34);
-  flex-shrink: 0;
-}
-
-.home-logo {
-  font-family: "Noto Serif SC", Georgia, serif;
-  font-size: 56rpx;
-  font-weight: 900;
-  color: #153F33;
-  letter-spacing: 4rpx;
-  margin-bottom: 8rpx;
-  text-shadow: 0 2rpx 0 rgba(255, 255, 255, 0.72);
-}
-
-.home-subtitle {
-  font-size: 26rpx;
-  letter-spacing: 2rpx;
-  color: #665B4E;
-  font-weight: 500;
-}
-
-.teacher-intro-card {
-  background: linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(251, 244, 231, 0.9)), #FFF9ED;
-  border: 2rpx solid rgba(185, 148, 95, 0.38);
-  border-radius: 36rpx;
-  padding: 40rpx 32rpx;
-  margin: 40rpx 32rpx;
+.home-page {
   display: flex;
-  gap: 32rpx;
-  box-shadow: 0 8rpx 20rpx rgba(74, 49, 21, 0.1);
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 10rpx;
-    height: 100%;
-    background: linear-gradient(180deg, #B9945F, #153F33);
-  }
-}
-
-.avatar-wrapper {
-  flex-shrink: 0;
-}
-
-.avatar {
-  width: 140rpx;
-  height: 140rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 25%, #FFFFFF, #EEF3EA);
-  border: 4rpx solid #B9945F;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.avatar-img {
-  width: 100%;
+  flex-direction: column;
   height: 100%;
 }
 
-.teacher-details {
-  display: flex;
-  flex-direction: column;
+.home-scroll {
   flex: 1;
-
-  .teacher-name {
-    font-family: "Noto Serif SC", Georgia, serif;
-    font-size: 38rpx;
-    font-weight: 700;
-    color: #153F33;
-    margin-bottom: 8rpx;
-  }
-
-  .teacher-desc {
-    font-size: 26rpx;
-    line-height: 1.5;
-    color: #665B4E;
-    margin-bottom: 16rpx;
-  }
-}
-
-.credit-row {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.credit-badge {
-  display: inline-flex;
-  align-items: center;
-  background-color: rgba(239, 226, 202, 0.72);
-  border: 2rpx solid rgba(185, 148, 95, 0.62);
-  padding: 10rpx 24rpx;
-  border-radius: 40rpx;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: #153F33;
-
-  .credit-count {
-    color: #B7654A;
-    margin: 0 4rpx;
-  }
-}
-
-.credit-buy {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  padding: 10rpx 20rpx;
-  border-radius: 40rpx;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: #B7654A;
-  background-color: rgba(183, 101, 74, 0.1);
-  border: 2rpx solid rgba(183, 101, 74, 0.5);
-
-  .credit-buy-arrow {
-    margin-left: 4rpx;
-    font-size: 28rpx;
-    line-height: 1;
-  }
-}
-
-.bind-mobile-hint {
-  margin: -12rpx 32rpx 28rpx;
-  padding: 24rpx 28rpx;
-  min-height: 80rpx;
-  box-sizing: border-box;
-  border-radius: 24rpx;
-  background: #E8F0EC;
-  border: 2rpx solid rgba(21, 63, 51, 0.28);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  font-size: 28rpx;
-  color: #665B4E;
-  line-height: 1.5;
-
-  .bind-mobile-hint-text,
-  .bind-mobile-link {
-    display: inline-block;
-  }
-
-  .bind-mobile-link {
-    color: #153F33;
-    font-weight: 700;
-    text-decoration: underline;
-  }
-}
-
-.action-buttons {
-  margin-top: 10rpx;
-  margin-bottom: 40rpx;
-}
-
-.latest-record-card, .font-scale-card {
-  .section-label {
-    font-family: "Noto Serif SC", Georgia, serif;
-    color: #153F33;
-    font-size: 30rpx;
-    font-weight: 700;
-    border-left: 6rpx solid #B9945F;
-    padding-left: 16rpx;
-    line-height: 1;
-    margin-bottom: 24rpx;
-  }
-}
-
-.record-meta {
-  flex: 1;
-  margin-right: 20rpx;
-}
-
-.record-title {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #241F19;
-}
-
-.record-time {
-  font-size: 24rpx;
-  color: #958878;
-  margin-top: 8rpx;
-}
-
-.font-scale-chips {
-  flex-wrap: wrap;
-}
-
-.home-feedback {
-  flex-shrink: 0;
-  padding: 8rpx 32rpx 16rpx;
-  text-align: center;
-}
-
-/* Modals styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(38, 46, 42, 0.6);
-  backdrop-filter: blur(4rpx);
-  z-index: 999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.wx-auth-overlay {
-  background-color: #ffffff;
-  backdrop-filter: none;
-}
-
-.modal-card {
-  background-color: #FCF5E9;
-  background-image: url("@/static/assets/rice-paper-bg.svg");
-  border-radius: 40rpx;
-  width: 85%;
-  max-width: 600rpx;
-  padding: 48rpx 36rpx;
-  box-shadow: 0 18rpx 38rpx rgba(55, 38, 20, 0.25);
-  border: 4rpx solid #B9945F;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  box-sizing: border-box;
-}
-
-.close-x {
-  position: absolute;
-  top: 20rpx;
-  right: 30rpx;
-  font-size: 56rpx;
-  color: #958878;
-  cursor: pointer;
-  line-height: 1;
-  z-index: 10;
-}
-
-.wx-auth-card {
-  text-align: center;
-}
-
-.wx-auth-header {
-  margin-bottom: 40rpx;
-}
-
-.wx-auth-icon {
-  width: 96rpx;
-  height: 96rpx;
-  margin: 0 auto 24rpx;
-  border-radius: 50%;
-  background: #07C160;
-  color: #fff;
-  font-size: 44rpx;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.wx-auth-title {
-  font-family: "Noto Serif SC", Georgia, serif;
-  font-size: 36rpx;
-  font-weight: 900;
-  color: #153F33;
-  margin-bottom: 12rpx;
-}
-
-.wx-auth-desc {
-  font-size: 26rpx;
-  color: #665B4E;
-  line-height: 1.6;
-}
-
-.wx-auth-actions {
-  gap: 20rpx;
-}
-
-/* Custom Profile Select Dialog styles */
-.select-modal-overlay {
-  z-index: 900;
-}
-
-.select-modal-card {
-  height: 80vh;
-  max-height: 1000rpx;
-}
-
-.modal-header {
-  text-align: center;
-  border-bottom: 2rpx solid rgba(185, 148, 95, 0.28);
-  padding-bottom: 24rpx;
-  margin-bottom: 24rpx;
-
-  .modal-title {
-    font-family: "Noto Serif SC", Georgia, serif;
-    font-size: 36rpx;
-    font-weight: 900;
-    color: #153F33;
-    margin-bottom: 8rpx;
-  }
-
-  .modal-subtitle {
-    font-size: 24rpx;
-    color: #665B4E;
-  }
-}
-
-.modal-scroll-area {
-  flex: 1;
-  width: 100%;
   min-height: 0;
-  overflow: hidden;
+  height: 0;
+}
+
+.home-inner {
+  padding: 24rpx 28rpx 40rpx;
   box-sizing: border-box;
 }
 
-.profile-items-list {
+.conversation-cover {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 20rpx;
+  margin-bottom: 28rpx;
+  padding: 28rpx 24rpx;
+  border-radius: var(--gx-chat-radius, 32rpx);
+  border: 2rpx solid var(--gx-chat-border, #eccdbb);
+  background:
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(255, 241, 232, 0.92));
+  box-shadow: var(--gx-chat-shadow, 0 8rpx 24rpx rgba(121, 38, 32, 0.08));
+  overflow: hidden;
+}
+
+.cover-copy {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
-  padding: 8rpx 0;
-  box-sizing: border-box;
+  gap: 10rpx;
 }
 
-.profile-select-item {
-  background: linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(251, 244, 231, 0.9)), #FFF9ED;
-  border: 2rpx solid rgba(185, 148, 95, 0.35);
-  border-radius: 24rpx;
-  padding: 24rpx 28rpx;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4rpx 12rpx rgba(74, 49, 21, 0.04);
-  cursor: pointer;
-  box-sizing: border-box;
-  transition: border-color 0.2s ease;
-
-  &:active {
-    border-color: #153F33;
-    background-color: #EEF3EA;
-  }
+.cover-eyebrow {
+  color: var(--gx-chat-red, #b43a3d);
+  font-size: 22rpx;
+  font-weight: 700;
 }
 
-.profile-item-left {
-  flex: 1;
-  margin-right: 20rpx;
-
-  .profile-item-name {
-    font-family: "Noto Serif SC", Georgia, serif;
-    font-size: 30rpx;
-    font-weight: 700;
-    color: #153F33;
-    margin-bottom: 6rpx;
-  }
-
-  .profile-item-sub {
-    font-size: 24rpx;
-    color: #665B4E;
-  }
+.cover-title {
+  color: var(--gx-chat-ink, #2b1712);
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
-.create-profile-btn-wrap {
-  margin-top: 24rpx;
-  box-sizing: border-box;
+.cover-desc {
+  color: var(--gx-chat-muted, #755d52);
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.cover-token {
   flex-shrink: 0;
+  width: 112rpx;
+  height: 148rpx;
+  border-radius: 56rpx 56rpx 28rpx 28rpx;
+  border: 6rpx solid var(--gx-chat-gold-soft, #fff0c7);
+  background: linear-gradient(180deg, var(--gx-chat-red, #b43a3d), var(--gx-chat-red-deep, #7f1f26));
+  color: #fffdf7;
+  font-size: 52rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10rpx 24rpx rgba(127, 31, 38, 0.28);
+  align-self: center;
+}
 
-  :deep(.gx-btn-wrap) {
-    width: 100%;
-  }
+.assistant-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  margin-bottom: 28rpx;
+}
+
+.assistant-seal {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  border: 3rpx solid rgba(124, 64, 42, 0.35);
+  background: var(--gx-chat-red, #b43a3d);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bubble {
+  flex: 1;
+  min-width: 0;
+  padding: 22rpx 24rpx;
+  border-radius: 24rpx;
+  background: #fff;
+  border: 2rpx solid var(--gx-chat-border, #eccdbb);
+  box-shadow: 0 6rpx 16rpx rgba(121, 38, 32, 0.06);
+}
+
+.bubble-name {
+  display: block;
+  margin-bottom: 8rpx;
+  color: var(--gx-chat-red, #b43a3d);
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.bubble-body {
+  display: block;
+  color: var(--gx-chat-ink, #2b1712);
+  font-size: 28rpx;
+  line-height: 1.55;
 }
 </style>

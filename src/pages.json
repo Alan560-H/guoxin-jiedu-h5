@@ -6,7 +6,7 @@
       "style": {
         "navigationBarTitleText": "国心解读"
       },
-      "layout": "guoxin"
+      "layout": "guoxinChat"
     },
     {
       "path": "pages/credits/index",
