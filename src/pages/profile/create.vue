@@ -400,7 +400,7 @@ async function save(startImmediately: boolean) {
     }
     if (startImmediately) {
       store.setActiveProfile(profileId.value || store.activeProfileId)
-      store.navigateToSetup()
+      store.navigateToReportConfirm()
     }
     else {
       uni.navigateTo({ url: RouterPaths.profileList })

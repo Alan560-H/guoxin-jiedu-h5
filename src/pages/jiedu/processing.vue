@@ -2,9 +2,7 @@
 import { onHide, onUnload } from '@dcloudio/uni-app'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import GxButton from '@/components/guoxin/GxButton.vue'
-import GxCard from '@/components/guoxin/GxCard.vue'
-import GxNavBar from '@/components/guoxin/GxNavBar.vue'
+import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import { FEEDBACK_FORM_URL } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
@@ -145,12 +143,12 @@ function startSimulation() {
 onMounted(async () => {
   store.initSeedData()
   if (!store.activeProfile || !store.selectedDirections.length) {
-    uni.redirectTo({ url: RouterPaths.jieduSetup })
+    uni.redirectTo({ url: RouterPaths.jieduReportConfirm })
     return
   }
   const pending = store.takePendingGenerateTask()
   if (!pending?.taskId) {
-    uni.redirectTo({ url: RouterPaths.jieduSetup })
+    uni.redirectTo({ url: RouterPaths.jieduReportConfirm })
     return
   }
   remoteTaskId.value = pending.taskId
@@ -175,14 +173,25 @@ function goLater() {
   deactivatePage()
   store.invalidateRemoteCache(['credits'])
   void store.ensureCreditsLoaded(true)
-  navigateToHome()
+  if (store.activeProfileId)
+    uni.reLaunch({ url: RouterPaths.jieduChat })
+  else
+    navigateToHome()
 }
 
 function goRecords() {
   deactivatePage()
   store.invalidateRemoteCache(['credits'])
   void store.ensureCreditsLoaded(true)
-  navigateToProfileList(store.activeProfileId || undefined, { replace: true })
+  uni.redirectTo({ url: RouterPaths.mine })
+}
+
+function onBack() {
+  goLater()
+}
+
+function onMine() {
+  goRecords()
 }
 
 function openContactUs() {
@@ -197,135 +206,180 @@ function openContactUs() {
 </script>
 
 <template>
-  <view class="gx-layout-page">
-    <GxNavBar :title="t('jiedu.processing.title')" :show-back="true" back-home />
+  <view class="gx-chat-page processing-page">
+    <GxChatHeader
+      :title="t('jiedu.processing.title')"
+      show-back
+      @back="onBack"
+      @mine="onMine"
+    />
 
-    <scroll-view scroll-y class="gx-scroll">
-      <view class="loading-banner">
-        <view class="banner-title">
-          {{ t('jiedu.processing.bannerTitle') }}
+    <scroll-view scroll-y class="processing-scroll" :show-scrollbar="false">
+      <view class="processing-inner">
+        <view class="loading-banner">
+          <text class="banner-title">
+            {{ t('jiedu.processing.bannerTitle') }}
+          </text>
+          <text class="banner-desc">
+            {{ t('jiedu.processing.bannerDesc') }}
+          </text>
         </view>
-        <view class="banner-desc">
-          {{ t('jiedu.processing.bannerDesc') }}
-        </view>
-      </view>
 
-      <GxCard class="timeline-card">
-        <view class="progress-timeline">
-          <view
-            v-for="(s, idx) in steps"
-            :key="idx"
-            class="timeline-step"
-            :class="{
-              completed: idx + 1 < step,
-              active: idx + 1 === step,
-            }"
-          >
-            <view class="timeline-icon">
-              <view v-if="idx + 1 === step" class="dot-spinner" />
-              <view v-else class="dot-core" />
-            </view>
-            <view class="step-content">
-              <view class="step-title">
-                {{ s.title }}
+        <view class="timeline-card">
+          <view class="progress-timeline">
+            <view
+              v-for="(s, idx) in steps"
+              :key="idx"
+              class="timeline-step"
+              :class="{
+                completed: idx + 1 < step,
+                active: idx + 1 === step,
+              }"
+            >
+              <view class="timeline-icon">
+                <view v-if="idx + 1 === step" class="dot-spinner" />
+                <view v-else class="dot-core" />
+              </view>
+              <view class="step-content">
+                <text class="step-title">
+                  {{ s.title }}
+                </text>
               </view>
             </view>
           </view>
         </view>
-      </GxCard>
 
-      <GxCard class="wait-card">
-        <view class="wait-title">
-          {{ t('jiedu.processing.waitTitle') }}
-        </view>
-        <view class="wait-desc">
-          {{ t('jiedu.processing.waitDesc') }}
-        </view>
-        <view class="gx-btn-row wait-actions">
-          <GxButton type="secondary" @click="goLater">
-            {{ t('jiedu.processing.later') }}
-          </GxButton>
-          <GxButton type="primary" @click="goRecords">
-            {{ t('jiedu.processing.viewRecords') }}
-          </GxButton>
-        </view>
-        <view class="timeout-hint">
-          {{ t('jiedu.processing.timeoutHintPrefix') }}
-          <text class="contact-link" @tap.stop="openContactUs">
-            {{ t('jiedu.processing.contactUs') }}
+        <view class="wait-card">
+          <text class="wait-title">
+            {{ t('jiedu.processing.waitTitle') }}
           </text>
-          {{ t('jiedu.processing.timeoutHintSuffix') }}
+          <text class="wait-desc">
+            {{ t('jiedu.processing.waitDesc') }}
+          </text>
+          <view class="wait-actions">
+            <view class="btn secondary" @tap="goLater">
+              {{ t('jiedu.processing.later') }}
+            </view>
+            <view class="btn primary" @tap="goRecords">
+              我的报告
+            </view>
+          </view>
+          <view class="timeout-hint">
+            {{ t('jiedu.processing.timeoutHintPrefix') }}
+            <text class="contact-link" @tap.stop="openContactUs">
+              {{ t('jiedu.processing.contactUs') }}
+            </text>
+            {{ t('jiedu.processing.timeoutHintSuffix') }}
+          </view>
         </view>
-      </GxCard>
-
-      <view class="gx-safe-bottom" />
+      </view>
     </scroll-view>
   </view>
 </template>
 
 <style scoped lang="scss">
+.processing-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.processing-scroll {
+  flex: 1;
+  height: 0;
+}
+
+.processing-inner {
+  padding: 24rpx 28rpx 48rpx;
+}
+
 .loading-banner {
-  background: linear-gradient(160deg, #153F33, #255648);
-  margin: 24rpx 32rpx 0;
   padding: 48rpx 36rpx;
-  border-radius: 24rpx;
-  text-align: center;
-  color: #FCF5E9;
-  flex-shrink: 0;
-  box-sizing: border-box;
+  border-radius: var(--gx-chat-radius);
+  color: #fffdf7;
+  background:
+    radial-gradient(circle at 88% 14%, rgba(213, 164, 61, 0.45), transparent 32%),
+    linear-gradient(150deg, var(--gx-chat-red), var(--gx-chat-red-deep));
+  box-shadow: var(--gx-chat-shadow);
 }
 
 .banner-title {
-  font-family: "Noto Serif SC", Georgia, serif;
+  display: block;
+  font-family: "Noto Serif SC", "Songti SC", serif;
   font-size: 36rpx;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 16rpx;
 }
 
 .banner-desc {
+  display: block;
   font-size: 24rpx;
   line-height: 1.65;
   opacity: 0.9;
-  text-align: left;
 }
 
-.timeline-card {
-  margin-top: 24rpx;
-}
-
+.timeline-card,
 .wait-card {
   margin-top: 24rpx;
+  padding: 32rpx 28rpx;
+  border-radius: var(--gx-chat-radius);
+  background: var(--gx-chat-paper);
+  border: 2rpx solid var(--gx-chat-border);
+  box-shadow: var(--gx-chat-shadow);
 }
 
 .wait-title {
-  font-family: "Noto Serif SC", Georgia, serif;
+  display: block;
+  font-family: "Noto Serif SC", "Songti SC", serif;
   font-size: 30rpx;
-  font-weight: 700;
-  color: #153F33;
+  font-weight: 800;
+  color: var(--gx-chat-ink);
   margin-bottom: 12rpx;
 }
 
 .wait-desc {
+  display: block;
   font-size: 26rpx;
-  color: #665B4E;
+  color: var(--gx-chat-muted);
   line-height: 1.65;
   margin-bottom: 28rpx;
 }
 
 .wait-actions {
-  margin: 0 0 20rpx;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.btn {
+  padding: 24rpx;
+  border-radius: 999rpx;
+  text-align: center;
+  font-size: 28rpx;
+  font-weight: 800;
+
+  &.primary {
+    background: linear-gradient(135deg, var(--gx-chat-red), var(--gx-chat-red-deep));
+    color: #fffdf7;
+  }
+
+  &.secondary {
+    background: var(--gx-chat-paper-warm);
+    border: 2rpx solid var(--gx-chat-border);
+    color: var(--gx-chat-brown);
+  }
 }
 
 .timeout-hint {
   font-size: 22rpx;
-  color: #958878;
+  color: var(--gx-chat-hint);
   text-align: center;
   line-height: 1.5;
 }
 
 .contact-link {
-  color: #153F33;
+  color: var(--gx-chat-red);
   font-weight: 700;
   text-decoration: underline;
 }
@@ -350,7 +404,7 @@ function openContactUs() {
     top: 40rpx;
     bottom: -48rpx;
     width: 4rpx;
-    background-color: #E2DCD3;
+    background-color: var(--gx-chat-border);
     z-index: 1;
   }
 
@@ -360,7 +414,7 @@ function openContactUs() {
 
   &.completed::before,
   &.active::before {
-    background-color: rgba(21, 63, 51, 0.28);
+    background-color: rgba(180, 58, 61, 0.28);
   }
 }
 
@@ -379,25 +433,20 @@ function openContactUs() {
   width: 22rpx;
   height: 22rpx;
   border-radius: 50%;
-  background-color: #D5CDC2;
+  background-color: #d5cdc2;
 }
 
 .timeline-step.completed .dot-core {
-  background-color: #153F33;
+  background-color: var(--gx-chat-red);
 }
 
-.timeline-step:not(.completed):not(.active) .dot-core {
-  background-color: #D5CDC2;
-}
-
-/** 缺角圆环 + 跳动：实心圆旋转不可见 */
 .dot-spinner {
   width: 28rpx;
   height: 28rpx;
   border-radius: 50%;
-  border: 4rpx solid rgba(21, 63, 51, 0.2);
-  border-top-color: #153F33;
-  border-right-color: #153F33;
+  border: 4rpx solid rgba(180, 58, 61, 0.2);
+  border-top-color: var(--gx-chat-red);
+  border-right-color: var(--gx-chat-red);
   box-sizing: border-box;
   animation: dot-spin-bounce 1.1s linear infinite;
 }
@@ -411,19 +460,19 @@ function openContactUs() {
 
 .step-title {
   font-size: 28rpx;
-  color: #958878;
+  color: var(--gx-chat-hint);
   font-weight: 500;
   line-height: 1.45;
   padding-top: 4rpx;
 }
 
 .timeline-step.completed .step-title {
-  color: #241F19;
+  color: var(--gx-chat-ink);
   font-weight: 700;
 }
 
 .timeline-step.active .step-title {
-  color: #153F33;
+  color: var(--gx-chat-red);
   font-weight: 700;
 }
 

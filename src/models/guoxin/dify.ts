@@ -35,3 +35,25 @@ export interface DifyPreviewResult {
   previewUrl?: string
   [key: string]: unknown
 }
+
+/** GET dify/messages 单条（对齐 Dify message list） */
+export interface DifyHistoryMessageItem {
+  id?: string
+  conversation_id?: string
+  conversationId?: string
+  query?: string
+  answer?: string
+  created_at?: number
+  createdAt?: number
+  [key: string]: unknown
+}
+
+export interface DifyHistoryMessagesPage {
+  limit?: number
+  has_more?: boolean
+  hasMore?: boolean
+  data?: DifyHistoryMessageItem[]
+  list?: DifyHistoryMessageItem[]
+  records?: DifyHistoryMessageItem[]
+  [key: string]: unknown
+}

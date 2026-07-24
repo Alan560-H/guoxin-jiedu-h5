@@ -2,16 +2,11 @@
 import type { RecordVo } from '@/models/guoxin/record'
 import { onLoad } from '@dcloudio/uni-app'
 import { onMounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import GxButton from '@/components/guoxin/GxButton.vue'
-import GxCard from '@/components/guoxin/GxCard.vue'
-import GxNavBar from '@/components/guoxin/GxNavBar.vue'
+import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
-import { navigateToProfileList } from '@/utils/guoxin/navigation'
 
 const store = useGuoxinStore()
-const { t } = useI18n()
 const reportIdParam = ref('')
 const record = ref<RecordVo | null>(null)
 const loading = ref(true)
@@ -26,7 +21,7 @@ onMounted(async () => {
   try {
     if (reportIdParam.value) {
       const id = Number(reportIdParam.value)
-      if (!isNaN(id)) {
+      if (!Number.isNaN(id)) {
         const detail = await store.loadReportDetail(id)
         if (detail)
           record.value = store.mapServerDetailToRecord(detail)
@@ -52,147 +47,177 @@ function goDetail() {
   uni.navigateTo({ url: `${RouterPaths.jieduDetail}?recordId=${record.value.id}` })
 }
 
-function goRecords() {
-  navigateToProfileList(record.value?.profileId || store.activeProfileId || undefined)
+function goMine() {
+  uni.redirectTo({ url: RouterPaths.mine })
+}
+
+function goChat() {
+  if (store.activeProfileId)
+    uni.reLaunch({ url: RouterPaths.jieduChat })
+  else
+    uni.reLaunch({ url: RouterPaths.home })
 }
 
 function goHome() {
   uni.reLaunch({ url: RouterPaths.home })
 }
+
+function onBack() {
+  goChat()
+}
 </script>
 
 <template>
-  <view v-if="loading" class="gx-layout-page">
-    <GxNavBar title="解读已完成" :show-back="true" />
-    <view class="gx-empty-state">
-      <view class="empty-text">
-        加载中...
-      </view>
-    </view>
-  </view>
+  <view class="gx-chat-page complete-page">
+    <GxChatHeader
+      title="解读已完成"
+      show-back
+      @back="onBack"
+      @mine="goMine"
+    />
 
-  <view v-else-if="record" class="gx-layout-page">
-    <GxNavBar title="解读已完成" :show-back="true" />
-
-    <scroll-view scroll-y class="gx-scroll">
-      <view class="complete-banner">
-        <view class="success-mark">
-          ✓
-        </view>
-        <view class="banner-title">
-          本次专属解读已整理完成
-        </view>
-        <view class="banner-subtitle">
-          心语老师已根据您的档案信息和关注方向，为您整理了本次专属解读建议。
-        </view>
-      </view>
-
-      <GxCard class="content-checklist-card">
-        <view class="gx-form-label section-label">
-          解读报告包含以下内容：
+    <scroll-view scroll-y class="complete-scroll" :show-scrollbar="false">
+      <view class="complete-inner">
+        <view v-if="loading" class="empty-hint">
+          加载中...
         </view>
 
-        <view class="checklist-items">
-          <view
-            v-for="(sec, idx) in record.content || []"
-            :key="sec.title"
-            class="checklist-row flex_row f_a_center"
-          >
-            <view class="bullet-dot">
-              <text class="dot-num">
-                {{ idx + 1 }}
-              </text>
+        <template v-else-if="record">
+          <view class="complete-banner">
+            <view class="success-mark">
+              ✓
             </view>
-            <text class="checklist-title">
-              {{ sec.title.replace(/^[^、]+、/, '') }}
+            <text class="banner-title">
+              本次专属解读已整理完成
+            </text>
+            <text class="banner-subtitle">
+              报告已保存，可在「我的」随时查看完整内容。
             </text>
           </view>
+
+          <view class="content-card">
+            <text class="section-label">
+              解读报告包含以下内容：
+            </text>
+            <view class="checklist-items">
+              <view
+                v-for="(sec, idx) in record.content || []"
+                :key="sec.title"
+                class="checklist-row"
+              >
+                <view class="bullet-dot">
+                  <text class="dot-num">
+                    {{ idx + 1 }}
+                  </text>
+                </view>
+                <text class="checklist-title">
+                  {{ sec.title.replace(/^[^、]+、/, '') }}
+                </text>
+              </view>
+            </view>
+          </view>
+
+          <view class="actions">
+            <view class="btn primary" @tap="goDetail">
+              查看完整解读
+            </view>
+            <view class="btn secondary" @tap="goChat">
+              返回问答
+            </view>
+            <view class="btn outline" @tap="goMine">
+              我的报告
+            </view>
+          </view>
+        </template>
+
+        <view v-else class="empty-block">
+          <text class="empty-hint">
+            未找到本次解读记录，您可以返回问答或首页。
+          </text>
+          <view class="actions">
+            <view class="btn primary" @tap="goChat">
+              返回问答
+            </view>
+            <view class="btn secondary" @tap="goHome">
+              返回首页
+            </view>
+          </view>
         </view>
-      </GxCard>
-
-      <view class="gx-btn-group action-buttons">
-        <GxButton type="primary" @click="goDetail">
-          查看完整解读
-        </GxButton>
-        <GxButton type="secondary" @click="store.navigateToSetup()">
-          继续和心语老师聊聊
-        </GxButton>
-        <GxButton type="outline" @click="goRecords">
-          {{ t('jiedu.complete.viewProfileRecords') }}
-        </GxButton>
       </view>
-
-      <view class="gx-safe-bottom" />
     </scroll-view>
-  </view>
-
-  <view v-else class="gx-layout-page">
-    <GxNavBar title="解读已完成" :show-back="true" />
-    <view class="gx-empty-state">
-      <view class="empty-icon">
-        📋
-      </view>
-      <view class="empty-text">
-        未找到本次解读记录，您可以返回首页重新发起。
-      </view>
-      <GxButton type="primary" @click="goHome">
-        返回首页
-      </GxButton>
-    </view>
   </view>
 </template>
 
 <style scoped lang="scss">
+.complete-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.complete-scroll {
+  flex: 1;
+  height: 0;
+}
+
+.complete-inner {
+  padding: 24rpx 28rpx 48rpx;
+}
+
 .complete-banner {
-  background: linear-gradient(160deg, #153F33, #255648);
-  padding: 60rpx 40rpx;
+  padding: 48rpx 36rpx;
+  border-radius: var(--gx-chat-radius);
   text-align: center;
-  color: #FCF5E9;
-  flex-shrink: 0;
+  color: #fffdf7;
+  background:
+    radial-gradient(circle at 88% 14%, rgba(213, 164, 61, 0.45), transparent 32%),
+    linear-gradient(150deg, var(--gx-chat-red), var(--gx-chat-red-deep));
+  box-shadow: var(--gx-chat-shadow);
 }
 
 .success-mark {
-  width: 110rpx;
-  height: 110rpx;
+  width: 72rpx;
+  height: 72rpx;
+  margin: 0 auto 20rpx;
   border-radius: 50%;
-  background-color: #EEF3EA;
-  color: #153F33;
-  font-size: 56rpx;
+  background: rgba(255, 253, 247, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 24rpx auto;
-  border: 4rpx solid #B9945F;
-  font-weight: 700;
+  font-size: 40rpx;
+  font-weight: 800;
 }
 
 .banner-title {
-  font-family: "Noto Serif SC", Georgia, serif;
-  font-size: 38rpx;
-  font-weight: 900;
-  color: #FCF5E9;
+  display: block;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 36rpx;
+  font-weight: 800;
   margin-bottom: 12rpx;
 }
 
 .banner-subtitle {
-  font-size: 26rpx;
-  line-height: 1.6;
-  opacity: 0.85;
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.65;
+  opacity: 0.9;
 }
 
-.content-checklist-card {
-  margin-top: 32rpx;
+.content-card {
+  margin-top: 24rpx;
+  padding: 32rpx 28rpx;
+  border-radius: var(--gx-chat-radius);
+  background: var(--gx-chat-paper);
+  border: 2rpx solid var(--gx-chat-border);
+  box-shadow: var(--gx-chat-shadow);
+}
 
-  .section-label {
-    font-family: "Noto Serif SC", Georgia, serif;
-    color: #153F33;
-    font-size: 30rpx;
-    font-weight: 700;
-    border-left: 6rpx solid #B9945F;
-    padding-left: 16rpx;
-    line-height: 1;
-    margin-bottom: 30rpx;
-  }
+.section-label {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--gx-chat-ink);
+  margin-bottom: 20rpx;
 }
 
 .checklist-items {
@@ -202,57 +227,73 @@ function goHome() {
 }
 
 .checklist-row {
-  gap: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
 }
 
 .bullet-dot {
-  width: 44rpx;
-  height: 44rpx;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
-  background-color: rgba(185, 148, 95, 0.16);
-  border: 2rpx solid rgba(185, 148, 95, 0.3);
+  background: var(--gx-chat-red-soft);
+  border: 2rpx solid var(--gx-chat-border);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
 
-  .dot-num {
-    font-size: 22rpx;
-    color: #B9945F;
-    font-weight: 700;
-  }
+.dot-num {
+  font-size: 22rpx;
+  font-weight: 800;
+  color: var(--gx-chat-red);
 }
 
 .checklist-title {
   font-size: 28rpx;
-  color: #241F19;
-  font-weight: 700;
+  color: var(--gx-chat-ink);
+  font-weight: 600;
 }
 
-.action-buttons {
-  margin-top: 16rpx;
-  margin-bottom: 40rpx;
-}
-
-.gx-empty-state {
+.actions {
+  margin-top: 40rpx;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 16rpx;
+}
+
+.btn {
+  padding: 28rpx;
+  border-radius: 999rpx;
   text-align: center;
-  padding: 120rpx 48rpx;
-  box-sizing: border-box;
+  font-size: 30rpx;
+  font-weight: 800;
 
-  .empty-icon {
-    font-size: 100rpx;
-    margin-bottom: 24rpx;
-    opacity: 0.3;
+  &.primary {
+    background: linear-gradient(135deg, var(--gx-chat-red), var(--gx-chat-red-deep));
+    color: #fffdf7;
   }
 
-  .empty-text {
-    font-size: 28rpx;
-    color: #665B4E;
-    margin-bottom: 48rpx;
-    line-height: 1.6;
+  &.secondary {
+    background: var(--gx-chat-paper);
+    border: 2rpx solid var(--gx-chat-border);
+    color: var(--gx-chat-brown);
   }
+
+  &.outline {
+    background: transparent;
+    border: 2rpx solid var(--gx-chat-border);
+    color: var(--gx-chat-muted);
+  }
+}
+
+.empty-block,
+.empty-hint {
+  padding: 48rpx 16rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: var(--gx-chat-muted);
+  line-height: 1.6;
 }
 </style>

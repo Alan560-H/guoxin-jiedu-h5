@@ -114,6 +114,8 @@ export function unwrapBizPayload(res: unknown): unknown {
       'list',
       'questions',
       'items',
+      'has_more',
+      'hasMore',
     ].some(k => k in o)
   }
 

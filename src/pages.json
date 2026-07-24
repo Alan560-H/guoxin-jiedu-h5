@@ -54,7 +54,7 @@
       "style": {
         "navigationBarTitleText": "解读已完成"
       },
-      "layout": "guoxin"
+      "layout": "guoxinChat"
     },
     {
       "path": "pages/jiedu/detail",
@@ -70,7 +70,15 @@
       "style": {
         "navigationBarTitleText": "正在整理"
       },
-      "layout": "guoxin"
+      "layout": "guoxinChat"
+    },
+    {
+      "path": "pages/jiedu/report-confirm",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "确认生成"
+      },
+      "layout": "guoxinChat"
     },
     {
       "path": "pages/jiedu/setup",

@@ -4,16 +4,12 @@ import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, nextTick, ref, watch } from 'vue'
 import { streamChatMessage } from '@/api/chat'
 import { getDifySuggested } from '@/api/dify'
-import GxAvatarSwitcher from '@/components/guoxin/chat/GxAvatarSwitcher.vue'
 import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
 import GxChatComposer from '@/components/guoxin/chat/GxChatComposer.vue'
 import GxChatFeedbackModal from '@/components/guoxin/chat/GxChatFeedbackModal.vue'
-import GxChatFollowupPanel from '@/components/guoxin/chat/GxChatFollowupPanel.vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxChatLimitModal from '@/components/guoxin/chat/GxChatLimitModal.vue'
-import GxChatMessageList from '@/components/guoxin/chat/GxChatMessageList.vue'
-import GxChatQuotaCard from '@/components/guoxin/chat/GxChatQuotaCard.vue'
-import GxChatReportAd from '@/components/guoxin/chat/GxChatReportAd.vue'
+import GxChatThread from '@/components/guoxin/chat/GxChatThread.vue'
 import GxInviteModal from '@/components/guoxin/chat/GxInviteModal.vue'
 import {
   CHAT_CREDITS_LOCAL_FALLBACK,
@@ -25,6 +21,7 @@ import { isChatStreamQuotaError } from '@/models/guoxin/chat'
 import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { setSkipAutoEnterChat } from '@/utils/guoxin/chatHistoryNav'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { parseSuggestedPayload, unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
 import { createStreamTypewriter } from '@/utils/guoxin/streamTypewriter'
@@ -34,6 +31,7 @@ const chatStore = useChatSessionStore()
 
 const draft = ref('')
 const asking = ref(false)
+const historyLoading = ref(false)
 const showBazi = ref(false)
 const showInvite = ref(false)
 const showLimit = ref(false)
@@ -128,11 +126,32 @@ onUnload(() => {
 })
 
 watch(activeId, (id) => {
+  if (!id || !bootstrapped.value)
+    return
+  void loadHistoryForProfile(id)
+})
+
+async function loadHistoryForProfile(profileId: string) {
+  const id = String(profileId || '').trim()
   if (!id)
     return
-  chatStore.ensureIntro(id, profileName.value)
-  scrollToLatestAssistant()
-})
+  historyLoading.value = true
+  try {
+    const { messages } = await chatStore.loadRemoteHistory(id)
+    if (messages.length === 0)
+      chatStore.ensureIntro(id, profileName.value)
+    else
+      scrollToLatestAssistant()
+  }
+  catch (e) {
+    console.error('加载对话历史失败', e)
+    chatStore.clearMessages(id)
+    uni.showToast({ title: '对话历史加载失败', icon: 'none' })
+  }
+  finally {
+    historyLoading.value = false
+  }
+}
 
 async function refreshCreditsQuiet() {
   try {
@@ -188,7 +207,7 @@ async function bootstrapChat() {
     store.setActiveProfile(store.profiles[0].id)
 
   await refreshCreditsQuiet()
-  chatStore.ensureIntro(store.activeProfileId, profileName.value)
+  await loadHistoryForProfile(store.activeProfileId)
   bootstrapped.value = true
   consumePendingQuestion()
 }
@@ -208,6 +227,7 @@ function consumePendingQuestion() {
 }
 
 function onBack() {
+  setSkipAutoEnterChat(true)
   navigateBackOrHome()
 }
 
@@ -216,6 +236,12 @@ function onMine() {
 }
 
 function onSelectProfile(id: string) {
+  if (id === store.activeProfileId)
+    return
+  abortController.value?.abort()
+  abortController.value = null
+  clearActiveTypewriter.value?.()
+  clearActiveTypewriter.value = null
   store.setActiveProfile(id)
 }
 
@@ -238,7 +264,7 @@ function onBuy() {
 }
 
 function onGenerateReport() {
-  store.navigateToSetup(activeId.value || undefined)
+  store.navigateToReportConfirm(activeId.value || undefined)
 }
 
 function onRefreshFollowup() {
@@ -455,6 +481,19 @@ function scrollToMessage(messageId: string) {
     return
   const anchor = `msg-${id}`
   nextTick(() => {
+    // #ifdef H5
+    if (typeof document !== 'undefined') {
+      const root = document.getElementById('chat-scroll-root')
+      const el = document.getElementById(anchor)
+      if (root && el) {
+        const rootRect = root.getBoundingClientRect()
+        const elRect = el.getBoundingClientRect()
+        const nextTop = root.scrollTop + (elRect.top - rootRect.top) - 16
+        root.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' })
+        return
+      }
+    }
+    // #endif
     scrollIntoView.value = ''
     nextTick(() => {
       scrollIntoView.value = anchor
@@ -484,70 +523,69 @@ function scrollToLatestAssistant() {
       @mine="onMine"
     />
 
+    <!-- H5：原生 overflow 滚动（uni scroll-view 在 flex 高度链下常无法滚） -->
+    <!-- #ifdef H5 -->
+    <view id="chat-scroll-root" class="chat-scroll chat-scroll--native">
+      <GxChatThread
+        :profiles="profiles"
+        :active-id="activeId"
+        :messages="messages"
+        :user-seal="userSeal"
+        :remaining="remaining"
+        :progress-ratio="progressRatio"
+        :chat-unlimited="chatUnlimited"
+        :has-conversation="hasConversation"
+        :quota-used-up="quotaUsedUp"
+        :followup-heading="followupHeading"
+        :followup-lead="followupLead"
+        :followup-meta="followupMeta"
+        :followup-items="followupItems"
+        @select="onSelectProfile"
+        @add="onAdd"
+        @invite="onInvite"
+        @feedback="onFeedback"
+        @buy="onBuy"
+        @refresh-followup="onRefreshFollowup"
+        @pick-followup="onPickFollowup"
+        @generate-report="onGenerateReport"
+      />
+    </view>
+    <!-- #endif -->
+
+    <!-- #ifndef H5 -->
     <scroll-view
       scroll-y
       class="chat-scroll"
       :show-scrollbar="false"
       :scroll-into-view="scrollIntoView"
       scroll-with-animation
+      enable-flex
     >
-      <view class="chat-inner">
-        <GxAvatarSwitcher
-          compact
-          :profiles="profiles"
-          :active-id="activeId"
-          @select="onSelectProfile"
-          @add="onAdd"
-          @invite="onInvite"
-        />
-
-        <view class="conversation-cover compact">
-          <view class="cover-copy">
-            <text class="cover-eyebrow">
-              正在解读
-            </text>
-            <text class="cover-title">
-              继续说下去
-            </text>
-            <text class="cover-desc">
-              你可以沿着当前问题继续问，我会把关键点拆得更清楚。
-            </text>
-          </view>
-          <view class="cover-token" aria-hidden="true">
-            聊
-          </view>
-        </view>
-
-        <GxChatMessageList
-          :messages="messages"
-          :user-seal="userSeal"
-          @feedback="onFeedback"
-        />
-
-        <GxChatQuotaCard
-          :remaining="remaining"
-          :progress-ratio="progressRatio"
-          :unlimited="chatUnlimited"
-          @buy="onBuy"
-        />
-
-        <GxChatFollowupPanel
-          v-if="hasConversation || quotaUsedUp"
-          :heading="followupHeading"
-          :lead="followupLead"
-          :meta="followupMeta"
-          :items="followupItems"
-          :empty="quotaUsedUp"
-          @refresh="onRefreshFollowup"
-          @pick="onPickFollowup"
-          @buy="onBuy"
-        />
-
-        <GxChatReportAd @generate="onGenerateReport" />
-
-        <view id="chat-bottom-anchor" class="bottom-anchor" />
-      </view>
+      <GxChatThread
+        :profiles="profiles"
+        :active-id="activeId"
+        :messages="messages"
+        :user-seal="userSeal"
+        :remaining="remaining"
+        :progress-ratio="progressRatio"
+        :chat-unlimited="chatUnlimited"
+        :has-conversation="hasConversation"
+        :quota-used-up="quotaUsedUp"
+        :followup-heading="followupHeading"
+        :followup-lead="followupLead"
+        :followup-meta="followupMeta"
+        :followup-items="followupItems"
+        @select="onSelectProfile"
+        @add="onAdd"
+        @invite="onInvite"
+        @feedback="onFeedback"
+        @buy="onBuy"
+        @refresh-followup="onRefreshFollowup"
+        @pick-followup="onPickFollowup"
+        @generate-report="onGenerateReport"
+      />
     </scroll-view>
+    <!-- #endif -->
 
     <GxChatComposer
       v-model="draft"
@@ -582,85 +620,21 @@ function scrollToLatestAssistant() {
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-scroll {
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
   height: 0;
 }
 
-.chat-inner {
-  padding: 20rpx 28rpx 24rpx;
-  box-sizing: border-box;
-}
-
-.conversation-cover {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  gap: 16rpx;
-  margin-bottom: 24rpx;
-  padding: 24rpx 22rpx;
-  border-radius: var(--gx-chat-radius, 32rpx);
-  border: 2rpx solid var(--gx-chat-border, #eccdbb);
-  background:
-    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(255, 241, 232, 0.92));
-  box-shadow: var(--gx-chat-shadow, 0 8rpx 24rpx rgba(121, 38, 32, 0.08));
-  overflow: hidden;
-
-  &.compact {
-    padding-top: 20rpx;
-    padding-bottom: 18rpx;
-  }
-}
-
-.cover-copy {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
-.cover-eyebrow {
-  color: var(--gx-chat-red, #b43a3d);
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.cover-title {
-  color: var(--gx-chat-ink, #2b1712);
-  font-size: 36rpx;
-  font-weight: 800;
-  line-height: 1.25;
-}
-
-.cover-desc {
-  color: var(--gx-chat-muted, #755d52);
-  font-size: 24rpx;
-  line-height: 1.5;
-}
-
-.cover-token {
-  flex-shrink: 0;
-  width: 96rpx;
-  height: 128rpx;
-  border-radius: 48rpx 48rpx 24rpx 24rpx;
-  border: 6rpx solid var(--gx-chat-gold-soft, #fff0c7);
-  background: linear-gradient(180deg, var(--gx-chat-red, #b43a3d), var(--gx-chat-red-deep, #7f1f26));
-  color: #fffdf7;
-  font-size: 44rpx;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 10rpx 24rpx rgba(127, 31, 38, 0.28);
-  align-self: center;
-}
-
-.bottom-anchor {
-  height: 2rpx;
+.chat-scroll--native {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 </style>

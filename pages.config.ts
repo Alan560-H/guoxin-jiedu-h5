@@ -32,6 +32,12 @@ export default defineUniPages({
       style: { navigationBarTitleText: '国心解读' },
     },
     {
+      path: 'pages/jiedu/report-confirm',
+      type: 'page' as const,
+      layout: 'guoxinChat',
+      style: { navigationBarTitleText: '确认生成' },
+    },
+    {
       path: 'pages/mine/index',
       type: 'page' as const,
       layout: 'guoxinChat',
@@ -49,8 +55,18 @@ export default defineUniPages({
       layout: 'guoxinChat',
       style: { navigationBarTitleText: '好友邀请' },
     },
-    guoxinPage('pages/jiedu/processing', '正在整理'),
-    guoxinPage('pages/jiedu/complete', '解读已完成'),
+    {
+      path: 'pages/jiedu/processing',
+      type: 'page' as const,
+      layout: 'guoxinChat',
+      style: { navigationBarTitleText: '正在整理' },
+    },
+    {
+      path: 'pages/jiedu/complete',
+      type: 'page' as const,
+      layout: 'guoxinChat',
+      style: { navigationBarTitleText: '解读已完成' },
+    },
     {
       path: 'pages/jiedu/detail',
       type: 'page' as const,

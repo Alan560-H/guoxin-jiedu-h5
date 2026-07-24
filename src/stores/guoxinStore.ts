@@ -31,7 +31,7 @@ import {
 } from '@/api/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
-import { navigateToHome, navigateToJieduSetup, navigateToProfileList } from '@/utils/guoxin/navigation'
+import { navigateToReportConfirm as goReportConfirm, navigateToHome, navigateToProfileList } from '@/utils/guoxin/navigation'
 import { normalizeProfileVo } from '@/utils/guoxin/normalizeProfile'
 import { parseCreditsPayload } from '@/utils/guoxin/parseCredits'
 import { unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
@@ -357,10 +357,16 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     })
   }
 
+  /** 进入报告确认（对话版）；旧 setup 入口统一切到确认页 */
   function navigateToSetup(profileId?: string) {
     if (profileId)
       activeProfileId.value = profileId
-    navigateToJieduSetup()
+    goReportConfirm()
+  }
+
+  /** 对话版：进入报告确认页（与 navigateToSetup 等价，语义更清晰） */
+  function navigateToReportConfirm(profileId?: string) {
+    navigateToSetup(profileId)
   }
 
   async function startJieduFromHome() {
@@ -1085,6 +1091,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     setActiveProfile,
     resolveStartProfile,
     navigateToSetup,
+    navigateToReportConfirm,
     startJieduFromHome,
     confirmJiedu,
     purchaseRemoteProduct,

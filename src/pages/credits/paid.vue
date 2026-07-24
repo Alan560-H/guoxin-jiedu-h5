@@ -43,8 +43,13 @@ function goChat() {
     uni.reLaunch({ url: RouterPaths.home })
 }
 
-function onReportPlaceholder() {
-  uni.showToast({ title: '报告入口下一步开放', icon: 'none' })
+function goReportConfirm() {
+  if (!store.activeProfileId) {
+    uni.showToast({ title: '请先选择解读用户', icon: 'none' })
+    uni.reLaunch({ url: RouterPaths.home })
+    return
+  }
+  uni.navigateTo({ url: RouterPaths.jieduReportConfirm })
 }
 </script>
 
@@ -98,7 +103,7 @@ function onReportPlaceholder() {
           <view class="btn primary" @tap="goChat">
             返回问答
           </view>
-          <view class="btn secondary" @tap="onReportPlaceholder">
+          <view class="btn secondary" @tap="goReportConfirm">
             继续生成报告
           </view>
         </view>

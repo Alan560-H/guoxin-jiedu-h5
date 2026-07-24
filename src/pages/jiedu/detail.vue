@@ -66,7 +66,7 @@ function goSetupAgain() {
   void runLocked(async () => {
     const pid = record.value?.profileId || store.activeProfileId || undefined
     if (pid)
-      store.navigateToSetup(pid)
+      store.navigateToReportConfirm(pid)
     else
       uni.showToast({ title: '无法确定档案', icon: 'none' })
   })

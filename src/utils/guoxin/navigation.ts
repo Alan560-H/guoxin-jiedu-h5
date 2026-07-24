@@ -22,13 +22,12 @@ function isHomePageRoute(route: string) {
 }
 
 /**
- * 进入整理页：栈底保留首页，其上仅 setup。
+ * 进入解读准备页（旧 setup / 新 report-confirm）：栈底尽量保留首页。
  * - 已在首页：navigateTo
  * - 仅一层中间页：redirectTo 替换
  * - 多层中间页：先 navigateBack 回首页再 navigateTo
  */
-export function navigateToJieduSetup() {
-  const url = RouterPaths.jieduSetup
+export function navigateToJieduPath(url: string) {
   const pages = getCurrentPages()
 
   if (pages.length <= 1) {
@@ -70,6 +69,16 @@ export function navigateToJieduSetup() {
       uni.redirectTo({ url })
     },
   })
+}
+
+/** @deprecated 已指向报告确认页；请优先用 navigateToReportConfirm */
+export function navigateToJieduSetup() {
+  navigateToJieduPath(RouterPaths.jieduReportConfirm)
+}
+
+/** 对话版报告确认页 */
+export function navigateToReportConfirm() {
+  navigateToJieduPath(RouterPaths.jieduReportConfirm)
 }
 
 /** 进入档案列表；可选选中档案；replace 用于 processing 等需清栈场景 */

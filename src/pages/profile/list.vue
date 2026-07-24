@@ -64,7 +64,7 @@ function goCreate() {
 }
 
 function startJiedu(id?: string) {
-  store.navigateToSetup(id || store.activeProfileId || undefined)
+  store.navigateToReportConfirm(id || store.activeProfileId || undefined)
 }
 
 function goEdit(id: string) {

@@ -13,6 +13,7 @@ type _LocationUrl =
   "/pages/jiedu/complete" |
   "/pages/jiedu/detail" |
   "/pages/jiedu/processing" |
+  "/pages/jiedu/report-confirm" |
   "/pages/jiedu/setup" |
   "/pages/legal/privacy" |
   "/pages/legal/service" |

@@ -12,11 +12,15 @@ import GxQuestionBoard from '@/components/guoxin/chat/GxQuestionBoard.vue'
 import GxSourceBackBar from '@/components/guoxin/GxSourceBackBar.vue'
 import { CHAT_PENDING_QUESTION_KEY, HOME_QUESTION_BANKS } from '@/constants/chatHome'
 import { RouterPaths } from '@/routerPaths'
+import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { setSkipAutoEnterChat, shouldSkipAutoEnterChat } from '@/utils/guoxin/chatHistoryNav'
 import { parseQuestionBankPayload, unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 
 const store = useGuoxinStore()
+const chatStore = useChatSessionStore()
+const historyChecking = ref(false)
 
 const showLogin = ref(false)
 const showBazi = ref(false)
@@ -119,10 +123,36 @@ async function bootstrapHome(selectFirst: boolean) {
   if (selectFirst || forceSelectFirst.value) {
     store.setActiveProfile(store.profiles[0].id)
     forceSelectFirst.value = false
-    return
   }
-  if (!store.activeProfileId || !store.profiles.some(p => p.id === store.activeProfileId))
+  else if (!store.activeProfileId || !store.profiles.some(p => p.id === store.activeProfileId)) {
     store.setActiveProfile(store.profiles[0].id)
+  }
+  await maybeEnterChatFromHistory(store.activeProfileId)
+}
+
+/** 有服务端聊天记录则进入开聊；失败 toast，不本地兜底 */
+async function maybeEnterChatFromHistory(profileId: string, options?: { forceFetch?: boolean }) {
+  const id = String(profileId || '').trim()
+  if (!id || shouldSkipAutoEnterChat() || historyChecking.value)
+    return
+  historyChecking.value = true
+  try {
+    let messages = chatStore.getMessages(id)
+    const needFetch = options?.forceFetch || !chatStore.historyLoadedAt[id]
+    if (needFetch) {
+      const remote = await chatStore.loadRemoteHistory(id)
+      messages = remote.messages
+    }
+    if (messages.some(m => m.role === 'user'))
+      uni.redirectTo({ url: RouterPaths.jieduChat })
+  }
+  catch (e) {
+    console.error('加载对话历史失败', e)
+    uni.showToast({ title: '对话历史加载失败', icon: 'none' })
+  }
+  finally {
+    historyChecking.value = false
+  }
 }
 
 function requireLogin(): boolean {
@@ -172,7 +202,9 @@ function onAdd() {
 function onSelectProfile(id: string) {
   if (!requireLogin())
     return
+  setSkipAutoEnterChat(false)
   store.setActiveProfile(id)
+  void maybeEnterChatFromHistory(id, { forceFetch: true })
 }
 
 function onRefreshQuestions() {
@@ -212,6 +244,7 @@ async function handleAsk(question: string) {
 }
 
 function handleAskWithProfile(question: string) {
+  setSkipAutoEnterChat(false)
   try {
     uni.setStorageSync(CHAT_PENDING_QUESTION_KEY, question)
   }

@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { getDifyMessages } from '@/api/dify'
 import { DAILY_QUESTION_LIMIT } from '@/constants/chatHome'
+import { parseDifyMessagesPayload } from '@/utils/guoxin/parseDifyMessages'
 
 export type ChatRole = 'assistant' | 'user'
 export type FeedbackState = '' | 'helpful' | 'improve'
@@ -31,9 +33,14 @@ function uid(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
+const HISTORY_LIMIT = 20
+
 export const useChatSessionStore = defineStore('chatSession', () => {
+  /** 内存态：以服务端历史为准，不 persist 消息 */
   const messagesByProfileId = ref<Record<string, ChatMessage[]>>({})
   const conversationIdByProfileId = ref<Record<string, string>>({})
+  const historyLoadedAt = ref<Record<string, number>>({})
+  const historyLoading = ref<Record<string, boolean>>({})
   const quotaDate = ref(todayKey())
   /** 仅本地兜底 / 开发 mock；正式以 guoxinStore.chatRemaining 为准 */
   const dailyRemaining = ref(DAILY_QUESTION_LIMIT)
@@ -65,6 +72,14 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     }
   }
 
+  function clearMessages(profileId: string) {
+    if (!profileId)
+      return
+    const next = { ...messagesByProfileId.value }
+    delete next[profileId]
+    messagesByProfileId.value = next
+  }
+
   function getConversationId(profileId: string): string {
     if (!profileId)
       return ''
@@ -88,9 +103,57 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     conversationIdByProfileId.value = next
   }
 
+  /**
+   * 从服务端拉取历史并覆盖本地该档案会话。
+   * 成功空列表 → 清空消息；失败 → throw（不本地兜底）。
+   */
+  async function loadRemoteHistory(
+    profileId: string,
+  ): Promise<{ messages: ChatMessage[], conversationId: string }> {
+    const id = String(profileId || '').trim()
+    if (!id)
+      return { messages: [], conversationId: '' }
+
+    if (historyLoading.value[id]) {
+      return {
+        messages: getMessages(id),
+        conversationId: getConversationId(id),
+      }
+    }
+
+    historyLoading.value = { ...historyLoading.value, [id]: true }
+    try {
+      const res = await getDifyMessages({
+        profileId: id,
+        firstId: '',
+        limit: HISTORY_LIMIT,
+      })
+      if (res.code !== 200)
+        throw new Error(res.msg || '加载对话历史失败')
+
+      const parsed = parseDifyMessagesPayload(res)
+      setMessages(id, parsed.messages as ChatMessage[])
+      if (parsed.conversationId)
+        setConversationId(id, parsed.conversationId)
+      else
+        clearConversationId(id)
+      historyLoadedAt.value = { ...historyLoadedAt.value, [id]: Date.now() }
+      return {
+        messages: parsed.messages,
+        conversationId: parsed.conversationId,
+      }
+    }
+    finally {
+      const next = { ...historyLoading.value }
+      delete next[id]
+      historyLoading.value = next
+    }
+  }
+
+  /** 仅无真实历史时插入开场白 */
   function ensureIntro(profileId: string, profileName: string) {
     const list = getMessages(profileId)
-    if (list.some(m => m.id.startsWith('intro_')))
+    if (list.length > 0)
       return
     const intro: ChatMessage = {
       id: `intro_${profileId}`,
@@ -99,7 +162,7 @@ export const useChatSessionStore = defineStore('chatSession', () => {
       showFeedback: false,
       createdAt: Date.now(),
     }
-    setMessages(profileId, [intro, ...list])
+    setMessages(profileId, [intro])
   }
 
   function appendUser(profileId: string, content: string): ChatMessage {
@@ -192,6 +255,8 @@ export const useChatSessionStore = defineStore('chatSession', () => {
   return {
     messagesByProfileId,
     conversationIdByProfileId,
+    historyLoadedAt,
+    historyLoading,
     quotaDate,
     dailyRemaining,
     followupBatchIndex,
@@ -199,6 +264,9 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     DAILY_QUESTION_LIMIT,
     ensureQuotaDay,
     getMessages,
+    setMessages,
+    clearMessages,
+    loadRemoteHistory,
     ensureIntro,
     appendUser,
     appendAssistant,
@@ -215,9 +283,8 @@ export const useChatSessionStore = defineStore('chatSession', () => {
 }, {
   persist: {
     key: 'guoxin-chat-session',
+    /** 消息与 conversationId 以服务端为准，不落盘 */
     pick: [
-      'messagesByProfileId',
-      'conversationIdByProfileId',
       'quotaDate',
       'dailyRemaining',
       'followupBatchIndex',

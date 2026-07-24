@@ -2,7 +2,9 @@ export class RouterPaths {
   public static readonly home = '/pages/index'
   public static readonly profileList = '/pages/profile/list'
   public static readonly profileCreate = '/pages/profile/create'
+  /** @deprecated 旧选方向页；深链仍可用，页面会 redirect 到 jieduReportConfirm */
   public static readonly jieduSetup = '/pages/jiedu/setup'
+  public static readonly jieduReportConfirm = '/pages/jiedu/report-confirm'
   public static readonly jieduChat = '/pages/jiedu/chat'
   public static readonly mine = '/pages/mine/index'
   public static readonly users = '/pages/users/index'

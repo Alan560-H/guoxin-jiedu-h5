@@ -1,4 +1,10 @@
-import type { DifyPreviewResult, DifyUploadResult, MemberStatusVo } from '@/models/guoxin/dify'
+import type {
+  DifyHistoryMessageItem,
+  DifyHistoryMessagesPage,
+  DifyPreviewResult,
+  DifyUploadResult,
+  MemberStatusVo,
+} from '@/models/guoxin/dify'
 import type { ResponseData } from '@/models/responseData'
 import { http } from 'uview-pro'
 import { isAppEmbeddedWebView } from '@/utils/appWebView'
@@ -19,6 +25,22 @@ export function getDifyQuestionBank(): Promise<ResponseData<unknown>> {
 /** 下一轮建议问题（messageId 来自流式会话） */
 export function getDifySuggested(messageId: string): Promise<ResponseData<unknown>> {
   return http.get(`${BASE}/dify/suggested`, { messageId })
+}
+
+/**
+ * 按档案拉取对话历史
+ * GET /dify/messages?profileId=&firstId=&limit=20
+ */
+export function getDifyMessages(params: {
+  profileId: string
+  firstId?: string
+  limit?: number
+}): Promise<ResponseData<DifyHistoryMessagesPage | DifyHistoryMessageItem[]>> {
+  return http.get(`${BASE}/dify/messages`, {
+    profileId: String(params.profileId || '').trim(),
+    firstId: params.firstId ?? '',
+    limit: params.limit ?? 20,
+  })
 }
 
 /** 预览已上传文件 */
