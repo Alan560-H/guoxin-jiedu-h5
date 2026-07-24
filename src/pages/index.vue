@@ -20,7 +20,8 @@ import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 
 const store = useGuoxinStore()
 const chatStore = useChatSessionStore()
-const historyChecking = ref(false)
+/** 递增序号：只采纳「最新一次」档案历史检查结果，避免切档案竞态 */
+const historyCheckSeq = ref(0)
 
 const showLogin = ref(false)
 const showBazi = ref(false)
@@ -133,9 +134,9 @@ async function bootstrapHome(selectFirst: boolean) {
 /** 有服务端聊天记录则进入开聊；失败 toast，不本地兜底 */
 async function maybeEnterChatFromHistory(profileId: string, options?: { forceFetch?: boolean }) {
   const id = String(profileId || '').trim()
-  if (!id || shouldSkipAutoEnterChat() || historyChecking.value)
+  if (!id || shouldSkipAutoEnterChat())
     return
-  historyChecking.value = true
+  const seq = ++historyCheckSeq.value
   try {
     let messages = chatStore.getMessages(id)
     const needFetch = options?.forceFetch || !chatStore.historyLoadedAt[id]
@@ -143,15 +144,16 @@ async function maybeEnterChatFromHistory(profileId: string, options?: { forceFet
       const remote = await chatStore.loadRemoteHistory(id)
       messages = remote.messages
     }
+    if (seq !== historyCheckSeq.value || id !== store.activeProfileId)
+      return
     if (messages.some(m => m.role === 'user'))
       uni.redirectTo({ url: RouterPaths.jieduChat })
   }
   catch (e) {
+    if (seq !== historyCheckSeq.value || id !== store.activeProfileId)
+      return
     console.error('加载对话历史失败', e)
     uni.showToast({ title: '对话历史加载失败', icon: 'none' })
-  }
-  finally {
-    historyChecking.value = false
   }
 }
 
@@ -320,6 +322,7 @@ function onBaziSuccess() {
 
     <GxChatComposer
       v-model="draft"
+      :allow-attach="false"
       placeholder="输入你的问题"
       @submit="onSubmitComposer"
     />

@@ -47,6 +47,11 @@ export const useChatSessionStore = defineStore('chatSession', () => {
   /** 当前列表最早一条 Dify message id，供 firstId 上翻 */
   const historyFirstId = ref<Record<string, string>>({})
   const historyLoadingOlder = ref<Record<string, boolean>>({})
+  /** 同档案并发 loadRemoteHistory 复用同一 Promise，避免早退误判无历史 */
+  const historyInflight = new Map<
+    string,
+    Promise<{ messages: ChatMessage[], conversationId: string }>
+  >()
   const quotaDate = ref(todayKey())
   /** 仅本地兜底 / 开发 mock；正式以 guoxinStore.chatRemaining 为准 */
   const dailyRemaining = ref(DAILY_QUESTION_LIMIT)
@@ -134,45 +139,48 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     if (!id)
       return { messages: [], conversationId: '' }
 
-    if (historyLoading.value[id]) {
-      return {
-        messages: getMessages(id),
-        conversationId: getConversationId(id),
-      }
-    }
+    const inflight = historyInflight.get(id)
+    if (inflight)
+      return inflight
 
-    historyLoading.value = { ...historyLoading.value, [id]: true }
-    try {
-      const res = await getDifyMessages({
-        profileId: id,
-        firstId: '',
-        limit: HISTORY_LIMIT,
-      })
-      if (res.code !== 200)
-        throw new Error(res.msg || '加载对话历史失败')
+    const task = (async () => {
+      historyLoading.value = { ...historyLoading.value, [id]: true }
+      try {
+        const res = await getDifyMessages({
+          profileId: id,
+          firstId: '',
+          limit: HISTORY_LIMIT,
+        })
+        if (res.code !== 200)
+          throw new Error(res.msg || '加载对话历史失败')
 
-      const parsed = parseDifyMessagesPayload(res)
-      setMessages(id, parsed.messages as ChatMessage[])
-      if (parsed.conversationId)
-        setConversationId(id, parsed.conversationId)
-      else
-        clearConversationId(id)
-      historyHasMore.value = { ...historyHasMore.value, [id]: parsed.hasMore }
-      historyFirstId.value = {
-        ...historyFirstId.value,
-        [id]: parsed.firstId || '',
+        const parsed = parseDifyMessagesPayload(res)
+        setMessages(id, parsed.messages as ChatMessage[])
+        if (parsed.conversationId)
+          setConversationId(id, parsed.conversationId)
+        else
+          clearConversationId(id)
+        historyHasMore.value = { ...historyHasMore.value, [id]: parsed.hasMore }
+        historyFirstId.value = {
+          ...historyFirstId.value,
+          [id]: parsed.firstId || '',
+        }
+        historyLoadedAt.value = { ...historyLoadedAt.value, [id]: Date.now() }
+        return {
+          messages: parsed.messages,
+          conversationId: parsed.conversationId,
+        }
       }
-      historyLoadedAt.value = { ...historyLoadedAt.value, [id]: Date.now() }
-      return {
-        messages: parsed.messages,
-        conversationId: parsed.conversationId,
+      finally {
+        historyInflight.delete(id)
+        const next = { ...historyLoading.value }
+        delete next[id]
+        historyLoading.value = next
       }
-    }
-    finally {
-      const next = { ...historyLoading.value }
-      delete next[id]
-      historyLoading.value = next
-    }
+    })()
+
+    historyInflight.set(id, task)
+    return task
   }
 
   /**

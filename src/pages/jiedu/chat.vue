@@ -208,6 +208,8 @@ onUnload(() => {
 watch(activeId, (id) => {
   if (!id || !bootstrapped.value)
     return
+  remoteFollowups.value = null
+  lastStreamMessageId.value = ''
   void loadHistoryForProfile(id)
 })
 
@@ -216,20 +218,26 @@ async function loadHistoryForProfile(profileId: string) {
   if (!id)
     return
   historyLoading.value = true
+  const introName = store.profiles.find(p => p.id === id)?.name || '你'
   try {
     const { messages } = await chatStore.loadRemoteHistory(id)
+    if (id !== store.activeProfileId)
+      return
     if (messages.length === 0)
-      chatStore.ensureIntro(id, profileName.value)
+      chatStore.ensureIntro(id, introName)
     else
       scrollToLatestAssistant()
   }
   catch (e) {
+    if (id !== store.activeProfileId)
+      return
     console.error('加载对话历史失败', e)
     chatStore.clearMessages(id)
     uni.showToast({ title: '对话历史加载失败', icon: 'none' })
   }
   finally {
-    historyLoading.value = false
+    if (id === store.activeProfileId)
+      historyLoading.value = false
   }
 }
 
@@ -325,6 +333,8 @@ function onSelectProfile(id: string) {
   abortController.value = null
   clearActiveTypewriter.value?.()
   clearActiveTypewriter.value = null
+  remoteFollowups.value = null
+  lastStreamMessageId.value = ''
   store.setActiveProfile(id)
 }
 
@@ -358,15 +368,21 @@ function onRefreshFollowup() {
   chatStore.nextFollowupBatch()
 }
 
-async function loadSuggestedFollowups(messageId: string) {
+async function loadSuggestedFollowups(messageId: string, forProfileId: string) {
   const id = messageId.trim()
-  if (!id)
+  const profileId = String(forProfileId || '').trim()
+  if (!id || !profileId)
     return
   try {
     const res = await getDifySuggested(id)
     const items = parseSuggestedPayload(unwrapBizPayload(res))
-    if (items.length > 0)
+    if (
+      items.length > 0
+      && store.activeProfileId === profileId
+      && lastStreamMessageId.value === id
+    ) {
       remoteFollowups.value = items
+    }
   }
   catch {
     // 回退本地 FOLLOWUP_BANKS
@@ -499,17 +515,28 @@ async function askQuestion(question: string, options?: { file?: StreamChatFile[]
     })
 
     if (lastStreamMessageId.value)
-      void loadSuggestedFollowups(lastStreamMessageId.value)
+      void loadSuggestedFollowups(lastStreamMessageId.value, profileId)
   }
   catch (e) {
     typewriter.clear()
     if (e instanceof DOMException && e.name === 'AbortError') {
-      const kept = chatStore.getMessages(profileId).find(m => m.id === assistant.id)?.content?.trim()
-      chatStore.patchMessage(profileId, assistant.id, {
-        content: kept || '已停止生成',
-        streaming: false,
-        showFeedback: false,
-      })
+      // 用户 abort 与超时共用 AbortError：仅用户信号 aborted 时视为「已停止」
+      if (controller.signal.aborted) {
+        const kept = chatStore.getMessages(profileId).find(m => m.id === assistant.id)?.content?.trim()
+        chatStore.patchMessage(profileId, assistant.id, {
+          content: kept || '已停止生成',
+          streaming: false,
+          showFeedback: false,
+        })
+      }
+      else {
+        chatStore.patchMessage(profileId, assistant.id, {
+          content: '回复超时，请重试',
+          streaming: false,
+          showFeedback: false,
+        })
+        uni.showToast({ title: '回复超时，请重试', icon: 'none' })
+      }
     }
     else if (isChatStreamQuotaError(e)) {
       chatStore.removeMessage(profileId, assistant.id)

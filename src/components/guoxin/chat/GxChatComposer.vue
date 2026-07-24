@@ -9,6 +9,8 @@ const props = defineProps<{
   modelValue?: string
   placeholder?: string
   disabled?: boolean
+  /** 是否展示选图；首页发问不带图，默认 true */
+  allowAttach?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -66,7 +68,7 @@ function resolveRemoteUrl(data: DifyUploadResult): string {
 }
 
 async function onPickImage() {
-  if (props.disabled || uploading.value)
+  if (props.allowAttach === false || props.disabled || uploading.value)
     return
 
   uni.chooseImage({
@@ -145,6 +147,7 @@ async function uploadPicked(localPath: string) {
 
     <view class="composer">
       <view
+        v-if="allowAttach !== false"
         class="composer-attach"
         :class="{ disabled: disabled || uploading }"
         @tap="onPickImage"
