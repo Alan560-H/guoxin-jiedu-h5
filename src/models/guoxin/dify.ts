@@ -24,9 +24,20 @@ export interface DifyChatFile {
 
 export interface DifyUploadResult {
   id?: string
+  name?: string
+  extension?: string
+  mime_type?: string
+  size?: number
+  /** 上传成功后的可访问地址（streamChat file.url 用这个） */
+  source_url?: string
+  preview_url?: string | null
+  original_url?: string | null
+  tenant_id?: string
+  created_at?: number
+  created_by?: string
+  /** 兼容旧字段 */
   fileId?: string
   url?: string
-  name?: string
   [key: string]: unknown
 }
 

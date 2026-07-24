@@ -43,9 +43,20 @@ function isThinking(m: ChatMessage) {
           </text>
         </view>
 
-        <text v-else class="bubble-body">
-          {{ m.content }}
-        </text>
+        <template v-else>
+          <image
+            v-if="m.imageUrl"
+            class="bubble-image"
+            :src="m.imageUrl"
+            mode="widthFix"
+          />
+          <text
+            v-if="m.content"
+            class="bubble-body"
+          >
+            {{ m.content }}
+          </text>
+        </template>
 
         <view v-if="m.role === 'assistant' && m.showFeedback && !m.streaming" class="feedback">
           <text class="feedback-label">
@@ -149,6 +160,14 @@ function isThinking(m: ChatMessage) {
   color: var(--gx-chat-red, #b43a3d);
   font-size: 24rpx;
   font-weight: 700;
+}
+
+.bubble-image {
+  display: block;
+  width: 100%;
+  max-width: 360rpx;
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
 }
 
 .bubble-body {

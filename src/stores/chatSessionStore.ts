@@ -11,6 +11,8 @@ export interface ChatMessage {
   id: string
   role: ChatRole
   content: string
+  /** 用户消息本地/远程缩略图（仅本轮展示，历史不依赖） */
+  imageUrl?: string
   /** 仅正式助手回答展示反馈 */
   showFeedback?: boolean
   feedback?: FeedbackState
@@ -248,11 +250,17 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     setMessages(profileId, [intro])
   }
 
-  function appendUser(profileId: string, content: string): ChatMessage {
+  function appendUser(
+    profileId: string,
+    content: string,
+    options?: { imageUrl?: string },
+  ): ChatMessage {
+    const imageUrl = String(options?.imageUrl || '').trim()
     const msg: ChatMessage = {
       id: uid('u'),
       role: 'user',
       content,
+      ...(imageUrl ? { imageUrl } : {}),
       createdAt: Date.now(),
     }
     setMessages(profileId, [...getMessages(profileId), msg])

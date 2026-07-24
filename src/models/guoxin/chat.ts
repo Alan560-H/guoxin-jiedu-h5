@@ -41,3 +41,21 @@ export function defaultStreamChatFiles(): StreamChatFile[] {
     url: '',
   }]
 }
+
+/** 有远程图时组装 streamChat file；空 url 则回退占位 */
+export function buildStreamChatFiles(remoteUrl?: string): StreamChatFile[] {
+  const url = String(remoteUrl || '').trim()
+  if (!url)
+    return defaultStreamChatFiles()
+  return [{
+    tyep: 'image',
+    transfer_method: 'remote_url',
+    url,
+  }]
+}
+
+/** composer 选图上传成功后的待发送附件 */
+export interface ChatComposerAttachment {
+  localPath: string
+  file: StreamChatFile
+}

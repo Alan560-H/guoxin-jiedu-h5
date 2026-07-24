@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ChatComposerAttachment, StreamChatFile } from '@/models/guoxin/chat'
 import type { FeedbackState } from '@/stores/chatSessionStore'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -31,6 +32,8 @@ const chatStore = useChatSessionStore()
 
 const draft = ref('')
 const asking = ref(false)
+const pendingAttachment = ref<ChatComposerAttachment | null>(null)
+const composerRef = ref<{ resetAttachment?: () => void } | null>(null)
 const historyLoading = ref(false)
 const loadingOlder = ref(false)
 const showBazi = ref(false)
@@ -374,6 +377,10 @@ function onPickFollowup(question: string) {
   void askQuestion(question)
 }
 
+function onComposerAttachment(payload: ChatComposerAttachment | null) {
+  pendingAttachment.value = payload
+}
+
 function onSubmitComposer() {
   const q = draft.value.trim()
   if (!q) {
@@ -387,7 +394,7 @@ function onSubmitComposer() {
   void askQuestion(q)
 }
 
-async function askQuestion(question: string) {
+async function askQuestion(question: string, options?: { file?: StreamChatFile[], imageUrl?: string }) {
   const q = question.trim()
   if (!q || asking.value)
     return
@@ -413,11 +420,20 @@ async function askQuestion(question: string) {
     return
   }
 
+  const attach = pendingAttachment.value
+  const file = options?.file
+    ?? (attach?.file ? [attach.file] : undefined)
+  const imageUrl = options?.imageUrl
+    ?? attach?.localPath
+    ?? ''
+
   asking.value = true
   draft.value = ''
+  pendingAttachment.value = null
+  composerRef.value?.resetAttachment?.()
   lastStreamMessageId.value = ''
   chatStore.ensureIntro(profileId, profileName.value)
-  chatStore.appendUser(profileId, q)
+  chatStore.appendUser(profileId, q, imageUrl ? { imageUrl } : undefined)
   const assistant = chatStore.appendAssistant(profileId, '', {
     showFeedback: false,
     streaming: true,
@@ -445,6 +461,7 @@ async function askQuestion(question: string) {
       {
         profileId,
         query: q,
+        ...(file?.length ? { file } : {}),
       },
       {
         onDelta: (full) => {
@@ -673,9 +690,11 @@ function scrollToLatestAssistant() {
     <!-- #endif -->
 
     <GxChatComposer
+      ref="composerRef"
       v-model="draft"
       :placeholder="composerPlaceholder"
       :disabled="asking"
+      @attachment="onComposerAttachment"
       @submit="onSubmitComposer"
     />
 
