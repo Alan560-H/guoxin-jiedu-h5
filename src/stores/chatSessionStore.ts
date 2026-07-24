@@ -41,6 +41,10 @@ export const useChatSessionStore = defineStore('chatSession', () => {
   const conversationIdByProfileId = ref<Record<string, string>>({})
   const historyLoadedAt = ref<Record<string, number>>({})
   const historyLoading = ref<Record<string, boolean>>({})
+  const historyHasMore = ref<Record<string, boolean>>({})
+  /** 当前列表最早一条 Dify message id，供 firstId 上翻 */
+  const historyFirstId = ref<Record<string, string>>({})
+  const historyLoadingOlder = ref<Record<string, boolean>>({})
   const quotaDate = ref(todayKey())
   /** 仅本地兜底 / 开发 mock；正式以 guoxinStore.chatRemaining 为准 */
   const dailyRemaining = ref(DAILY_QUESTION_LIMIT)
@@ -78,6 +82,20 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     const next = { ...messagesByProfileId.value }
     delete next[profileId]
     messagesByProfileId.value = next
+    const more = { ...historyHasMore.value }
+    delete more[profileId]
+    historyHasMore.value = more
+    const first = { ...historyFirstId.value }
+    delete first[profileId]
+    historyFirstId.value = first
+  }
+
+  function getHasMore(profileId: string): boolean {
+    return Boolean(historyHasMore.value[profileId])
+  }
+
+  function isLoadingOlder(profileId: string): boolean {
+    return Boolean(historyLoadingOlder.value[profileId])
   }
 
   function getConversationId(profileId: string): string {
@@ -137,6 +155,11 @@ export const useChatSessionStore = defineStore('chatSession', () => {
         setConversationId(id, parsed.conversationId)
       else
         clearConversationId(id)
+      historyHasMore.value = { ...historyHasMore.value, [id]: parsed.hasMore }
+      historyFirstId.value = {
+        ...historyFirstId.value,
+        [id]: parsed.firstId || '',
+      }
       historyLoadedAt.value = { ...historyLoadedAt.value, [id]: Date.now() }
       return {
         messages: parsed.messages,
@@ -147,6 +170,66 @@ export const useChatSessionStore = defineStore('chatSession', () => {
       const next = { ...historyLoading.value }
       delete next[id]
       historyLoading.value = next
+    }
+  }
+
+  /**
+   * 上翻更早历史：firstId 用当前页最早 Dify id。
+   * 成功则插到列表前面；无更多或失败不本地拼假数据。
+   */
+  async function loadOlderHistory(profileId: string): Promise<{
+    appended: number
+    hasMore: boolean
+  }> {
+    const id = String(profileId || '').trim()
+    if (!id)
+      return { appended: 0, hasMore: false }
+    if (!historyHasMore.value[id])
+      return { appended: 0, hasMore: false }
+    if (historyLoadingOlder.value[id] || historyLoading.value[id])
+      return { appended: 0, hasMore: Boolean(historyHasMore.value[id]) }
+
+    const firstId = String(historyFirstId.value[id] || '').trim()
+    if (!firstId)
+      return { appended: 0, hasMore: false }
+
+    historyLoadingOlder.value = { ...historyLoadingOlder.value, [id]: true }
+    try {
+      const res = await getDifyMessages({
+        profileId: id,
+        firstId,
+        limit: HISTORY_LIMIT,
+      })
+      if (res.code !== 200)
+        throw new Error(res.msg || '加载更早对话失败')
+
+      const parsed = parseDifyMessagesPayload(res)
+      const existing = getMessages(id)
+      const existingIds = new Set(existing.map(m => m.id))
+      const older = (parsed.messages as ChatMessage[]).filter(m => !existingIds.has(m.id))
+      if (older.length > 0)
+        setMessages(id, [...older, ...existing])
+
+      historyHasMore.value = { ...historyHasMore.value, [id]: parsed.hasMore }
+      if (parsed.firstId) {
+        historyFirstId.value = {
+          ...historyFirstId.value,
+          [id]: parsed.firstId,
+        }
+      }
+      else if (!parsed.hasMore) {
+        historyFirstId.value = { ...historyFirstId.value, [id]: '' }
+      }
+
+      if (parsed.conversationId)
+        setConversationId(id, parsed.conversationId)
+
+      return { appended: older.length, hasMore: parsed.hasMore }
+    }
+    finally {
+      const next = { ...historyLoadingOlder.value }
+      delete next[id]
+      historyLoadingOlder.value = next
     }
   }
 
@@ -257,6 +340,9 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     conversationIdByProfileId,
     historyLoadedAt,
     historyLoading,
+    historyHasMore,
+    historyFirstId,
+    historyLoadingOlder,
     quotaDate,
     dailyRemaining,
     followupBatchIndex,
@@ -266,7 +352,10 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     getMessages,
     setMessages,
     clearMessages,
+    getHasMore,
+    isLoadingOlder,
     loadRemoteHistory,
+    loadOlderHistory,
     ensureIntro,
     appendUser,
     appendAssistant,

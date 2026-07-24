@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FeedbackState } from '@/stores/chatSessionStore'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { streamChatMessage } from '@/api/chat'
 import { getDifySuggested } from '@/api/dify'
 import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
@@ -32,6 +32,7 @@ const chatStore = useChatSessionStore()
 const draft = ref('')
 const asking = ref(false)
 const historyLoading = ref(false)
+const loadingOlder = ref(false)
 const showBazi = ref(false)
 const showInvite = ref(false)
 const showLimit = ref(false)
@@ -105,6 +106,82 @@ const followupLead = computed(() =>
 const composerPlaceholder = computed(() =>
   quotaUsedUp.value ? '今日问答已用完' : '继续追问',
 )
+
+const historyHasMore = computed(() => chatStore.getHasMore(activeId.value))
+const historyLoadingOlder = computed(() =>
+  loadingOlder.value || chatStore.isLoadingOlder(activeId.value),
+)
+
+let nativeScrollEl: HTMLElement | null = null
+
+onMounted(() => {
+  // #ifdef H5
+  bindNativeScroll()
+  // #endif
+})
+
+onBeforeUnmount(() => {
+  // #ifdef H5
+  unbindNativeScroll()
+  // #endif
+})
+
+function bindNativeScroll() {
+  if (typeof document === 'undefined')
+    return
+  unbindNativeScroll()
+  nativeScrollEl = document.getElementById('chat-scroll-root')
+  nativeScrollEl?.addEventListener('scroll', onNativeScroll, { passive: true })
+}
+
+function unbindNativeScroll() {
+  nativeScrollEl?.removeEventListener('scroll', onNativeScroll)
+  nativeScrollEl = null
+}
+
+function onNativeScroll(ev: Event) {
+  const el = ev.target as HTMLElement | null
+  if (!el || el.scrollTop > 72)
+    return
+  void loadOlderMessages()
+}
+
+function onScrollToUpper() {
+  void loadOlderMessages()
+}
+
+async function loadOlderMessages() {
+  const id = activeId.value
+  if (!id || !chatStore.getHasMore(id) || chatStore.isLoadingOlder(id) || loadingOlder.value)
+    return
+
+  const anchorId = messages.value[0]?.id || ''
+  loadingOlder.value = true
+  try {
+    const { appended } = await chatStore.loadOlderHistory(id)
+    if (appended > 0 && anchorId) {
+      await nextTick()
+      // #ifdef H5
+      if (typeof document !== 'undefined') {
+        const root = document.getElementById('chat-scroll-root')
+        const el = document.getElementById(`msg-${anchorId}`)
+        if (root && el) {
+          const rootRect = root.getBoundingClientRect()
+          const elRect = el.getBoundingClientRect()
+          root.scrollTop += elRect.top - rootRect.top
+        }
+      }
+      // #endif
+    }
+  }
+  catch (e) {
+    console.error('加载更早对话失败', e)
+    uni.showToast({ title: '加载更早对话失败', icon: 'none' })
+  }
+  finally {
+    loadingOlder.value = false
+  }
+}
 
 onLoad(() => {
   void bootstrapChat()
@@ -209,6 +286,9 @@ async function bootstrapChat() {
   await refreshCreditsQuiet()
   await loadHistoryForProfile(store.activeProfileId)
   bootstrapped.value = true
+  // #ifdef H5
+  nextTick(() => bindNativeScroll())
+  // #endif
   consumePendingQuestion()
 }
 
@@ -540,6 +620,8 @@ function scrollToLatestAssistant() {
         :followup-lead="followupLead"
         :followup-meta="followupMeta"
         :followup-items="followupItems"
+        :history-has-more="historyHasMore"
+        :history-loading-older="historyLoadingOlder"
         @select="onSelectProfile"
         @add="onAdd"
         @invite="onInvite"
@@ -560,6 +642,7 @@ function scrollToLatestAssistant() {
       :scroll-into-view="scrollIntoView"
       scroll-with-animation
       enable-flex
+      @scrolltoupper="onScrollToUpper"
     >
       <GxChatThread
         :profiles="profiles"
@@ -575,6 +658,8 @@ function scrollToLatestAssistant() {
         :followup-lead="followupLead"
         :followup-meta="followupMeta"
         :followup-items="followupItems"
+        :history-has-more="historyHasMore"
+        :history-loading-older="historyLoadingOlder"
         @select="onSelectProfile"
         @add="onAdd"
         @invite="onInvite"

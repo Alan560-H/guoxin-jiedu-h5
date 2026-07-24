@@ -21,6 +21,8 @@ defineProps<{
   followupLead: string
   followupMeta: string
   followupItems: Array<{ question: string, tip: string }>
+  historyHasMore?: boolean
+  historyLoadingOlder?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +39,15 @@ const emit = defineEmits<{
 
 <template>
   <view class="chat-inner">
+    <view v-if="historyLoadingOlder || historyHasMore" class="history-tip">
+      <text v-if="historyLoadingOlder">
+        正在加载更早对话…
+      </text>
+      <text v-else-if="historyHasMore">
+        滚到顶部加载更早对话
+      </text>
+    </view>
+
     <GxAvatarSwitcher
       compact
       :profiles="profiles"
@@ -98,6 +109,13 @@ const emit = defineEmits<{
 .chat-inner {
   padding: 20rpx 28rpx 24rpx;
   box-sizing: border-box;
+}
+
+.history-tip {
+  margin-bottom: 16rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--gx-chat-hint, #a28777);
 }
 
 .conversation-cover {
