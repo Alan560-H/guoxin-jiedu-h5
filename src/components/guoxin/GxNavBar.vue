@@ -78,14 +78,14 @@ function goBack() {
 
 .gx-nav.report {
   background:
-    linear-gradient(180deg, rgba(255, 250, 239, 0.98), rgba(246, 235, 213, 0.94)),
-    var(--gx-bg, #FCF5E9);
-  border-bottom: 1px solid rgba(135, 100, 58, 0.28);
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(250, 229, 226, 0.94)),
+    var(--gx-chat-bg, var(--gx-bg, #fae5e2));
+  border-bottom: 1px solid var(--gx-chat-border, rgba(236, 205, 187, 0.9));
 
   .gx-nav-title,
   .gx-nav-back-text,
   .gx-nav-right {
-    color: var(--gx-green) !important;
+    color: var(--gx-chat-red, var(--gx-green, #b43a3d)) !important;
   }
 }
 
@@ -102,7 +102,7 @@ function goBack() {
   align-items: center;
   gap: 8rpx;
   font-size: 28rpx;
-  color: #153F33;
+  color: var(--gx-chat-red, var(--gx-green, #b43a3d));
   font-weight: 500;
   cursor: pointer;
   padding: 8rpx 16rpx 8rpx 0;
@@ -127,14 +127,14 @@ function goBack() {
   font-family: "Noto Serif SC", Georgia, serif;
   font-size: calc(34rpx * var(--gx-font-scale));
   font-weight: 900;
-  color: #153F33;
+  color: var(--gx-chat-red, var(--gx-green, #b43a3d));
 }
 
 .gx-nav-right {
   min-width: 64rpx;
   text-align: right;
   font-size: calc(28rpx * var(--gx-font-scale));
-  color: #153F33;
+  color: var(--gx-chat-red, var(--gx-green, #b43a3d));
   font-weight: 600;
   padding: 8rpx 0 8rpx 16rpx;
 }

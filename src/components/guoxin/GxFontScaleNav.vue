@@ -40,15 +40,15 @@ function pick(scale: FontScale) {
   min-width: 40rpx;
   padding: 6rpx 10rpx;
   font-size: 24rpx;
-  color: #665b4e;
+  color: var(--gx-chat-muted, #755d52);
   text-align: center;
   border-radius: 8rpx;
   line-height: 1.2;
 
   &.active {
-    color: #153f33;
+    color: var(--gx-chat-red, #b43a3d);
     font-weight: 700;
-    background: rgba(21, 63, 51, 0.1);
+    background: rgba(180, 58, 61, 0.1);
   }
 }
 </style>

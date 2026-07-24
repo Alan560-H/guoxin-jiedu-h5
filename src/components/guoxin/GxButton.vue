@@ -64,12 +64,12 @@ function handleClick() {
 }
 
 .gx-btn-primary {
-  background: linear-gradient(180deg, #1E5546 0%, #153F33 100%);
-  color: #FCF5E9;
-  border: 4rpx solid rgba(217, 193, 144, 0.72);
+  background: linear-gradient(180deg, var(--gx-chat-red, #b43a3d) 0%, var(--gx-chat-red-deep, #7f1f26) 100%);
+  color: #fffdf7;
+  border: 4rpx solid rgba(213, 164, 61, 0.55);
   box-shadow:
     inset 0 2rpx 0 rgba(255, 255, 255, 0.16),
-    0 8rpx 18rpx rgba(21, 63, 51, 0.22);
+    0 8rpx 18rpx rgba(127, 31, 38, 0.22);
   padding: 0 48rpx;
   position: relative;
   overflow: hidden;
@@ -110,16 +110,16 @@ function handleClick() {
 }
 
 .gx-btn-secondary {
-  background: linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(251, 244, 231, 0.9)), #FFF9ED;
-  color: #153F33;
-  border: 2rpx solid rgba(185, 148, 95, 0.58);
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(250, 229, 226, 0.9)), #fffdf8;
+  color: var(--gx-chat-red-deep, #7f1f26);
+  border: 2rpx solid rgba(213, 164, 61, 0.5);
   padding: 0 36rpx;
 }
 
 .gx-btn-outline {
   background: transparent;
-  color: #153F33;
-  border: 4rpx solid #153F33;
+  color: var(--gx-chat-red, #b43a3d);
+  border: 4rpx solid var(--gx-chat-red, #b43a3d);
   padding: 0 36rpx;
 }
 

@@ -178,21 +178,21 @@ function goSetupAgain() {
 
 .detail-fallback {
   padding: 16px;
-  color: var(--gx-text-sub, #665B4E);
+  color: var(--gx-chat-muted, var(--gx-text-sub, #755d52));
   font-size: calc(14px * var(--gx-font-scale, 1));
 }
 
 .detail-fallback-title {
   font-size: calc(26px * var(--gx-font-scale, 1));
   font-weight: 700;
-  color: var(--gx-green, #153F33);
+  color: var(--gx-chat-red, var(--gx-green, #b43a3d));
   text-align: center;
   margin-bottom: 12px;
 }
 
 .detail-fallback-meta {
   font-size: calc(13px * var(--gx-font-scale, 1));
-  color: var(--gx-text-hint, #958878);
+  color: var(--gx-chat-hint, var(--gx-text-hint, #a28777));
   text-align: center;
   margin-bottom: 24px;
 }
@@ -204,10 +204,10 @@ function goSetupAgain() {
 .detail-fallback-sec-title {
   font-size: calc(16px * var(--gx-font-scale, 1));
   font-weight: 600;
-  color: var(--gx-gold, #B9945F);
+  color: var(--gx-chat-gold, var(--gx-gold, #d5a43d));
   margin-bottom: 12px;
   padding-left: 12px;
-  border-left: 4px solid var(--gx-gold, #B9945F);
+  border-left: 4px solid var(--gx-chat-gold, var(--gx-gold, #d5a43d));
 }
 
 .detail-fallback-body {
@@ -215,7 +215,7 @@ function goSetupAgain() {
   line-height: 2;
   white-space: pre-wrap;
   text-align: justify;
-  color: var(--gx-text-sub, #665B4E);
+  color: var(--gx-chat-muted, var(--gx-text-sub, #755d52));
 }
 
 .detail-actions {
@@ -246,7 +246,7 @@ function goSetupAgain() {
 
   .detail-empty-text {
     font-size: 28rpx;
-    color: var(--gx-text-hint, #958878);
+    color: var(--gx-chat-hint, var(--gx-text-hint, #a28777));
     margin-bottom: 48rpx;
     line-height: 1.6;
   }
