@@ -9,12 +9,17 @@ defineProps<{
 const emit = defineEmits<{
   feedback: [payload: { messageId: string, feedback: FeedbackState }]
 }>()
+
+function isThinking(m: ChatMessage) {
+  return m.role === 'assistant' && m.streaming === true && !String(m.content || '').trim()
+}
 </script>
 
 <template>
   <view class="message-list">
     <view
       v-for="m in messages"
+      :id="`msg-${m.id}`"
       :key="m.id"
       class="msg-row"
       :class="m.role"
@@ -22,13 +27,26 @@ const emit = defineEmits<{
       <view v-if="m.role === 'assistant'" class="seal assistant-seal">
         知
       </view>
-      <view class="bubble" :class="m.role">
+      <view class="bubble" :class="[m.role, { thinking: isThinking(m) }]">
         <text v-if="m.role === 'assistant'" class="bubble-name">
           国心解读
         </text>
-        <text class="bubble-body">
+
+        <view v-if="isThinking(m)" class="thinking-skeleton">
+          <view class="thinking-bars" aria-hidden="true">
+            <view class="bar" />
+            <view class="bar short" />
+            <view class="bar mid" />
+          </view>
+          <text class="thinking-text">
+            正在思考中。。。
+          </text>
+        </view>
+
+        <text v-else class="bubble-body">
           {{ m.content }}
         </text>
+
         <view v-if="m.role === 'assistant' && m.showFeedback && !m.streaming" class="feedback">
           <text class="feedback-label">
             {{ m.feedback ? '感谢反馈，我们会继续优化' : '这条回答对你有帮助吗？' }}
@@ -119,6 +137,10 @@ const emit = defineEmits<{
     background: linear-gradient(154deg, var(--gx-chat-red, #b43a3d), var(--gx-chat-red-deep, #7f1f26));
     color: #fffdf7;
   }
+
+  &.thinking {
+    min-width: 280rpx;
+  }
 }
 
 .bubble-name {
@@ -139,6 +161,58 @@ const emit = defineEmits<{
 
 .bubble.assistant .bubble-body {
   color: var(--gx-chat-ink, #2b1712);
+}
+
+.thinking-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 4rpx 0 2rpx;
+}
+
+.thinking-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.bar {
+  height: 18rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(
+    90deg,
+    rgba(236, 205, 187, 0.45) 0%,
+    rgba(250, 229, 226, 0.95) 45%,
+    rgba(236, 205, 187, 0.45) 100%
+  );
+  background-size: 200% 100%;
+  animation: gx-thinking-shimmer 1.2s ease-in-out infinite;
+
+  &.short {
+    width: 42%;
+    animation-delay: 0.12s;
+  }
+
+  &.mid {
+    width: 68%;
+    animation-delay: 0.24s;
+  }
+}
+
+.thinking-text {
+  color: var(--gx-chat-hint, #a28777);
+  font-size: 26rpx;
+  line-height: 1.4;
+}
+
+@keyframes gx-thinking-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .feedback {

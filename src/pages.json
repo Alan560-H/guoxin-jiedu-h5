@@ -14,7 +14,31 @@
       "style": {
         "navigationBarTitleText": "解读权益"
       },
-      "layout": "guoxin"
+      "layout": "guoxinChat"
+    },
+    {
+      "path": "pages/credits/member",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "会员详情"
+      },
+      "layout": "guoxinChat"
+    },
+    {
+      "path": "pages/credits/paid",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "开通成功"
+      },
+      "layout": "guoxinChat"
+    },
+    {
+      "path": "pages/invite/accept",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "好友邀请"
+      },
+      "layout": "guoxinChat"
     },
     {
       "path": "pages/jiedu/chat",
@@ -73,6 +97,14 @@
       "layout": "guoxin"
     },
     {
+      "path": "pages/mine/index",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "我的"
+      },
+      "layout": "guoxinChat"
+    },
+    {
       "path": "pages/profile/create",
       "type": "page",
       "style": {
@@ -87,10 +119,18 @@
         "navigationBarTitleText": "我的心语档案"
       },
       "layout": "guoxin"
+    },
+    {
+      "path": "pages/users/index",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "八字用户"
+      },
+      "layout": "guoxinChat"
     }
   ],
   "globalStyle": {
-    "backgroundColor": "#FAF6EF",
+    "backgroundColor": "#fae5e2",
     "navigationBarBackgroundColor": "#1E3F35",
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "国心解读 H5",

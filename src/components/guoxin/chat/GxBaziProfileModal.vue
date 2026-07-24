@@ -39,9 +39,16 @@ import { useActionLock } from '@/utils/guoxin/useActionLock'
 
 type SheetKind = 'relation' | 'date' | 'time' | 'region' | null
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   show: boolean
-}>()
+  /** 编辑已有档案 id */
+  editId?: string
+  /** 邀请填写：默认关系为亲友 */
+  inviteMode?: boolean
+}>(), {
+  editId: '',
+  inviteMode: false,
+})
 
 const emit = defineEmits<{
   close: []
@@ -50,6 +57,29 @@ const emit = defineEmits<{
 
 const store = useGuoxinStore()
 const { locking: saving, runLocked } = useActionLock()
+
+const isEdit = computed(() => Boolean(props.editId))
+const modalTitle = computed(() => {
+  if (props.inviteMode)
+    return '填写八字并授权'
+  if (isEdit.value)
+    return '编辑八字用户'
+  return '开始问答前'
+})
+const modalLead = computed(() => {
+  if (props.inviteMode)
+    return '请填写性别、历法、出生时间与地点，并授权给邀请人用于国心解读。'
+  if (isEdit.value)
+    return '修改后将按新资料继续问答；会话上下文会重新开始。'
+  return '请选择历法、出生日期、时间和地点。信息保存后，后续问答无需重复选择。'
+})
+const saveLabel = computed(() => {
+  if (props.inviteMode)
+    return '确认授权并提交'
+  if (isEdit.value)
+    return '保存修改'
+  return '保存并开始'
+})
 
 const relationOpts = computed(() =>
   store.relationOptions.length > 0 ? store.relationOptions : RELATION_OPTIONS,
@@ -199,7 +229,15 @@ watch(
     }
     resetForm()
     await store.loadRelationOptions()
-    relation.value = 'self'
+    if (props.editId) {
+      await fillFromProfile(props.editId)
+    }
+    else if (props.inviteMode) {
+      relation.value = 'relative'
+    }
+    else {
+      relation.value = store.profiles.length === 0 ? 'self' : 'relative'
+    }
   },
 )
 
@@ -233,6 +271,59 @@ function resetForm() {
   storedBirthMinute.value = 0
   regionIndex.value = [0, 0, 0]
   sheet.value = null
+}
+
+async function fillFromProfile(id: string) {
+  let profile = store.getProfileById(id)
+  if (!profile && !Number.isNaN(Number(id)))
+    profile = await store.loadProfileDetail(Number(id))
+  if (!profile)
+    return
+
+  name.value = profile.name || ''
+  relation.value = profile.relation || 'self'
+  gender.value = profile.gender || 'female'
+  calendarType.value = profile.calendarType || 'solar'
+  birthPlace.value = profile.birthPlace || ''
+  areaCode.value = profile.areaCode || ''
+  useTrueSolarTime.value = Boolean(profile.useTrueSolarTime)
+
+  const solar = profile.birthDaySolar || profile.birthDay || ''
+  const m = solar.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/)
+  if (m && calendarType.value === 'solar') {
+    const year = Number(m[1])
+    const month = Number(m[2])
+    const day = Number(m[3])
+    const hour = Number(m[4])
+    const minute = Number(m[5])
+    const yi = solarYears.indexOf(year)
+    if (yi >= 0) {
+      dateIndex.value = [yi, Math.max(0, month - 1), Math.max(0, day - 1)]
+      dateFilled.value = true
+    }
+    const hi = hourOptions.indexOf(hour)
+    const mi = minuteOptions.indexOf(minute)
+    timeIndex.value = [hi >= 0 ? hi : 0, mi >= 0 ? mi : 0]
+    storedBirthHour.value = hour
+    storedBirthMinute.value = minute
+    if (hour === 0 && minute === 0)
+      timeUncertain.value = true
+  }
+
+  if (areaCode.value) {
+    const provinces = getProvinceList()
+    for (let pi = 0; pi < provinces.length; pi++) {
+      const cities = getCityList(pi)
+      for (let ci = 0; ci < cities.length; ci++) {
+        const districts = getDistrictList(pi, ci)
+        const di = districts.findIndex(d => String(d.value) === String(areaCode.value))
+        if (di >= 0) {
+          regionIndex.value = [pi, ci, di]
+          return
+        }
+      }
+    }
+  }
 }
 
 function openSheet(kind: SheetKind) {
@@ -419,9 +510,16 @@ async function save() {
   await runLocked(async () => {
     try {
       uni.showLoading({ title: '保存中...', mask: true })
-      await store.createProfile(buildDto())
+      const dto = buildDto()
+      if (props.editId)
+        await store.updateProfile(props.editId, dto)
+      else
+        await store.createProfile(dto)
       uni.hideLoading()
-      uni.showToast({ title: '创建成功', icon: 'success' })
+      uni.showToast({
+        title: props.inviteMode ? '已提交授权' : (props.editId ? '保存成功' : '创建成功'),
+        icon: 'success',
+      })
       emit('success')
       emit('close')
     }
@@ -480,13 +578,13 @@ const sheetDistrictLabels = computed(() => {
         ×
       </view>
       <text class="eyebrow">
-        开始问答前
+        {{ modalTitle }}
       </text>
       <text class="title">
         填写八字信息
       </text>
       <text class="copy">
-        请选择历法、出生日期、时间和地点。信息保存后，后续问答无需重复选择。
+        {{ modalLead }}
       </text>
 
       <scroll-view scroll-y class="form-scroll">
@@ -613,7 +711,7 @@ const sheetDistrictLabels = computed(() => {
       </scroll-view>
 
       <view class="btn primary" :class="{ disabled: saving }" @tap="saving ? undefined : save()">
-        确认并保存
+        {{ saveLabel }}
       </view>
       <view class="btn secondary" @tap="emit('close')">
         暂不选择

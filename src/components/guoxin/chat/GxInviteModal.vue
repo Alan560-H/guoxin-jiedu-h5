@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { getPageShareUrl } from '@/utils/weixin/env'
+import { RouterPaths } from '@/routerPaths'
 
 const props = defineProps<{
   show: boolean
@@ -27,19 +27,12 @@ watch(
 function buildInviteLink() {
   // #ifdef H5
   if (typeof window !== 'undefined') {
-    const base = getPageShareUrl() || `${window.location.origin}${window.location.pathname}`
-    try {
-      const url = new URL(base, window.location.origin)
-      url.searchParams.set('scene', 'invite')
-      url.searchParams.set('from', 'guoxin')
-      return url.toString()
-    }
-    catch {
-      return `${base}${base.includes('?') ? '&' : '?'}scene=invite&from=guoxin`
-    }
+    const origin = window.location.origin
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
+    return `${origin}${base}#${RouterPaths.inviteAccept}?scene=invite&from=guoxin`
   }
   // #endif
-  return '/pages/index?scene=invite&from=guoxin'
+  return `${RouterPaths.inviteAccept}?scene=invite&from=guoxin`
 }
 
 function copyLink() {

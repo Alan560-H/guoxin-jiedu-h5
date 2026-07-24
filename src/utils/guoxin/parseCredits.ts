@@ -18,10 +18,17 @@ function hasOwn(data: Record<string, unknown>, keys: string[]): boolean {
   return keys.some(k => Object.prototype.hasOwnProperty.call(data, k) && data[k] != null)
 }
 
+function str(v: unknown): string | undefined {
+  if (typeof v !== 'string')
+    return undefined
+  const t = v.trim()
+  return t || undefined
+}
+
 /**
- * 解析统一权益接口 data。
- * 报告次：credits / availableCount
- * 问答次：chatRemaining / questionRemaining / qaRemaining 等别名
+ * 解析统一权益 / member/status data。
+ * 报告次：credits / availableCount / reportCredits
+ * 问答次：chatRemaining / questionRemaining 等；`<0` 或不限次标记 → chatUnlimited
  */
 export function parseCreditsPayload(raw: unknown): CreditsVo {
   const data = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
@@ -48,7 +55,7 @@ export function parseCreditsPayload(raw: unknown): CreditsVo {
   ]
 
   const chatFieldsPresent = hasOwn(data, chatKeys) || hasOwn(data, unlimitedKeys)
-  const chatUnlimited = unlimitedKeys.some(k => bool(data[k]))
+  let chatUnlimited = unlimitedKeys.some(k => bool(data[k]))
 
   let chatRemaining = DAILY_QUESTION_LIMIT
   if (hasOwn(data, chatKeys)) {
@@ -58,6 +65,9 @@ export function parseCreditsPayload(raw: unknown): CreditsVo {
         break
       }
     }
+    // 二期约定：不限次时 questionRemaining 可为 -1
+    if (chatRemaining < 0)
+      chatUnlimited = true
   }
   else if (chatUnlimited) {
     chatRemaining = DAILY_QUESTION_LIMIT
@@ -68,8 +78,13 @@ export function parseCreditsPayload(raw: unknown): CreditsVo {
   return {
     credits,
     productId,
-    chatRemaining: chatUnlimited ? Math.max(chatRemaining, 1) : Math.max(0, chatRemaining),
+    chatRemaining: chatUnlimited
+      ? Math.max(chatRemaining < 0 ? DAILY_QUESTION_LIMIT : chatRemaining, 1)
+      : Math.max(0, chatRemaining),
     chatUnlimited,
     chatFieldsPresent,
+    memberStatus: str(data.memberStatus),
+    memberSku: str(data.memberSku),
+    memberExpiresAt: str(data.memberExpiresAt),
   }
 }

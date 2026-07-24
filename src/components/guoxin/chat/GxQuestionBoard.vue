@@ -80,8 +80,8 @@ const emit = defineEmits<{
   box-sizing: border-box;
   padding: 22rpx 20rpx;
   border-radius: 20rpx;
-  background: #fff4ec;
-  border: 2rpx solid rgba(236, 205, 187, 0.9);
+  background: var(--gx-chat-red-soft, #fae5e2);
+  border: 2rpx solid rgba(180, 58, 61, 0.16);
   color: var(--gx-chat-ink, #2b1712);
   font-size: 24rpx;
   line-height: 1.45;

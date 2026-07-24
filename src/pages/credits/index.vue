@@ -1,100 +1,53 @@
 <script setup lang="ts">
+import type { DisplayMemberPlan } from '@/constants/memberPlans'
 import { onShow } from '@dcloudio/uni-app'
-import { computed, onMounted, ref } from 'vue'
-import GxButton from '@/components/guoxin/GxButton.vue'
-import GxCreditsIcon from '@/components/guoxin/GxCreditsIcon.vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
-import GxNavBar from '@/components/guoxin/GxNavBar.vue'
-import {
-  CREDITS_INSUFFICIENT_HINT,
-  CREDITS_PACKAGE_ICON_BY_AMOUNT,
-  CREDITS_PACKAGE_ICON_FALLBACK,
-  CREDITS_PAY_HINT,
-  CREDITS_PAYWALL_TEXT,
-  CREDITS_TRUST_BADGES,
-} from '@/constants/guoxin'
+import { mapProductsToPlans } from '@/constants/memberPlans'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { ensureH5RouterBasePath } from '@/utils/guoxin/h5RouterBase'
+import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { savePendingPaidPlan, takePendingPaidPlan } from '@/utils/guoxin/pendingPaidPlan'
 
 const store = useGuoxinStore()
-const selectedId = ref('')
-const selectedProductId = ref<number | null>(null)
-const purchasing = ref(false)
+const purchasingId = ref('')
 const showLogin = ref(false)
 const showCount = ref(0)
 const productsReady = ref(false)
+const countdownText = ref('00:00:00')
+let countdownTimer: ReturnType<typeof setInterval> | null = null
 
-const displayProducts = computed(() => {
-  const list = store.serverProducts.map((p: any, index: number) => {
-    const amount = Number(p.generateCount) || 0
-    const priceNum = Number(p.salePrice)
-    const price = Number.isFinite(priceNum) ? priceNum : 0
-    const originPrice = Number(p.originalPrice)
-    const showOrigin = Number.isFinite(originPrice) && originPrice > price
-    const unitPrice = amount > 0 && price >= 0
-      ? (price / amount).toFixed(2)
-      : null
-    const promotionText = typeof p.promotionText === 'string' ? p.promotionText.trim() : ''
-    const icon = CREDITS_PACKAGE_ICON_BY_AMOUNT[amount]
-      ?? CREDITS_PACKAGE_ICON_FALLBACK[index % CREDITS_PACKAGE_ICON_FALLBACK.length]
-    return {
-      id: String(p.id),
-      productId: p.id as number,
-      name: p.productName as string,
-      amount,
-      price,
-      originPrice: Number.isFinite(originPrice) ? originPrice : p.originalPrice,
-      showOrigin,
-      unitPrice,
-      desc: promotionText,
-      icon,
-    }
-  })
-
-  // 「推荐」落在优惠价（salePrice）最高的套餐；并列取第一个
-  let maxPrice = Number.NEGATIVE_INFINITY
-  let recommendedId = ''
-  for (const item of list) {
-    if (item.price > maxPrice) {
-      maxPrice = item.price
-      recommendedId = item.id
-    }
-  }
-
-  return list.map(item => ({
-    ...item,
-    hot: !!recommendedId && item.id === recommendedId,
-  }))
+const plans = computed(() => mapProductsToPlans(store.serverProducts))
+const featured = computed(() => plans.value.find(p => p.showCountdown) ?? null)
+const listPlans = computed(() => {
+  const f = featured.value
+  if (!f)
+    return plans.value
+  return plans.value.filter(p => p.id !== f.id)
 })
+const isMember = computed(() => store.chatUnlimited)
 
 onMounted(async () => {
   if (!store.isLoggedIn) {
     uni.reLaunch({ url: RouterPaths.home })
     return
   }
+  startCountdown()
   await Promise.all([
-    store.ensureProductsLoaded(),
+    store.ensureProductsLoaded(true),
     store.ensureCreditsLoaded(),
     store.ensureOrdersLoaded(),
-    store.ensureConsumeRecordsLoaded(),
   ])
   productsReady.value = true
-  syncDefaultProductSelection()
 })
 
-function syncDefaultProductSelection() {
-  const products = displayProducts.value
-  if (products.length === 0)
-    return
-  const matched = products.find(p => p.productId === store.activeProductId)
-    ?? products.find(p => p.id === selectedId.value)
-    ?? products.find(p => p.hot)
-    ?? products[0]
-  selectPkg(matched.id, matched.productId ?? undefined)
-}
+onUnmounted(() => {
+  if (countdownTimer)
+    clearInterval(countdownTimer)
+})
 
-/** 首次用缓存；支付回跳再次展示时强制刷新 */
 onShow(() => {
   // #ifdef H5
   if (ensureH5RouterBasePath())
@@ -103,35 +56,36 @@ onShow(() => {
   if (!store.isLoggedIn)
     return
   // #ifdef H5
-  clearPayReturnQueryIfNeeded()
+  void handlePayReturnIfNeeded()
   // #endif
   showCount.value++
   const force = showCount.value > 1
   void store.ensureProductsLoaded(force)
   void store.ensureCreditsLoaded(force)
   void store.ensureOrdersLoaded(force)
-  if (force)
-    syncDefaultProductSelection()
 })
 
-/** MWEB redirect_url 回跳时去掉 payReturn 并提示刷新 */
-function clearPayReturnQueryIfNeeded() {
-  if (typeof window === 'undefined')
-    return
-  const url = new URL(window.location.href)
-  if (url.searchParams.get('payReturn') !== '1')
-    return
-  url.searchParams.delete('payReturn')
-  const next = `${url.pathname}${url.search}${url.hash}`
-  window.history.replaceState({}, '', next)
-  uni.showToast({ title: '支付处理中，请稍候', icon: 'none' })
+function onBack() {
+  navigateBackOrHome()
 }
 
-function selectPkg(id: string, productId?: number) {
-  selectedId.value = id
-  selectedProductId.value = productId ?? null
-  if (productId)
-    store.activeProductId = productId
+function goMember() {
+  uni.navigateTo({ url: RouterPaths.creditsMember })
+}
+
+function startCountdown() {
+  const tick = () => {
+    const now = new Date()
+    const end = new Date(now)
+    end.setHours(23, 59, 59, 999)
+    const ms = Math.max(0, end.getTime() - now.getTime())
+    const h = Math.floor(ms / 3600000)
+    const m = Math.floor((ms % 3600000) / 60000)
+    const s = Math.floor((ms % 60000) / 1000)
+    countdownText.value = [h, m, s].map(n => String(n).padStart(2, '0')).join(':')
+  }
+  tick()
+  countdownTimer = setInterval(tick, 1000)
 }
 
 function requirePurchaseReady(): boolean {
@@ -142,31 +96,79 @@ function requirePurchaseReady(): boolean {
   return true
 }
 
-async function purchase() {
-  const productId = selectedProductId.value ?? store.activeProductId
-  if (!productId) {
-    uni.showToast({ title: '请选择套餐', icon: 'none' })
+function goPaid(plan: DisplayMemberPlan) {
+  const q = [
+    `sku=${encodeURIComponent(plan.sku)}`,
+    `name=${encodeURIComponent(plan.name)}`,
+    `days=${plan.days}`,
+    `reports=${plan.reports}`,
+  ].join('&')
+  uni.redirectTo({ url: `${RouterPaths.creditsPaid}?${q}` })
+}
+
+async function handlePayReturnIfNeeded() {
+  if (typeof window === 'undefined')
+    return
+  const url = new URL(window.location.href)
+  if (url.searchParams.get('payReturn') !== '1')
+    return
+  url.searchParams.delete('payReturn')
+  const next = `${url.pathname}${url.search}${url.hash}`
+  window.history.replaceState({}, '', next)
+
+  await store.ensureCreditsLoaded(true)
+  const pending = takePendingPaidPlan()
+  if (pending) {
+    const q = [
+      `sku=${encodeURIComponent(pending.sku)}`,
+      `name=${encodeURIComponent(pending.name)}`,
+      `days=${pending.days}`,
+      `reports=${pending.reports}`,
+    ].join('&')
+    uni.redirectTo({ url: `${RouterPaths.creditsPaid}?${q}` })
+    return
+  }
+  uni.showToast({ title: '支付处理中，请稍候', icon: 'none' })
+}
+
+async function purchasePlan(plan: DisplayMemberPlan) {
+  if (plan.memberExclusive && !isMember.value) {
+    uni.showToast({ title: '该套餐仅限有效会员购买', icon: 'none' })
     return
   }
   if (!requirePurchaseReady())
     return
-  if (purchasing.value)
+  if (purchasingId.value)
     return
-  purchasing.value = true
+
+  purchasingId.value = plan.id
+  savePendingPaidPlan({
+    sku: plan.sku,
+    name: plan.name,
+    days: plan.days,
+    reports: plan.reports,
+    price: plan.price,
+  })
   try {
-    const result = await store.purchaseRemoteProduct(productId)
-    if (result === true) {
-      setTimeout(() => {
-        uni.reLaunch({ url: RouterPaths.home })
-      }, 600)
-    }
-    else if (result === 'mweb_redirect') {
+    const result = await store.purchaseRemoteProduct(plan.productId, { silentSuccess: true })
+    if (result === true)
+      goPaid(plan)
+    else if (result === 'mweb_redirect')
       uni.showToast({ title: '正在跳转微信支付', icon: 'none' })
-    }
+    else
+      takePendingPaidPlan()
   }
   finally {
-    purchasing.value = false
+    purchasingId.value = ''
   }
+}
+
+function buyLabel(plan: DisplayMemberPlan) {
+  if (purchasingId.value === plan.id)
+    return '支付中...'
+  if (plan.memberExclusive && !isMember.value)
+    return '会员可购'
+  return '购买'
 }
 
 async function handleLoginSuccess() {
@@ -175,123 +177,139 @@ async function handleLoginSuccess() {
 </script>
 
 <template>
-  <view class="gx-layout-page">
-    <GxNavBar title="解读权益" :show-back="true" />
+  <view class="gx-chat-page paywall-page">
+    <GxChatHeader
+      title="解读权益"
+      show-back
+      :show-mine="false"
+      @back="onBack"
+    />
 
-    <scroll-view scroll-y class="gx-scroll">
-      <!-- 次数不足：警示条；仍有次数：弱提示 -->
-      <view
-        class="status-banner flex_row f_a_start"
-        :class="store.hasNoCredits() ? 'status-banner--warn' : 'status-banner--info'"
-      >
-        <view class="status-icon-wrap">
-          <GxCreditsIcon name="shield-check" size="40rpx" />
-        </view>
-        <view class="status-copy">
-          <view class="status-title">
-            {{ store.hasNoCredits() ? '剩余解读次数不足' : '开通更多解读权益' }}
-          </view>
-          <view class="status-desc">
-            {{ store.hasNoCredits() ? CREDITS_INSUFFICIENT_HINT : `当前剩余解读次数：${store.displayCredits} 次` }}
-          </view>
-        </view>
-      </view>
-
-      <view v-if="productsReady && displayProducts.length === 0" class="products-empty">
-        <view class="empty-text">
-          暂无可购买的解读套餐，请稍后再试或联系客服。
-        </view>
-      </view>
-
-      <view
-        v-for="pkg in displayProducts"
-        :key="pkg.id"
-        class="paywall-card"
-        :class="{ selected: selectedId === pkg.id }"
-        @tap="selectPkg(pkg.id, pkg.productId)"
-      >
-        <view v-if="pkg.hot" class="recommended-badge">
-          推荐
-        </view>
-
-        <view class="flex_row f_j_sb f_a_center card-header">
-          <view class="flex_row f_a_center card-title-row">
-            <view class="pkg-icon-wrap" :class="{ 'pkg-icon-wrap--active': selectedId === pkg.id }">
-              <GxCreditsIcon :name="pkg.icon" size="40rpx" />
-            </view>
-            <text class="package-name">
-              {{ pkg.name }}
-            </text>
-          </view>
-          <view class="custom-radio" :class="{ checked: selectedId === pkg.id }">
-            <view class="radio-inner" />
-          </view>
-        </view>
-
-        <view class="package-benefit">
-          {{ pkg.amount }} 次解读权益
-        </view>
-        <view v-if="pkg.desc" class="package-desc">
-          {{ pkg.desc }}
-        </view>
-
-        <view class="price-row flex_row f_j_sb f_a_end">
-          <view class="price-left">
-            <view class="price-main flex_row f_a_end">
-              <text v-if="pkg.showOrigin" class="price-tag">
-                优惠价
-              </text>
-              <text class="price-symbol">
-                ¥
-              </text>
-              <text class="price-val">
-                {{ pkg.price }}
-              </text>
-              <text v-if="pkg.showOrigin" class="price-original">
-                原价 ¥{{ pkg.originPrice }}
-              </text>
-            </view>
-          </view>
-          <text v-if="pkg.unitPrice" class="package-meta">
-            约 ¥{{ pkg.unitPrice }} / 次
+    <scroll-view scroll-y class="paywall-scroll" :show-scrollbar="false">
+      <view class="paywall-inner">
+        <view class="paywall-hero" @tap="goMember">
+          <text class="hero-eyebrow">
+            国心解读
+          </text>
+          <text class="hero-title">
+            多项会员权益
+          </text>
+          <text class="hero-link">
+            点击跳转详情页
           </text>
         </view>
-      </view>
 
-      <view class="trust-row flex_row f_j_sa">
-        <view
-          v-for="badge in CREDITS_TRUST_BADGES"
-          :key="badge.title"
-          class="trust-item"
-        >
-          <view class="trust-icon-wrap">
-            <GxCreditsIcon :name="badge.icon" size="40rpx" />
+        <view v-if="featured" class="featured-offer">
+          <text class="featured-badge">
+            限时优惠
+          </text>
+          <view class="featured-head">
+            <view class="featured-copy">
+              <text class="featured-name">
+                {{ featured.name }}
+              </text>
+              <text class="featured-title">
+                {{ featured.chatBenefit }}
+              </text>
+            </view>
+            <view class="featured-price">
+              <text v-if="featured.showOrigin" class="price-del">
+                ¥{{ featured.originalPrice }}
+              </text>
+              <text class="price-now">
+                <text class="yen">
+                  ¥
+                </text>{{ featured.price }}
+              </text>
+            </view>
           </view>
-          <view class="trust-title">
-            {{ badge.title }}
+          <view class="featured-benefits">
+            <text>{{ featured.reportBenefit }}</text>
+            <text v-if="featured.desc">
+              {{ featured.desc }}
+            </text>
           </view>
-          <view class="trust-desc">
-            {{ badge.desc }}
+          <view class="featured-foot">
+            <view class="countdown">
+              <text>专享价剩余</text>
+              <text class="countdown-time">
+                {{ countdownText }}
+              </text>
+            </view>
+            <view
+              class="featured-buy"
+              :class="{ disabled: purchasingId === featured.id }"
+              @tap.stop="purchasePlan(featured)"
+            >
+              {{ buyLabel(featured) }}
+            </view>
           </view>
         </view>
-      </view>
 
-      <view class="gx-btn-group action-buttons">
-        <GxButton type="primary" :disabled="purchasing || !selectedProductId" @click="purchase">
-          <view class="cta-inner flex_row f_a_center">
-            <GxCreditsIcon v-if="!purchasing" name="wallet" size="36rpx" />
-            <text>{{ purchasing ? '支付中...' : '开通解读权益' }}</text>
+        <view v-if="productsReady && plans.length === 0" class="products-empty">
+          暂无可购买的套餐，请稍后再试。
+        </view>
+
+        <view class="package-section">
+          <view
+            v-for="pkg in listPlans"
+            :key="pkg.id"
+            class="package-card"
+            :class="{ exclusive: pkg.memberExclusive }"
+          >
+            <view class="package-main">
+              <text v-if="pkg.memberExclusive" class="exclusive-status">
+                {{ isMember ? '会员专享加购价' : '仅限有效会员购买' }}
+              </text>
+              <text class="package-name">
+                {{ pkg.name }}
+              </text>
+              <text class="package-line">
+                <text class="em">
+                  问答
+                </text> {{ pkg.chatBenefit }}
+              </text>
+              <text class="package-line">
+                <text class="em">
+                  报告
+                </text> {{ pkg.reportBenefit }}
+              </text>
+              <text v-if="pkg.footnote" class="package-note">
+                {{ pkg.footnote }}
+              </text>
+            </view>
+            <view class="package-buy">
+              <text v-if="pkg.memberExclusive" class="member-badge">
+                会员专属
+              </text>
+              <text v-if="pkg.showOrigin" class="price-del">
+                ¥{{ pkg.originalPrice }}
+              </text>
+              <text v-if="pkg.showOrigin" class="sale-label">
+                折后价
+              </text>
+              <text class="sale-price">
+                ¥{{ pkg.price }}
+              </text>
+              <view
+                class="buy-btn"
+                :class="{ disabled: purchasingId === pkg.id }"
+                @tap="purchasePlan(pkg)"
+              >
+                {{ buyLabel(pkg) }}
+              </view>
+            </view>
           </view>
-        </GxButton>
-      </view>
+        </view>
 
-      <view class="gx-disclaimer paywall-disclaimer">
-        {{ CREDITS_PAY_HINT }}<br>
-        {{ CREDITS_PAYWALL_TEXT }}<br>
-        购买即代表您已同意《用户使用协议》与《隐私权政策》
+        <view v-if="productsReady" class="paywall-tip">
+          当前剩余报告次数 {{ store.displayCredits }}；问答与报告额度独立计算。
+        </view>
+        <view class="paywall-tip muted">
+          购买即表示同意《用户服务协议》与《隐私权政策》；支付走微信网页支付。
+        </view>
+        <view class="safe-bottom" />
       </view>
-
-      <view class="gx-safe-bottom" />
     </scroll-view>
 
     <GxLoginModal
@@ -304,291 +322,288 @@ async function handleLoginSuccess() {
 </template>
 
 <style scoped lang="scss">
-.products-empty {
+.paywall-page {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 80rpx 48rpx 40rpx;
-  box-sizing: border-box;
-
-  .empty-text {
-    font-size: 28rpx;
-    color: #665b4e;
-    line-height: 1.7;
-  }
+  min-height: 100%;
+  background: transparent;
 }
 
-.status-banner {
-  margin: 24rpx 32rpx 8rpx;
-  padding: 28rpx 28rpx;
-  border-radius: 20rpx;
-  box-sizing: border-box;
-  gap: 20rpx;
-
-  &--warn {
-    background: rgba(183, 101, 74, 0.08);
-    border: 2rpx dashed rgba(183, 101, 74, 0.55);
-  }
-
-  &--info {
-    background: rgba(21, 63, 51, 0.06);
-    border: 2rpx solid rgba(21, 63, 51, 0.12);
-  }
-}
-
-.status-icon-wrap {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 16rpx;
-  background: rgba(21, 63, 51, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: #153F33;
-}
-
-.status-banner--warn .status-icon-wrap {
-  background: rgba(21, 63, 51, 0.12);
-  color: #153F33;
-}
-
-.status-copy {
+.paywall-scroll {
   flex: 1;
-  min-width: 0;
+  height: 0;
 }
 
-.status-title {
-  font-family: "Noto Serif SC", Georgia, serif;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #153F33;
-  margin-bottom: 10rpx;
-}
-
-.status-banner--warn .status-title {
-  color: #8B4A38;
-}
-
-.status-desc {
-  font-size: 24rpx;
-  color: #665B4E;
-  line-height: 1.55;
-}
-
-.paywall-card {
-  margin: 24rpx 32rpx;
-  padding: 36rpx 32rpx;
-  background: linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(251, 244, 231, 0.9)), #FFF9ED;
-  border-radius: 24rpx;
-  border: 4rpx solid #E2DCD3;
-  position: relative;
-  transition: all 0.25s ease;
-  box-shadow: 0 4rpx 12rpx rgba(74, 49, 21, 0.04);
+.paywall-inner {
+  padding: 24rpx 28rpx 48rpx;
   box-sizing: border-box;
-  overflow: hidden;
-
-  &.selected {
-    border-color: #153F33;
-    background-color: #FFFDF9;
-    box-shadow: 0 8rpx 24rpx rgba(21, 63, 51, 0.12);
-  }
 }
 
-.recommended-badge {
+.paywall-hero {
+  padding: 40rpx 36rpx;
+  margin-bottom: 24rpx;
+  border-radius: var(--gx-chat-radius);
+  color: #fffdf7;
+  background:
+    radial-gradient(circle at 88% 14%, rgba(213, 164, 61, 0.45), transparent 32%),
+    linear-gradient(150deg, var(--gx-chat-red), var(--gx-chat-red-deep));
+  box-shadow: var(--gx-chat-shadow);
+}
+
+.hero-eyebrow {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 800;
+  color: rgba(255, 253, 247, 0.76);
+}
+
+.hero-title {
+  display: block;
+  margin: 12rpx 0;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 44rpx;
+  font-weight: 800;
+  color: #fffdf7;
+}
+
+.hero-link {
+  display: block;
+  font-size: 24rpx;
+  color: rgba(255, 253, 247, 0.82);
+}
+
+.featured-offer {
+  position: relative;
+  margin-bottom: 24rpx;
+  padding: 32rpx 28rpx 28rpx;
+  border-radius: var(--gx-chat-radius);
+  background: linear-gradient(180deg, #fffdf8, #fff1e8);
+  border: 2rpx solid var(--gx-chat-border);
+  box-shadow: var(--gx-chat-shadow);
+  overflow: hidden;
+}
+
+.featured-badge {
   position: absolute;
   top: 0;
-  right: 0;
-  background-color: #153F33;
-  color: #FCF5E9;
+  left: 0;
+  padding: 8rpx 20rpx;
+  border-bottom-right-radius: 16rpx;
+  background: var(--gx-chat-gold);
+  color: #5a3a12;
   font-size: 22rpx;
-  padding: 6rpx 20rpx;
-  border-bottom-left-radius: 16rpx;
+  font-weight: 800;
+}
+
+.featured-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 28rpx;
+}
+
+.featured-name {
+  display: block;
+  font-size: 24rpx;
+  color: var(--gx-chat-muted);
   font-weight: 700;
 }
 
-.card-header {
-  margin-bottom: 8rpx;
-  padding-right: 72rpx;
+.featured-title {
+  display: block;
+  margin-top: 8rpx;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 36rpx;
+  font-weight: 800;
+  color: var(--gx-chat-ink);
 }
 
-.card-title-row {
-  gap: 16rpx;
-  min-width: 0;
-  flex: 1;
-}
-
-.pkg-icon-wrap {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 16rpx;
-  background: rgba(21, 63, 51, 0.08);
-  color: #153F33;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.featured-price {
+  text-align: right;
   flex-shrink: 0;
 }
 
-.pkg-icon-wrap--active {
-  background: #153F33;
-  color: #FCF5E9;
+.price-del {
+  display: block;
+  font-size: 22rpx;
+  color: var(--gx-chat-hint);
+  text-decoration: line-through;
+}
+
+.price-now {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 48rpx;
+  font-weight: 800;
+  color: var(--gx-chat-red);
+  line-height: 1;
+}
+
+.yen {
+  font-size: 28rpx;
+  margin-right: 4rpx;
+}
+
+.featured-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin: 24rpx 0;
+  font-size: 24rpx;
+  color: var(--gx-chat-muted);
+}
+
+.featured-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.countdown {
+  font-size: 22rpx;
+  color: var(--gx-chat-brown);
+}
+
+.countdown-time {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  color: var(--gx-chat-red);
+  letter-spacing: 2rpx;
+}
+
+.featured-buy,
+.buy-btn {
+  flex-shrink: 0;
+  padding: 16rpx 28rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, var(--gx-chat-red), var(--gx-chat-red-deep));
+  color: #fffdf7;
+  font-size: 26rpx;
+  font-weight: 800;
+  text-align: center;
+
+  &.disabled {
+    opacity: 0.55;
+  }
+}
+
+.products-empty {
+  padding: 64rpx 24rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: var(--gx-chat-muted);
+}
+
+.package-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.package-card {
+  display: flex;
+  gap: 20rpx;
+  padding: 28rpx 24rpx;
+  border-radius: var(--gx-chat-radius-sm);
+  background: var(--gx-chat-paper);
+  border: 2rpx solid var(--gx-chat-border);
+
+  &.exclusive {
+    background: #fff8f0;
+    border-style: dashed;
+  }
+}
+
+.package-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.exclusive-status {
+  display: block;
+  margin-bottom: 8rpx;
+  font-size: 22rpx;
+  color: var(--gx-chat-brown);
+  font-weight: 700;
 }
 
 .package-name {
-  font-family: "Noto Serif SC", Georgia, serif;
+  display: block;
+  font-family: "Noto Serif SC", "Songti SC", serif;
   font-size: 30rpx;
-  font-weight: 700;
-  color: #153F33;
-  line-height: 1.3;
-}
-
-.custom-radio {
-  width: 38rpx;
-  height: 38rpx;
-  border-radius: 50%;
-  border: 4rpx solid #958878;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-
-  .radio-inner {
-    width: 18rpx;
-    height: 18rpx;
-    border-radius: 50%;
-    background-color: transparent;
-    transition: all 0.2s ease;
-  }
-
-  &.checked {
-    border-color: #153F33;
-
-    .radio-inner {
-      background-color: #153F33;
-    }
-  }
-}
-
-.package-benefit {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #153F33;
-  margin-bottom: 20rpx;
-}
-
-.package-desc {
-  font-size: 24rpx;
-  color: #665B4E;
-  margin-top: -12rpx;
-  margin-bottom: 24rpx;
-  line-height: 1.5;
-}
-
-.price-row {
-  border-top: 2rpx solid rgba(185, 148, 95, 0.15);
-  padding-top: 16rpx;
-}
-
-.price-left {
-  color: #B7654A;
-  min-width: 0;
-}
-
-.price-tag {
-  font-size: 22rpx;
-  font-weight: 600;
-  color: #B7654A;
-  margin-right: 10rpx;
-  line-height: 1;
-  padding-bottom: 4rpx;
-}
-
-.price-symbol {
-  font-size: 28rpx;
-  font-weight: 700;
-  margin-right: 4rpx;
-  line-height: 1;
-}
-
-.price-val {
-  font-size: 42rpx;
   font-weight: 800;
-  line-height: 1;
-}
-
-.price-original {
-  font-size: 24rpx;
-  color: #958878;
-  text-decoration: line-through;
-  margin-left: 12rpx;
-  line-height: 1;
-  padding-bottom: 4rpx;
-}
-
-.package-meta {
-  font-size: 24rpx;
-  color: #665B4E;
-  flex-shrink: 0;
-  margin-left: 16rpx;
-}
-
-.trust-row {
-  margin: 16rpx 32rpx 8rpx;
-  padding: 20rpx 8rpx;
-}
-
-.trust-item {
-  flex: 1;
-  text-align: center;
-  padding: 0 8rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.trust-icon-wrap {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 18rpx;
-  background: rgba(21, 63, 51, 0.08);
-  color: #153F33;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: var(--gx-chat-ink);
   margin-bottom: 10rpx;
 }
 
-.trust-title {
+.package-line {
+  display: block;
   font-size: 24rpx;
-  font-weight: 600;
-  color: #153F33;
-  margin-bottom: 4rpx;
-}
-
-.trust-desc {
-  font-size: 20rpx;
-  color: #958878;
-}
-
-.action-buttons {
-  margin-top: 8rpx;
-  margin-bottom: 24rpx;
-}
-
-.cta-inner {
-  gap: 12rpx;
-  color: inherit;
-}
-
-.paywall-disclaimer {
-  font-size: 22rpx;
-  color: #958878;
-  text-align: center;
-  margin: 16rpx 32rpx 32rpx;
+  color: var(--gx-chat-muted);
   line-height: 1.5;
+}
+
+.em {
+  font-weight: 800;
+  color: var(--gx-chat-brown);
+  margin-right: 8rpx;
+}
+
+.package-note {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: var(--gx-chat-hint);
+}
+
+.package-buy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 140rpx;
+}
+
+.member-badge {
+  margin-bottom: 8rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: var(--gx-chat-gold-soft);
+  color: var(--gx-chat-brown);
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.sale-label {
+  font-size: 20rpx;
+  color: var(--gx-chat-hint);
+  margin: 4rpx 0;
+}
+
+.sale-price {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: var(--gx-chat-red);
+  margin-bottom: 12rpx;
+}
+
+.paywall-tip {
+  margin-top: 28rpx;
+  font-size: 22rpx;
+  color: var(--gx-chat-muted);
+  line-height: 1.6;
+  text-align: center;
+
+  &.muted {
+    color: var(--gx-chat-hint);
+  }
+}
+
+.safe-bottom {
+  height: calc(24rpx + env(safe-area-inset-bottom));
 }
 </style>

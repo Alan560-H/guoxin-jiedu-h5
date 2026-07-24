@@ -2,21 +2,21 @@
   <defs>
     <filter id="paperNoise" x="-20%" y="-20%" width="140%" height="140%">
       <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" seed="8"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.55 0 0 0 0 0.45 0 0 0 0 0.28 0 0 0 .13 0"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.70 0 0 0 0 0.28 0 0 0 0 0.28 0 0 0 .12 0"/>
     </filter>
     <radialGradient id="warmTop" cx="50%" cy="0%" r="80%">
-      <stop offset="0" stop-color="#fff9eb"/>
-      <stop offset=".56" stop-color="#fbf2e2"/>
-      <stop offset="1" stop-color="#f3e6d0"/>
+      <stop offset="0" stop-color="#fff5f3"/>
+      <stop offset=".56" stop-color="#fae5e2"/>
+      <stop offset="1" stop-color="#f5d4cf"/>
     </radialGradient>
   </defs>
   <rect width="390" height="844" fill="url(#warmTop)"/>
   <rect width="390" height="844" filter="url(#paperNoise)" opacity=".52"/>
-  <circle cx="34" cy="76" r="1.4" fill="#b9945f" opacity=".16"/>
-  <circle cx="312" cy="44" r="1.1" fill="#846947" opacity=".14"/>
-  <circle cx="218" cy="192" r="1.3" fill="#b9945f" opacity=".13"/>
-  <circle cx="86" cy="316" r="1.2" fill="#846947" opacity=".12"/>
-  <circle cx="348" cy="468" r="1.4" fill="#b9945f" opacity=".13"/>
-  <circle cx="137" cy="642" r="1.1" fill="#846947" opacity=".12"/>
-  <circle cx="294" cy="760" r="1.2" fill="#b9945f" opacity=".13"/>
+  <circle cx="34" cy="76" r="1.4" fill="#b43a3d" opacity=".12"/>
+  <circle cx="312" cy="44" r="1.1" fill="#7f1f26" opacity=".10"/>
+  <circle cx="218" cy="192" r="1.3" fill="#b43a3d" opacity=".10"/>
+  <circle cx="86" cy="316" r="1.2" fill="#7f1f26" opacity=".09"/>
+  <circle cx="348" cy="468" r="1.4" fill="#b43a3d" opacity=".10"/>
+  <circle cx="137" cy="642" r="1.1" fill="#7f1f26" opacity=".09"/>
+  <circle cx="294" cy="760" r="1.2" fill="#b43a3d" opacity=".10"/>
 </svg>

@@ -6,6 +6,9 @@
 type _LocationUrl =
   "/pages/index" |
   "/pages/credits/index" |
+  "/pages/credits/member" |
+  "/pages/credits/paid" |
+  "/pages/invite/accept" |
   "/pages/jiedu/chat" |
   "/pages/jiedu/complete" |
   "/pages/jiedu/detail" |
@@ -13,8 +16,10 @@ type _LocationUrl =
   "/pages/jiedu/setup" |
   "/pages/legal/privacy" |
   "/pages/legal/service" |
+  "/pages/mine/index" |
   "/pages/profile/create" |
-  "/pages/profile/list";
+  "/pages/profile/list" |
+  "/pages/users/index";
 
 interface NavigateToOptions {
   url: _LocationUrl;

@@ -37,7 +37,7 @@ export interface BindPhoneVo {
   phoneMasked: string
 }
 
-/** 统一权益：报告次数 + 问答次数（同一 getCredits 接口） */
+/** 统一权益：报告次数 + 问答次数（credits / member/status） */
 export interface CreditsVo {
   /** 报告可用次数 */
   credits: number
@@ -48,4 +48,7 @@ export interface CreditsVo {
   chatUnlimited: boolean
   /** 响应是否显式带了问答字段（用于区分「未下发」与「剩余 0」） */
   chatFieldsPresent: boolean
+  memberStatus?: string
+  memberSku?: string
+  memberExpiresAt?: string
 }

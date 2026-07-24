@@ -3,6 +3,7 @@ import type { FeedbackState } from '@/stores/chatSessionStore'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, nextTick, ref, watch } from 'vue'
 import { streamChatMessage } from '@/api/chat'
+import { getDifySuggested } from '@/api/dify'
 import GxAvatarSwitcher from '@/components/guoxin/chat/GxAvatarSwitcher.vue'
 import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
 import GxChatComposer from '@/components/guoxin/chat/GxChatComposer.vue'
@@ -15,7 +16,6 @@ import GxChatQuotaCard from '@/components/guoxin/chat/GxChatQuotaCard.vue'
 import GxChatReportAd from '@/components/guoxin/chat/GxChatReportAd.vue'
 import GxInviteModal from '@/components/guoxin/chat/GxInviteModal.vue'
 import {
-  CHAT_BIZ_SOURCE,
   CHAT_CREDITS_LOCAL_FALLBACK,
   CHAT_PENDING_QUESTION_KEY,
   DAILY_QUESTION_LIMIT,
@@ -26,6 +26,7 @@ import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { parseSuggestedPayload, unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
 import { createStreamTypewriter } from '@/utils/guoxin/streamTypewriter'
 
 const store = useGuoxinStore()
@@ -42,6 +43,8 @@ const scrollIntoView = ref('')
 const bootstrapped = ref(false)
 const abortController = ref<AbortController | null>(null)
 const clearActiveTypewriter = ref<(() => void) | null>(null)
+const lastStreamMessageId = ref('')
+const remoteFollowups = ref<Array<{ question: string, tip: string }> | null>(null)
 
 const profiles = computed(() => store.profiles)
 const activeId = computed(() => store.activeProfileId)
@@ -77,15 +80,29 @@ const followupBank = computed(() => {
   return banks[idx] ?? banks[0]
 })
 
-const followupItems = computed(() =>
-  (followupBank.value?.items ?? []).map(([question, tip]) => ({ question, tip })),
-)
+const followupItems = computed(() => {
+  if (remoteFollowups.value && remoteFollowups.value.length > 0)
+    return remoteFollowups.value
+  return (followupBank.value?.items ?? []).map(([question, tip]) => ({ question, tip }))
+})
 
 const followupMeta = computed(() => {
   if (chatUnlimited.value)
     return '不限次'
   return quotaUsedUp.value ? '明日恢复' : `还可问 ${remaining.value} 次`
 })
+
+const followupHeading = computed(() =>
+  remoteFollowups.value?.length
+    ? '可以继续追问'
+    : (followupBank.value?.heading || '可以继续追问'),
+)
+
+const followupLead = computed(() =>
+  remoteFollowups.value?.length
+    ? '根据刚才的回答，可以试试下面这些问题。'
+    : (followupBank.value?.lead || ''),
+)
 
 const composerPlaceholder = computed(() =>
   quotaUsedUp.value ? '今日问答已用完' : '继续追问',
@@ -114,7 +131,7 @@ watch(activeId, (id) => {
   if (!id)
     return
   chatStore.ensureIntro(id, profileName.value)
-  scrollToBottom()
+  scrollToLatestAssistant()
 })
 
 async function refreshCreditsQuiet() {
@@ -162,7 +179,7 @@ async function bootstrapChat() {
     return
   }
   if (store.profiles.length === 0)
-    await store.loadProfiles()
+    await store.ensureProfilesLoaded()
   if (store.profiles.length === 0) {
     uni.redirectTo({ url: RouterPaths.home })
     return
@@ -195,7 +212,7 @@ function onBack() {
 }
 
 function onMine() {
-  uni.showToast({ title: '「我的」下一步开放', icon: 'none' })
+  uni.navigateTo({ url: RouterPaths.mine })
 }
 
 function onSelectProfile(id: string) {
@@ -211,7 +228,8 @@ function onInvite() {
 }
 
 function onInvitePreview() {
-  uni.showToast({ title: '好友填写页下一步开放', icon: 'none' })
+  showInvite.value = false
+  uni.navigateTo({ url: RouterPaths.inviteAccept })
 }
 
 function onBuy() {
@@ -224,7 +242,26 @@ function onGenerateReport() {
 }
 
 function onRefreshFollowup() {
+  if (remoteFollowups.value?.length) {
+    remoteFollowups.value = null
+    lastStreamMessageId.value = ''
+  }
   chatStore.nextFollowupBatch()
+}
+
+async function loadSuggestedFollowups(messageId: string) {
+  const id = messageId.trim()
+  if (!id)
+    return
+  try {
+    const res = await getDifySuggested(id)
+    const items = parseSuggestedPayload(unwrapBizPayload(res))
+    if (items.length > 0)
+      remoteFollowups.value = items
+  }
+  catch {
+    // 回退本地 FOLLOWUP_BANKS
+  }
 }
 
 function onPickFollowup(question: string) {
@@ -242,26 +279,6 @@ function onSubmitComposer() {
     return
   }
   void askQuestion(q)
-}
-
-function buildChatInputs(profileId: string) {
-  const p = activeProfile.value
-  const baziInfo = [
-    p?.name,
-    p?.genderText,
-    p?.calendarTypeText,
-    p?.birthDaySolar || p?.birthDay,
-    p?.birthPlace,
-  ].filter(Boolean).join(' · ')
-
-  return {
-    reportTime: 0,
-    bizSource: CHAT_BIZ_SOURCE,
-    baziUserId: profileId,
-    baziInfo: baziInfo || profileName.value,
-    relation: p?.relationText || p?.relation || '',
-    profileName: profileName.value,
-  }
 }
 
 async function askQuestion(question: string) {
@@ -292,13 +309,14 @@ async function askQuestion(question: string) {
 
   asking.value = true
   draft.value = ''
+  lastStreamMessageId.value = ''
   chatStore.ensureIntro(profileId, profileName.value)
   chatStore.appendUser(profileId, q)
   const assistant = chatStore.appendAssistant(profileId, '', {
     showFeedback: false,
     streaming: true,
   })
-  scrollToBottom()
+  scrollToMessage(assistant.id)
 
   const controller = new AbortController()
   abortController.value = controller
@@ -311,24 +329,26 @@ async function askQuestion(question: string) {
         streaming: true,
       })
     },
-    onScroll: scrollToBottom,
+    // 跟住 AI 气泡，不要滚到页面最底（否则追问区会把回复顶出视野）
+    onScroll: () => scrollToMessage(assistant.id),
   })
   clearActiveTypewriter.value = () => typewriter.clear()
 
   try {
     const text = await streamChatMessage(
       {
+        profileId,
         query: q,
-        conversationId: chatStore.getConversationId(profileId),
-        baziUserId: profileId,
-        inputs: buildChatInputs(profileId),
       },
       {
         onDelta: (full) => {
           typewriter.setTarget(full)
         },
         onSession: (session) => {
-          chatStore.setConversationId(profileId, session.conversationId)
+          if (session.conversationId)
+            chatStore.setConversationId(profileId, session.conversationId)
+          if (session.messageId)
+            lastStreamMessageId.value = session.messageId
         },
       },
       controller.signal,
@@ -354,6 +374,9 @@ async function askQuestion(question: string) {
       streaming: false,
       showFeedback: true,
     })
+
+    if (lastStreamMessageId.value)
+      void loadSuggestedFollowups(lastStreamMessageId.value)
   }
   catch (e) {
     typewriter.clear()
@@ -377,7 +400,11 @@ async function askQuestion(question: string) {
         streaming: false,
         showFeedback: false,
       })
-      uni.showToast({ title: '当前回复失败，请重试', icon: 'none' })
+      uni.showToast({
+        title: /暂不可用|404|502|503/.test(msg) ? msg : '当前回复失败，请重试',
+        icon: 'none',
+        duration: 2800,
+      })
     }
   }
   finally {
@@ -385,7 +412,7 @@ async function askQuestion(question: string) {
     abortController.value = null
     asking.value = false
     await refreshCreditsQuiet()
-    scrollToBottom()
+    scrollToMessage(assistant.id)
   }
 }
 
@@ -422,13 +449,30 @@ function onFeedbackSubmit(payload: { reason: string, note: string }) {
   uni.showToast({ title: '感谢反馈', icon: 'none' })
 }
 
-function scrollToBottom() {
+function scrollToMessage(messageId: string) {
+  const id = String(messageId || '').trim()
+  if (!id)
+    return
+  const anchor = `msg-${id}`
   nextTick(() => {
     scrollIntoView.value = ''
     nextTick(() => {
-      scrollIntoView.value = 'chat-bottom-anchor'
+      scrollIntoView.value = anchor
     })
   })
+}
+
+/** 滚到最近一条 AI 回复，避免滚到最底把回复顶出视口 */
+function scrollToLatestAssistant() {
+  const list = messages.value
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i]?.role === 'assistant') {
+      scrollToMessage(list[i].id)
+      return
+    }
+  }
+  if (list.length > 0)
+    scrollToMessage(list[list.length - 1].id)
 }
 </script>
 
@@ -489,8 +533,8 @@ function scrollToBottom() {
 
         <GxChatFollowupPanel
           v-if="hasConversation || quotaUsedUp"
-          :heading="followupBank.heading"
-          :lead="followupBank.lead"
+          :heading="followupHeading"
+          :lead="followupLead"
           :meta="followupMeta"
           :items="followupItems"
           :empty="quotaUsedUp"

@@ -1,10 +1,11 @@
 import type { ChatMessageRequest, ChatStreamSession } from '@/models/guoxin/chat'
-import { createChatStreamQuotaError } from '@/models/guoxin/chat'
+import { createChatStreamQuotaError, defaultStreamChatFiles } from '@/models/guoxin/chat'
 import { isAppEmbeddedWebView } from '@/utils/appWebView'
 import { getSource } from '@/utils/guoxin/source'
 
 const STREAM_TIMEOUT_MS = 180_000
-const CHAT_MESSAGES_PATH = '/api/yiqixue/app/guoxin/chat/messages'
+/** 国心二期流式问答 */
+const CHAT_MESSAGES_PATH = '/api/yiqixue/app/guoxin/dify/streamChat'
 
 export interface ChatStreamHandlers {
   onDelta?: (fullText: string) => void
@@ -77,14 +78,23 @@ function pickSession(payload: Record<string, unknown>): ChatStreamSession | null
       : '')
     ?? '',
   ).trim()
-  if (!conversationId)
-    return null
   const messageId = String(
     payload.message_id
     ?? payload.messageId
+    ?? payload.id
+    ?? (payload.data && typeof payload.data === 'object'
+      ? (payload.data as Record<string, unknown>).message_id
+      ?? (payload.data as Record<string, unknown>).messageId
+      ?? (payload.data as Record<string, unknown>).id
+      : '')
     ?? '',
   ).trim()
-  return { conversationId, messageId: messageId || undefined }
+  if (!conversationId && !messageId)
+    return null
+  return {
+    conversationId: conversationId || '',
+    messageId: messageId || undefined,
+  }
 }
 
 /**
@@ -99,22 +109,31 @@ export async function postChatMessagesStream(
   if (!query)
     return ''
 
+  const profileIdNum = Number(body.profileId)
+  const profileId = Number.isFinite(profileIdNum) && !Number.isNaN(profileIdNum)
+    ? profileIdNum
+    : body.profileId
+
+  const file = (body.file?.length ? body.file : defaultStreamChatFiles()).map(f => ({
+    tyep: f.tyep || 'image',
+    transfer_method: f.transfer_method || 'remote_url',
+    url: f.url ?? '',
+  }))
+
   const mergedSignal = mergeAbortWithTimeout(signal, STREAM_TIMEOUT_MS)
   const response = await fetch(CHAT_MESSAGES_PATH, {
     method: 'POST',
     headers: buildAuthHeaders(),
     body: JSON.stringify({
+      profileId,
       query,
-      conversationId: body.conversationId || '',
-      conversation_id: body.conversationId || '',
-      baziUserId: body.baziUserId,
-      inputs: body.inputs,
+      file,
     }),
     signal: mergedSignal,
   })
 
   if (!response.ok) {
-    let msg = `流式请求失败: ${response.status}`
+    let msg = `问答服务暂不可用（${response.status}）`
     try {
       const errBody = await response.json() as { msg?: string, message?: string }
       msg = errBody.msg || errBody.message || msg
@@ -236,10 +255,16 @@ export async function postChatMessagesStream(
   const handleSseEventBlock = (block: string) => {
     const lines = block.split('\n')
     let eventName = 'message'
+    /** 二期 SSE：`id:` 行即为 suggested 接口所需的 messageId */
+    let sseMessageId = ''
     const dataLines: string[] = []
     for (const line of lines) {
       if (!line)
         continue
+      if (line.startsWith('id:')) {
+        sseMessageId = line.slice(3).trim()
+        continue
+      }
       if (line.startsWith('event:')) {
         eventName = line.slice(6).trim() || 'message'
         continue
@@ -247,6 +272,9 @@ export async function postChatMessagesStream(
       if (line.startsWith('data:'))
         dataLines.push(line.slice(5))
     }
+    if (sseMessageId)
+      handlers.onSession?.({ conversationId: '', messageId: sseMessageId })
+
     const payload = dataLines.join('\n')
     if (eventName === 'error') {
       const msg = payload.trim() || '流式响应异常'

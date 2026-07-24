@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { computed, onMounted, ref } from 'vue'
+import { getDifyQuestionBank } from '@/api/dify'
 import GxAvatarSwitcher from '@/components/guoxin/chat/GxAvatarSwitcher.vue'
 import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
 import GxChatComposer from '@/components/guoxin/chat/GxChatComposer.vue'
@@ -12,6 +13,7 @@ import GxSourceBackBar from '@/components/guoxin/GxSourceBackBar.vue'
 import { CHAT_PENDING_QUESTION_KEY, HOME_QUESTION_BANKS } from '@/constants/chatHome'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { parseQuestionBankPayload, unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 
 const store = useGuoxinStore()
@@ -21,6 +23,7 @@ const showBazi = ref(false)
 const showInvite = ref(false)
 const draft = ref('')
 const bankIndex = ref(0)
+const remoteBanks = ref<string[][] | null>(null)
 const pendingQuestion = ref('')
 /** 登录成功后打开邀请弹窗 */
 const pendingInvite = ref(false)
@@ -30,22 +33,85 @@ const forceSelectFirst = ref(false)
 const showSourceBackBar = ref(isShowBackEntry())
 const profiles = computed(() => store.profiles)
 const activeId = computed(() => store.activeProfileId)
-const questions = computed(() => HOME_QUESTION_BANKS[bankIndex.value] ?? HOME_QUESTION_BANKS[0])
+const questionBanks = computed(() =>
+  (remoteBanks.value && remoteBanks.value.length > 0)
+    ? remoteBanks.value
+    : HOME_QUESTION_BANKS,
+)
+const questions = computed(() => questionBanks.value[bankIndex.value % questionBanks.value.length] ?? questionBanks.value[0] ?? [])
 
 onMounted(() => {
-  void bootstrapHome(false)
+  // 题库只拉一次；档案列表交给 onShow（避免与 onShow 首屏各打一遍 profiles）
+  void loadRemoteQuestionBank()
+})
+
+onLoad((query) => {
+  routeInviteIfNeeded(query as Record<string, string | undefined>)
 })
 
 onShow(() => {
   showSourceBackBar.value = isShowBackEntry()
   if (store.isLoggedIn)
     void bootstrapHome(false)
+  // H5 直开带 query 时 onLoad 可能已处理；再兜一层
+  // #ifdef H5
+  if (typeof window !== 'undefined') {
+    try {
+      const sp = new URLSearchParams(window.location.search)
+      if (sp.get('scene') === 'invite')
+        routeInviteIfNeeded({ scene: 'invite', token: sp.get('token') || undefined })
+    }
+    catch {
+      // ignore
+    }
+  }
+  // #endif
 })
+
+async function loadRemoteQuestionBank() {
+  try {
+    const res = await getDifyQuestionBank()
+    const banks = parseQuestionBankPayload(unwrapBizPayload(res))
+    if (banks.length > 0) {
+      remoteBanks.value = banks
+      bankIndex.value = 0
+    }
+  }
+  catch {
+    // 回退本地 HOME_QUESTION_BANKS
+  }
+}
+
+function routeInviteIfNeeded(query?: Record<string, string | undefined>) {
+  if (query?.scene !== 'invite')
+    return
+  const token = String(query.token || '').trim()
+  const url = token
+    ? `${RouterPaths.inviteAccept}?token=${encodeURIComponent(token)}`
+    : RouterPaths.inviteAccept
+  // 清地址栏 scene，避免反复 redirect
+  // #ifdef H5
+  if (typeof window !== 'undefined') {
+    try {
+      const u = new URL(window.location.href)
+      if (u.searchParams.has('scene')) {
+        u.searchParams.delete('scene')
+        u.searchParams.delete('token')
+        window.history.replaceState({}, '', u.toString())
+      }
+    }
+    catch {
+      // ignore
+    }
+  }
+  // #endif
+  uni.redirectTo({ url })
+}
 
 async function bootstrapHome(selectFirst: boolean) {
   if (!store.isLoggedIn)
     return
-  await store.loadProfiles()
+  await store.ensureProfilesLoaded()
   if (store.profiles.length === 0) {
     showBazi.value = true
     return
@@ -80,9 +146,7 @@ async function afterLoginSuccess() {
 }
 
 function onMine() {
-  if (!requireLogin())
-    return
-  uni.showToast({ title: '「我的」下一步开放', icon: 'none' })
+  uni.navigateTo({ url: RouterPaths.mine })
 }
 
 function onInvite() {
@@ -95,7 +159,8 @@ function onInvite() {
 }
 
 function onInvitePreview() {
-  uni.showToast({ title: '好友填写页下一步开放', icon: 'none' })
+  showInvite.value = false
+  uni.navigateTo({ url: RouterPaths.inviteAccept })
 }
 
 function onAdd() {
@@ -111,7 +176,10 @@ function onSelectProfile(id: string) {
 }
 
 function onRefreshQuestions() {
-  bankIndex.value = (bankIndex.value + 1) % HOME_QUESTION_BANKS.length
+  const banks = questionBanks.value
+  if (!banks.length)
+    return
+  bankIndex.value = (bankIndex.value + 1) % banks.length
 }
 
 function onPickQuestion(q: string) {
@@ -134,7 +202,7 @@ async function handleAsk(question: string) {
     return
   }
   if (store.profiles.length === 0) {
-    await store.loadProfiles()
+    await store.ensureProfilesLoaded()
   }
   if (store.profiles.length === 0) {
     showBazi.value = true

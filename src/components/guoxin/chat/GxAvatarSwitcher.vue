@@ -84,10 +84,10 @@ function sealChar(name: string) {
 .avatar-switcher {
   margin-bottom: 24rpx;
   padding: 22rpx 24rpx 20rpx;
-  border: 3rpx solid rgba(213, 164, 61, 0.58);
+  border: 3rpx solid rgba(180, 58, 61, 0.22);
   border-radius: 24rpx;
   background:
-    radial-gradient(circle at 94% 0%, rgba(213, 164, 61, 0.2), transparent 34%),
+    radial-gradient(circle at 94% 0%, rgba(180, 58, 61, 0.12), transparent 34%),
     rgba(255, 253, 248, 0.97);
   box-shadow: var(--gx-chat-shadow, 0 8rpx 24rpx rgba(121, 38, 32, 0.1));
 
@@ -179,7 +179,7 @@ function sealChar(name: string) {
   height: 88rpx;
   border-radius: 50%;
   border: 4rpx solid transparent;
-  background: var(--gx-chat-gold-soft, #fff0c7);
+  background: var(--gx-chat-red-soft, #fae5e2);
   color: var(--gx-chat-red-deep, #7f1f26);
   font-size: 36rpx;
   font-weight: 700;
@@ -190,7 +190,8 @@ function sealChar(name: string) {
 
 .user-option.active .user-avatar {
   border-color: var(--gx-chat-red, #b43a3d);
-  background: linear-gradient(135deg, var(--gx-chat-gold, #d5a43d), #f0d48a);
+  background: linear-gradient(135deg, var(--gx-chat-red, #b43a3d), #d96a6c);
+  color: #fffdf7;
 }
 
 .check-badge {

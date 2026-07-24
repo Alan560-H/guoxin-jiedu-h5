@@ -5,6 +5,7 @@ import type { GuoxinLoginSession } from '@/utils/guoxin/parseLoginResponse'
 import type { WxPayMwebRedirect } from '@/utils/weixin/pay'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { getMemberStatus } from '@/api/dify'
 import {
   bindMobile as apiBindMobile,
   createProfile as apiCreateProfile,
@@ -33,6 +34,7 @@ import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
 import { navigateToHome, navigateToJieduSetup, navigateToProfileList } from '@/utils/guoxin/navigation'
 import { normalizeProfileVo } from '@/utils/guoxin/normalizeProfile'
 import { parseCreditsPayload } from '@/utils/guoxin/parseCredits'
+import { unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
 import { clearGuoxinUserSessionSnapshot, parseGuoxinLoginData, writeGuoxinUserSessionSnapshot } from '@/utils/guoxin/parseLoginResponse'
 import { mapReportDetailToRecordVo, parseReportDirections } from '@/utils/guoxin/parseReportDetail'
 import { createRemoteDataCache } from '@/utils/guoxin/remoteDataCache'
@@ -81,6 +83,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   /** credits 是否已带问答字段；未带时开发期可走本地兜底 */
   const chatCreditsFromServer = ref(false)
   const activeProductId = ref<number | null>(null)
+  /** 二期 member/status */
+  const memberStatus = ref('')
+  const memberSku = ref('')
+  const memberExpiresAt = ref('')
   const relationOptions = ref<Array<{ value: string, label: string }>>([]) // 关系选项（从字典加载）
   const remoteCache = createRemoteDataCache()
   /** setup 确认后、进入整理页前已提交的生成任务 */
@@ -195,6 +201,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     chatUnlimited.value = false
     chatCreditsFromServer.value = false
     activeProductId.value = null
+    memberStatus.value = ''
+    memberSku.value = ''
+    memberExpiresAt.value = ''
     profiles.value = []
     activeProfileId.value = ''
     remoteCache.invalidate('all')
@@ -250,6 +259,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         })
         profiles.value.push(profile)
         activeProfileId.value = profile.id
+        remoteCache.invalidate(['profiles'])
         return profile
       }
       throw res
@@ -286,6 +296,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       ...dto,
     }
     profiles.value[idx] = updated
+    remoteCache.invalidate(['profiles'])
     try {
       const { useChatSessionStore } = await import('@/stores/chatSessionStore')
       useChatSessionStore().clearConversationId(id)
@@ -313,6 +324,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     if (activeProfileId.value === id) {
       activeProfileId.value = profiles.value[0]?.id ?? ''
     }
+    remoteCache.invalidate(['profiles'])
   }
 
   function setActiveProfile(profileId: string) {
@@ -424,7 +436,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   }
 
   /** 远程购买：微信内 JSAPI；App/外链 MWEB 跳转 */
-  async function purchaseRemoteProduct(productId: number): Promise<boolean | WxPayMwebRedirect> {
+  async function purchaseRemoteProduct(
+    productId: number,
+    opts?: { silentSuccess?: boolean },
+  ): Promise<boolean | WxPayMwebRedirect> {
     if (!isLoggedIn.value) {
       uni.showToast({ title: '请先登录后再购买', icon: 'none' })
       return false
@@ -441,7 +456,8 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         ensureOrdersLoaded(true),
         ensureConsumeRecordsLoaded(true),
       ])
-      uni.showToast({ title: '开通成功', icon: 'success' })
+      if (!opts?.silentSuccess)
+        uni.showToast({ title: '开通成功', icon: 'success' })
       return true
     }
     catch (err) {
@@ -639,7 +655,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     })
   }
 
-  /** 加载用户档案列表 */
+  /** 加载用户档案列表（直接请求；页面入口优先用 ensureProfilesLoaded 去重） */
   async function loadProfiles() {
     try {
       const res = await apiGetProfiles()
@@ -657,6 +673,13 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     catch (e) {
       console.error('加载档案列表失败', e)
     }
+  }
+
+  /** 档案列表去重入口：并发合并 + 会话内缓存；增删改后需 force 或已 invalidate */
+  async function ensureProfilesLoaded(force = false) {
+    if (!isLoggedIn.value)
+      return
+    return remoteCache.ensure('profiles', () => loadProfiles(), { force })
   }
 
   /** 加载档案详情（编辑页拉最新数据） */
@@ -711,27 +734,54 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
   }
 
-  /** 加载用户权益：报告次数 + 问答次数（同一接口） */
+  /** 加载用户权益：优先二期 member/status，失败回退 credits */
   async function loadCredits(): Promise<boolean> {
     try {
-      const res = await getCredits()
-      if (res.code === 200 && res.data) {
-        const parsed = parseCreditsPayload(res.data)
-        totalAvailableCount.value = parsed.credits
-        if (parsed.productId != null)
-          activeProductId.value = parsed.productId
+      let payload: unknown = null
+      let usedMemberStatus = false
 
-        if (parsed.chatFieldsPresent) {
-          chatRemaining.value = parsed.chatRemaining
-          chatUnlimited.value = parsed.chatUnlimited
-          chatCreditsFromServer.value = true
+      try {
+        const res = await getMemberStatus() as Record<string, unknown>
+        const code = Number(res?.code)
+        const httpOk = !Number.isFinite(code) || (code >= 200 && code < 300)
+        if (httpOk) {
+          const unwrapped = unwrapBizPayload(res)
+          if (unwrapped != null) {
+            payload = unwrapped
+            usedMemberStatus = true
+          }
         }
-        else {
-          chatCreditsFromServer.value = false
-        }
-        return true
       }
-      return false
+      catch (e) {
+        console.warn('member/status 不可用，回退 credits', e)
+      }
+
+      if (!usedMemberStatus) {
+        const res = await getCredits()
+        if (res.code === 200 && res.data)
+          payload = res.data
+        else
+          return false
+      }
+
+      const parsed = parseCreditsPayload(payload)
+      totalAvailableCount.value = parsed.credits
+      if (parsed.productId != null)
+        activeProductId.value = parsed.productId
+
+      if (parsed.chatFieldsPresent) {
+        chatRemaining.value = parsed.chatRemaining
+        chatUnlimited.value = parsed.chatUnlimited
+        chatCreditsFromServer.value = true
+      }
+      else {
+        chatCreditsFromServer.value = false
+      }
+
+      memberStatus.value = parsed.memberStatus || ''
+      memberSku.value = parsed.memberSku || ''
+      memberExpiresAt.value = parsed.memberExpiresAt || ''
+      return true
     }
     catch (e) {
       console.error('加载可用次数失败', e)
@@ -792,9 +842,10 @@ export const useGuoxinStore = defineStore('guoxin', () => {
 
   /** 登录/恢复会话后拉取首页所需远程数据 */
   async function bootstrapAfterLogin() {
-    remoteCache.invalidate(['credits'])
+    remoteCache.invalidate(['credits', 'profiles'])
     await Promise.all([
       ensureCreditsLoaded(),
+      ensureProfilesLoaded(true),
       loadHomeLatestRecord(),
     ])
   }
@@ -1062,6 +1113,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     chatUnlimited,
     chatCreditsFromServer,
     activeProductId,
+    memberStatus,
+    memberSku,
+    memberExpiresAt,
     doSendSmsCode,
     doLoginBySms,
     doWxLogin,
@@ -1070,6 +1124,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     doBindMobileWithSms,
     loadRelationOptions,
     loadProfiles,
+    ensureProfilesLoaded,
     loadProfileDetail,
     relationOptions,
     loadProducts,

@@ -1,8 +1,11 @@
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   title?: string
   showBack?: boolean
-}>()
+  showMine?: boolean
+}>(), {
+  showMine: true,
+})
 
 const emit = defineEmits<{
   back: []
@@ -25,7 +28,11 @@ const emit = defineEmits<{
       {{ title || '国心解读' }}
     </text>
     <view class="header-side right">
-      <view class="header-mine" @tap="emit('mine')">
+      <view
+        v-if="showMine"
+        class="header-mine"
+        @tap="emit('mine')"
+      >
         我的
       </view>
     </view>

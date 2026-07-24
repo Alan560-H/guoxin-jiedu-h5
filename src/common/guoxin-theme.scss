@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;700;900&display=swap');
 
 :root {
-  --gx-bg: #FCF5E9;
+  --gx-bg: #fae5e2;
   --gx-card: #FFF9ED;
   --gx-green: #153F33;
   --gx-green-dark: #1E3F35;
@@ -27,8 +27,8 @@ html.gx-scale-xlarge {
 page {
   background:
     url("@/static/assets/rice-paper-bg.svg") center / cover no-repeat,
-    linear-gradient(140deg, rgba(255, 252, 244, 0.95), rgba(249, 239, 220, 0.9)),
-    #FCF5E9;
+    linear-gradient(140deg, rgba(255, 245, 243, 0.95), rgba(250, 229, 226, 0.92)),
+    #fae5e2;
   color: var(--gx-text);
   font-family: "Noto Sans SC", system-ui, -apple-system, sans-serif;
   font-size: calc(28rpx * var(--gx-font-scale));
