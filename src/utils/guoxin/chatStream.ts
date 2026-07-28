@@ -114,7 +114,7 @@ export async function postChatMessagesStream(
     ? profileIdNum
     : body.profileId
 
-  const file = (body.file?.length ? body.file : defaultStreamChatFiles()).map(f => ({
+  const files = (body.files?.length ? body.files : defaultStreamChatFiles()).map(f => ({
     tyep: f.tyep || 'image',
     transfer_method: f.transfer_method || 'remote_url',
     url: f.url ?? '',
@@ -127,7 +127,7 @@ export async function postChatMessagesStream(
     body: JSON.stringify({
       profileId,
       query,
-      file,
+      files,
     }),
     signal: mergedSignal,
   })

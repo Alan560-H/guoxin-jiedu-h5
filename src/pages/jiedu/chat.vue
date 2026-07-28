@@ -410,7 +410,7 @@ function onSubmitComposer() {
   void askQuestion(q)
 }
 
-async function askQuestion(question: string, options?: { file?: StreamChatFile[], imageUrl?: string }) {
+async function askQuestion(question: string, options?: { files?: StreamChatFile[], imageUrl?: string }) {
   const q = question.trim()
   if (!q || asking.value)
     return
@@ -437,7 +437,7 @@ async function askQuestion(question: string, options?: { file?: StreamChatFile[]
   }
 
   const attach = pendingAttachment.value
-  const file = options?.file
+  const files = options?.files
     ?? (attach?.file ? [attach.file] : undefined)
   const imageUrl = options?.imageUrl
     ?? attach?.localPath
@@ -477,7 +477,7 @@ async function askQuestion(question: string, options?: { file?: StreamChatFile[]
       {
         profileId,
         query: q,
-        ...(file?.length ? { file } : {}),
+        ...(files?.length ? { files } : {}),
       },
       {
         onDelta: (full) => {
@@ -719,6 +719,7 @@ function scrollToLatestAssistant() {
     <GxChatComposer
       ref="composerRef"
       v-model="draft"
+      :allow-attach="true"
       :placeholder="composerPlaceholder"
       :disabled="asking"
       @attachment="onComposerAttachment"

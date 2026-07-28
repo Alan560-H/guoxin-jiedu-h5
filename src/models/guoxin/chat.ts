@@ -2,6 +2,7 @@
 
 /**
  * streamChat 附件字段（与后端约定一致；字段名即为 tyep）
+ * 请求体字段名为 files
  */
 export interface StreamChatFile {
   tyep: string
@@ -13,7 +14,7 @@ export interface ChatMessageRequest {
   /** 档案 ID */
   profileId: number | string
   query: string
-  file?: StreamChatFile[]
+  files?: StreamChatFile[]
 }
 
 export interface ChatStreamSession {
@@ -33,7 +34,7 @@ export function createChatStreamQuotaError(message = '今日问答次数已用�
   return err
 }
 
-/** 无图时仍按约定传占位 file */
+/** 无图时仍按约定传占位 files */
 export function defaultStreamChatFiles(): StreamChatFile[] {
   return [{
     tyep: 'image',
@@ -42,7 +43,7 @@ export function defaultStreamChatFiles(): StreamChatFile[] {
   }]
 }
 
-/** 有远程图时组装 streamChat file；空 url 则回退占位 */
+/** 有远程图时组装 streamChat files；空 url 则回退占位 */
 export function buildStreamChatFiles(remoteUrl?: string): StreamChatFile[] {
   const url = String(remoteUrl || '').trim()
   if (!url)

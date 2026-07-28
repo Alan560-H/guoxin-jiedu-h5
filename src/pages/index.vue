@@ -46,8 +46,9 @@ const questionBanks = computed(() =>
 const questions = computed(() => questionBanks.value[bankIndex.value % questionBanks.value.length] ?? questionBanks.value[0] ?? [])
 
 onMounted(() => {
-  // 题库只拉一次；档案列表交给 onShow（避免与 onShow 首屏各打一遍 profiles）
-  void loadRemoteQuestionBank()
+  // 未登录不打题库接口；档案列表交给 onShow
+  if (store.isLoggedIn)
+    void loadRemoteQuestionBank()
 })
 
 onLoad((query) => {
@@ -74,6 +75,8 @@ onShow(() => {
 })
 
 async function loadRemoteQuestionBank() {
+  if (!store.isLoggedIn || remoteBanks.value?.length)
+    return
   try {
     const res = await getDifyQuestionBank()
     const banks = parseQuestionBankPayload(unwrapBizPayload(res))
@@ -168,6 +171,7 @@ async function afterLoginSuccess() {
   forceSelectFirst.value = true
   await store.bootstrapAfterLogin()
   await bootstrapHome(true)
+  void loadRemoteQuestionBank()
   if (pendingInvite.value) {
     pendingInvite.value = false
     showInvite.value = true

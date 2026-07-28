@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import type { ChatComposerAttachment, StreamChatFile } from '@/models/guoxin/chat'
 import type { DifyUploadResult } from '@/models/guoxin/dify'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { uploadDifyFile } from '@/api/dify'
 import { buildStreamChatFiles } from '@/models/guoxin/chat'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue?: string
   placeholder?: string
   disabled?: boolean
   /** 是否展示选图；首页发问不带图，默认 true */
   allowAttach?: boolean
-}>()
+}>(), {
+  allowAttach: true,
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -22,6 +24,7 @@ const emit = defineEmits<{
 const draft = ref(props.modelValue || '')
 const previewPath = ref('')
 const uploading = ref(false)
+const showAttach = computed(() => props.allowAttach !== false)
 
 watch(
   () => props.modelValue,
@@ -56,7 +59,7 @@ function resetAttachment() {
 
 defineExpose({ resetAttachment })
 
-/** 上传响应优先用 source_url（后端真实字段） */
+/** 上传响应优先用 source_url */
 function resolveRemoteUrl(data: DifyUploadResult): string {
   return String(
     data.source_url
@@ -147,17 +150,21 @@ async function uploadPicked(localPath: string) {
 
     <view class="composer">
       <view
-        v-if="allowAttach !== false"
+        v-if="showAttach"
         class="composer-attach"
-        :class="{ disabled: disabled || uploading }"
+        :class="{ disabled: props.disabled || uploading }"
         @tap="onPickImage"
       >
-        图
+        <view
+          class="i-carbon-image composer-attach-icon"
+          aria-hidden="true"
+        >
+        </view>
       </view>
       <input
         class="composer-input"
         :value="draft"
-        :disabled="disabled"
+        :disabled="props.disabled"
         :placeholder="placeholder || '输入你的问题'"
         confirm-type="send"
         @input="onInput"
@@ -165,7 +172,7 @@ async function uploadPicked(localPath: string) {
       >
       <view
         class="composer-send"
-        :class="{ disabled: disabled || uploading }"
+        :class="{ disabled: props.disabled || uploading }"
         @tap="onSubmit"
       >
         发送
@@ -227,8 +234,6 @@ async function uploadPicked(localPath: string) {
   border: 2rpx solid var(--gx-chat-border, #eccdbb);
   background: #fff;
   color: var(--gx-chat-red, #b43a3d);
-  font-size: 28rpx;
-  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -237,6 +242,12 @@ async function uploadPicked(localPath: string) {
   &.disabled {
     opacity: 0.45;
   }
+}
+
+.composer-attach-icon {
+  width: 36rpx;
+  height: 36rpx;
+  color: var(--gx-chat-red, #b43a3d);
 }
 
 .composer-input {
@@ -252,18 +263,18 @@ async function uploadPicked(localPath: string) {
 }
 
 .composer-send {
-  width: 96rpx;
-  height: 96rpx;
+  width: 84rpx;
+  height: 84rpx;
   border-radius: 50%;
   background: linear-gradient(154deg, var(--gx-chat-red, #b43a3d), var(--gx-chat-red-deep, #7f1f26));
   color: #fffdf7;
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 8rpx 20rpx rgba(127, 31, 38, 0.28);
+  box-shadow: 0 6rpx 16rpx rgba(127, 31, 38, 0.24);
 
   &.disabled {
     opacity: 0.45;
