@@ -1,0 +1,92 @@
+{
+  "pages": [
+    {
+      "path": "pages/index",
+      "type": "home",
+      "style": {
+        "navigationBarTitleText": "国心解读"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/credits/index",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "解读权益"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/jiedu/complete",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "解读已完成"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/jiedu/detail",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "专属解读详情"
+      },
+      "layout": "guoxinReport"
+    },
+    {
+      "path": "pages/jiedu/processing",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "正在整理"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/jiedu/setup",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "心语老师"
+      },
+      "layout": "guoxinChat"
+    },
+    {
+      "path": "pages/legal/privacy",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "隐私协议"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/legal/service",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "用户服务协议"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/profile/create",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "创建心语档案"
+      },
+      "layout": "guoxin"
+    },
+    {
+      "path": "pages/profile/list",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "我的心语档案"
+      },
+      "layout": "guoxin"
+    }
+  ],
+  "globalStyle": {
+    "backgroundColor": "#FAF6EF",
+    "navigationBarBackgroundColor": "#1E3F35",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "国心解读 H5",
+    "navigationStyle": "custom"
+  },
+  "subPackages": []
+}
