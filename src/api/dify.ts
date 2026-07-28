@@ -29,7 +29,7 @@ export function getDifySuggested(messageId: string): Promise<ResponseData<unknow
 
 /**
  * 按档案拉取对话历史
- * GET /dify/messages?profileId=&firstId=&limit=20
+ * GET /dify/messages?profileId=&firstId=&limit=99
  */
 export function getDifyMessages(params: {
   profileId: string
@@ -39,7 +39,7 @@ export function getDifyMessages(params: {
   return http.get(`${BASE}/dify/messages`, {
     profileId: String(params.profileId || '').trim(),
     firstId: params.firstId ?? '',
-    limit: params.limit ?? 20,
+    limit: params.limit ?? 99,
   })
 }
 

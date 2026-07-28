@@ -74,7 +74,7 @@ export default defineManifestConfig({
     themeLocation: 'theme.json',
     router: {
       mode: 'history',
-      base: '/h5/',
+      base: '/h6/',
     },
   },
   'uniStatistics': {

@@ -1,109 +1,36 @@
 <script setup lang="ts">
-import type { DisplayMemberPlan } from '@/constants/memberPlans'
-import { onShow } from '@dcloudio/uni-app'
-import { computed, onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
-import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
-import { mapProductsToPlans } from '@/constants/memberPlans'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
-import { savePendingPaidPlan, takePendingPaidPlan } from '@/utils/guoxin/pendingPaidPlan'
 
 const store = useGuoxinStore()
-const purchasingId = ref('')
-const showLogin = ref(false)
 
-const plans = computed(() => mapProductsToPlans(store.serverProducts))
-
+/** 对齐设计稿：会员优势对比表 */
 const comparisonRows = [
   { item: '日常八字问答', free: '每日限 3 次', vip: '7×24 无限次，不限频次' },
-  { item: '深度八字报告', free: '按次购买', vip: '私人定制专属报告' },
-  { item: '多八字用户', free: '支持切换', vip: '支持切换与管理' },
-  { item: '报告内容留存', free: '生成后可查', vip: '会员期内完整留存' },
+  { item: '深度八字报告', free: '无', vip: '私人定制专属报告' },
+  { item: '八字用户管理', free: '仅自己 1 位', vip: '支持多人八字切换解读' },
+  { item: '邀请填写八字', free: '不支持', vip: '好友登录填写并授权' },
+  { item: '多维八字解读', free: '仅基础内容', vip: '全盘梳理多维度深度解读' },
+  { item: '报告内容留存', free: '无', vip: '完整内容永久保存可回看' },
+  { item: '专属国学搭子', free: '无', vip: '全程陪伴，随时沟通' },
+  { item: '反复追问沟通', free: '受限制', vip: '支持反复追问持续沟通' },
+  { item: '日常难题实时解惑', free: '基础回复', vip: '深度解答，帮你捋清思路' },
 ]
 
-onMounted(async () => {
-  if (!store.isLoggedIn) {
+onMounted(() => {
+  if (!store.isLoggedIn)
     uni.reLaunch({ url: RouterPaths.home })
-    return
-  }
-  await Promise.all([
-    store.ensureProductsLoaded(true),
-    store.ensureCreditsLoaded(),
-  ])
-})
-
-onShow(() => {
-  if (store.isLoggedIn)
-    void store.ensureProductsLoaded()
 })
 
 function onBack() {
   navigateBackOrHome()
 }
 
-function goPaywall() {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack()
-    return
-  }
-  uni.redirectTo({ url: RouterPaths.credits })
-}
-
-function requirePurchaseReady(): boolean {
-  if (store.needsBindMobile()) {
-    showLogin.value = true
-    return false
-  }
-  return true
-}
-
-function goPaid(plan: DisplayMemberPlan) {
-  const q = [
-    `sku=${encodeURIComponent(plan.sku)}`,
-    `name=${encodeURIComponent(plan.name)}`,
-    `days=${plan.days}`,
-    `reports=${plan.reports}`,
-  ].join('&')
-  uni.redirectTo({ url: `${RouterPaths.creditsPaid}?${q}` })
-}
-
-async function purchasePlan(plan: DisplayMemberPlan) {
-  if (plan.memberExclusive && !store.chatUnlimited) {
-    uni.showToast({ title: '该套餐仅限有效会员购买', icon: 'none' })
-    return
-  }
-  if (!requirePurchaseReady())
-    return
-  if (purchasingId.value)
-    return
-
-  purchasingId.value = plan.id
-  savePendingPaidPlan({
-    sku: plan.sku,
-    name: plan.name,
-    days: plan.days,
-    reports: plan.reports,
-    price: plan.price,
-  })
-  try {
-    const result = await store.purchaseRemoteProduct(plan.productId, { silentSuccess: true })
-    if (result === true)
-      goPaid(plan)
-    else if (result === 'mweb_redirect')
-      uni.showToast({ title: '正在跳转微信支付', icon: 'none' })
-    else
-      takePendingPaidPlan()
-  }
-  finally {
-    purchasingId.value = ''
-  }
-}
-
-async function handleLoginSuccess() {
-  await store.ensureCreditsLoaded(true)
+function onContactService() {
+  uni.showToast({ title: '客服下一步开放', icon: 'none' })
 }
 </script>
 
@@ -117,31 +44,35 @@ async function handleLoginSuccess() {
     />
 
     <scroll-view scroll-y class="member-scroll" :show-scrollbar="false">
-      <view class="member-inner">
-        <view class="member-head">
-          <view class="member-mark">
-            享
+      <view class="sheet">
+        <!-- 红色英雄区 -->
+        <view class="hero">
+          <view class="seal">
+            <text class="seal-text">
+              享
+            </text>
           </view>
           <text class="eyebrow">
             国心解读会员
           </text>
-          <text class="title">
+          <text class="hero-title">
             会员优势对比
           </text>
-          <text class="sub">
+          <text class="hero-sub">
             开通后立即解锁完整权益
           </text>
         </view>
 
-        <view class="comparison">
+        <!-- 对比表 -->
+        <view class="table-card">
           <view class="cmp-row cmp-head">
             <text class="col-item">
               权益项目
             </text>
-            <text class="col">
+            <text class="col-free">
               免费用户
             </text>
-            <text class="col vip">
+            <text class="col-vip">
               会员用户
             </text>
           </view>
@@ -153,71 +84,46 @@ async function handleLoginSuccess() {
             <text class="col-item">
               {{ row.item }}
             </text>
-            <text class="col">
+            <text class="col-free">
               {{ row.free }}
             </text>
-            <text class="col vip">
-              {{ row.vip }}
-            </text>
-          </view>
-        </view>
-
-        <view class="plan-block">
-          <text class="block-title">
-            选择套餐购买
-          </text>
-          <text class="block-sub">
-            以下商品来自服务端，支付走微信网页支付。
-          </text>
-
-          <view v-if="plans.length === 0" class="empty">
-            暂无可购买套餐
-          </view>
-
-          <view
-            v-for="plan in plans"
-            :key="plan.id"
-            class="plan-option"
-            @tap="purchasePlan(plan)"
-          >
-            <view class="plan-copy">
-              <text class="plan-name">
-                {{ plan.name }}
-              </text>
-              <text class="plan-desc">
-                {{ plan.reportBenefit }}
-                <text v-if="plan.days > 0">
-                  · {{ plan.days }} 天
+            <view class="col-vip">
+              <view class="check">
+                <text class="check-mark">
+                  ✓
                 </text>
-              </text>
-            </view>
-            <view class="plan-price">
-              <text v-if="plan.showOrigin" class="del">
-                ¥{{ plan.originalPrice }}
-              </text>
-              <text class="now">
-                ¥{{ plan.price }}
-              </text>
-              <text class="cta">
-                {{ purchasingId === plan.id ? '支付中...' : '购买' }}
+              </view>
+              <text class="vip-text">
+                {{ row.vip }}
               </text>
             </view>
           </view>
         </view>
-
-        <view class="back-paywall" @tap="goPaywall">
-          返回套餐页
-        </view>
-        <view class="safe-bottom" />
       </view>
-    </scroll-view>
 
-    <GxLoginModal
-      :show="showLogin"
-      mode="bindMobile"
-      @close="showLogin = false"
-      @success="handleLoginSuccess"
-    />
+      <view class="bottom-block">
+        <view class="tip-bar">
+          <text class="tip-text">
+            年度会员更划算：平均成本更低，权益更全
+          </text>
+        </view>
+
+        <view class="cta-btn" @tap="onContactService">
+          <text class="cta-main">
+            联系客服开通
+          </text>
+          <text class="cta-sub">
+            新人首单 · 月度 · 季度 · 年度
+          </text>
+        </view>
+
+        <text class="footnote">
+          专属客服协助确认套餐、付款方式与权益到账
+        </text>
+      </view>
+
+      <view class="safe-bottom" />
+    </scroll-view>
   </view>
 </template>
 
@@ -226,6 +132,9 @@ async function handleLoginSuccess() {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 214, 196, 0.55), transparent 28%),
+    linear-gradient(180deg, #f8e8e4 0%, #f6ebe4 48%, #f4e7df 100%);
 }
 
 .member-scroll {
@@ -233,63 +142,80 @@ async function handleLoginSuccess() {
   height: 0;
 }
 
-.member-inner {
-  padding: 24rpx 28rpx 48rpx;
+.sheet {
+  margin: 40rpx 28rpx 0;
+  border-radius: 28rpx;
+  overflow: hidden;
+  background: #fffdf9;
+  box-shadow: 0 12rpx 32rpx rgba(127, 31, 38, 0.12);
 }
 
-.member-head {
+.hero {
+  position: relative;
+  padding: 48rpx 28rpx 40rpx;
   text-align: center;
-  padding: 24rpx 16rpx 32rpx;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 190, 120, 0.3), transparent 42%),
+    radial-gradient(circle at 85% 30%, rgba(255, 220, 160, 0.16), transparent 28%),
+    linear-gradient(165deg, #c9484a 0%, #a52f33 48%, #7f1f26 100%);
 }
 
-.member-mark {
-  width: 88rpx;
-  height: 88rpx;
-  margin: 0 auto 16rpx;
+.seal {
+  width: 96rpx;
+  height: 96rpx;
+  margin: 0 auto 20rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, var(--gx-chat-gold), #c4842a);
-  color: #fffdf7;
+  background: linear-gradient(145deg, #f6d98a 0%, #e2b24a 45%, #c9962e 100%);
+  box-shadow:
+    0 0 0 8rpx rgba(246, 217, 138, 0.28),
+    0 10rpx 24rpx rgba(70, 20, 20, 0.28);
+}
+
+.seal-text {
   font-family: "Noto Serif SC", "Songti SC", serif;
-  font-size: 40rpx;
+  font-size: 44rpx;
   font-weight: 800;
+  color: #fffdf7;
+  line-height: 1;
+  text-shadow: 0 2rpx 4rpx rgba(120, 60, 10, 0.25);
 }
 
 .eyebrow {
   display: block;
   font-size: 24rpx;
-  color: var(--gx-chat-muted);
+  color: rgba(255, 253, 247, 0.82);
   font-weight: 700;
+  letter-spacing: 2rpx;
 }
 
-.title {
+.hero-title {
   display: block;
-  margin: 10rpx 0;
+  margin: 12rpx 0 10rpx;
   font-family: "Noto Serif SC", "Songti SC", serif;
-  font-size: 40rpx;
+  font-size: 52rpx;
   font-weight: 800;
-  color: var(--gx-chat-ink);
+  color: #fffdf7;
+  line-height: 1.2;
 }
 
-.sub {
+.hero-sub {
   display: block;
   font-size: 24rpx;
-  color: var(--gx-chat-hint);
+  color: rgba(255, 253, 247, 0.78);
 }
 
-.comparison {
-  border-radius: var(--gx-chat-radius-sm);
-  overflow: hidden;
-  border: 2rpx solid var(--gx-chat-border);
-  background: var(--gx-chat-paper);
+.table-card {
+  background: #fffdf9;
 }
 
 .cmp-row {
   display: flex;
   align-items: stretch;
-  border-bottom: 2rpx solid var(--gx-chat-border);
+  min-height: 88rpx;
+  border-bottom: 1rpx solid rgba(220, 190, 175, 0.55);
 
   &:last-child {
     border-bottom: none;
@@ -297,128 +223,141 @@ async function handleLoginSuccess() {
 }
 
 .cmp-head {
-  background: var(--gx-chat-red-soft);
-  font-weight: 800;
+  min-height: 72rpx;
+  background: #8f2428;
 }
 
 .col-item,
-.col {
-  padding: 20rpx 12rpx;
-  font-size: 22rpx;
-  line-height: 1.45;
-  color: var(--gx-chat-muted);
+.col-free,
+.col-vip {
+  display: flex;
+  align-items: center;
   box-sizing: border-box;
+  padding: 18rpx 10rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
 }
 
 .col-item {
+  width: 26%;
+  justify-content: center;
+  text-align: center;
+  font-weight: 700;
+  color: #5a3a2e;
+  background: #fffaf4;
+}
+
+.col-free {
   width: 28%;
-  font-weight: 700;
-  color: var(--gx-chat-ink);
-}
-
-.col {
-  width: 36%;
+  justify-content: center;
   text-align: center;
+  color: #a89080;
+  background: #fffdf9;
 }
 
-.col.vip {
-  color: var(--gx-chat-red);
+.col-vip {
+  width: 46%;
+  gap: 8rpx;
+  padding-left: 14rpx;
+  padding-right: 14rpx;
+  color: #8a4a20;
   font-weight: 700;
-  background: rgba(180, 58, 61, 0.04);
+  background: #fff3e0;
 }
 
-.plan-block {
-  margin-top: 36rpx;
-}
-
-.block-title {
-  display: block;
-  font-size: 30rpx;
+.cmp-head .col-item,
+.cmp-head .col-free,
+.cmp-head .col-vip {
+  justify-content: center;
+  text-align: center;
+  color: #fffdf7;
   font-weight: 800;
-  color: var(--gx-chat-ink);
+  font-size: 24rpx;
+  background: transparent;
 }
 
-.block-sub {
-  display: block;
-  margin: 8rpx 0 20rpx;
-  font-size: 22rpx;
-  color: var(--gx-chat-hint);
-}
-
-.empty {
-  padding: 40rpx;
-  text-align: center;
-  color: var(--gx-chat-muted);
-  font-size: 26rpx;
-}
-
-.plan-option {
+.check {
+  flex-shrink: 0;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f0c15a, #d5a43d);
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  padding: 24rpx;
-  margin-bottom: 16rpx;
-  border-radius: var(--gx-chat-radius-sm);
-  background: var(--gx-chat-paper);
-  border: 2rpx solid var(--gx-chat-border);
+  justify-content: center;
 }
 
-.plan-copy {
+.check-mark {
+  font-size: 18rpx;
+  font-weight: 800;
+  color: #fffdf7;
+  line-height: 1;
+}
+
+.vip-text {
   flex: 1;
   min-width: 0;
-}
-
-.plan-name {
-  display: block;
-  font-size: 28rpx;
-  font-weight: 800;
-  color: var(--gx-chat-ink);
-}
-
-.plan-desc {
-  display: block;
-  margin-top: 6rpx;
   font-size: 22rpx;
-  color: var(--gx-chat-muted);
-}
-
-.plan-price {
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.del {
-  display: block;
-  font-size: 20rpx;
-  color: var(--gx-chat-hint);
-  text-decoration: line-through;
-}
-
-.now {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 800;
-  color: var(--gx-chat-red);
-}
-
-.cta {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  font-weight: 800;
-  color: var(--gx-chat-brown);
-}
-
-.back-paywall {
-  margin-top: 12rpx;
-  text-align: center;
-  font-size: 26rpx;
+  line-height: 1.4;
+  color: #8a4a20;
   font-weight: 700;
-  color: var(--gx-chat-red);
-  padding: 20rpx;
+}
+
+.bottom-block {
+  padding: 36rpx 40rpx 16rpx;
+}
+
+.tip-bar {
+  padding: 18rpx 24rpx;
+  border-radius: 999rpx;
+  background: #f8e6d4;
+  text-align: center;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #9a673a;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.cta-btn {
+  margin-top: 28rpx;
+  padding: 26rpx 36rpx;
+  border-radius: 999rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12rpx 20rpx;
+  background: linear-gradient(135deg, #c9484a, #b43a3d 40%, #7f1f26);
+  box-shadow: 0 12rpx 28rpx rgba(127, 31, 38, 0.28);
+}
+
+.cta-main {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #fffdf7;
+  line-height: 1.2;
+}
+
+.cta-sub {
+  font-size: 22rpx;
+  color: rgba(255, 253, 247, 0.88);
+  line-height: 1.3;
+}
+
+.footnote {
+  display: block;
+  margin-top: 20rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: #b09a8c;
+  line-height: 1.5;
 }
 
 .safe-bottom {
-  height: calc(24rpx + env(safe-area-inset-bottom));
+  height: calc(32rpx + env(safe-area-inset-bottom));
 }
 </style>

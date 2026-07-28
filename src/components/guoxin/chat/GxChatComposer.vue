@@ -59,15 +59,8 @@ function resetAttachment() {
 
 defineExpose({ resetAttachment })
 
-/** 上传响应优先用 source_url */
-function resolveRemoteUrl(data: DifyUploadResult): string {
-  return String(
-    data.source_url
-    || data.preview_url
-    || data.original_url
-    || data.url
-    || '',
-  ).trim()
+function pickUploadFileId(data: DifyUploadResult): string {
+  return String(data.id || data.fileId || '').trim()
 }
 
 async function onPickImage() {
@@ -104,11 +97,11 @@ async function uploadPicked(localPath: string) {
     if (res.code !== 200 || !res.data)
       throw new Error(res.msg || '上传失败')
 
-    const remoteUrl = resolveRemoteUrl(res.data)
-    if (!remoteUrl)
-      throw new Error('上传成功但未返回可用地址')
+    const uploadFileId = pickUploadFileId(res.data)
+    if (!uploadFileId)
+      throw new Error('上传成功但未返回文件 ID')
 
-    const files = buildStreamChatFiles(remoteUrl)
+    const files = buildStreamChatFiles(uploadFileId)
     const file = files[0] as StreamChatFile
     emit('attachment', { localPath, file })
   }
@@ -158,8 +151,7 @@ async function uploadPicked(localPath: string) {
         <view
           class="i-carbon-image composer-attach-icon"
           aria-hidden="true"
-        >
-        </view>
+        />
       </view>
       <input
         class="composer-input"

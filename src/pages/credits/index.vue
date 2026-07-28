@@ -4,7 +4,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
-import { mapProductsToPlans } from '@/constants/memberPlans'
+import { mapProductsToPlans, splitPlansByPromotion } from '@/constants/memberPlans'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { ensureH5RouterBasePath } from '@/utils/guoxin/h5RouterBase'
@@ -20,13 +20,10 @@ const countdownText = ref('00:00:00')
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 const plans = computed(() => mapProductsToPlans(store.serverProducts))
-const featured = computed(() => plans.value.find(p => p.showCountdown) ?? null)
-const listPlans = computed(() => {
-  const f = featured.value
-  if (!f)
-    return plans.value
-  return plans.value.filter(p => p.id !== f.id)
-})
+const split = computed(() => splitPlansByPromotion(plans.value))
+const trial = computed(() => split.value.trial)
+const regular = computed(() => split.value.regular)
+const boost = computed(() => split.value.boost)
 const isMember = computed(() => store.chatUnlimited)
 
 onMounted(async () => {
@@ -166,9 +163,16 @@ async function purchasePlan(plan: DisplayMemberPlan) {
 function buyLabel(plan: DisplayMemberPlan) {
   if (purchasingId.value === plan.id)
     return '支付中...'
+  if (plan.promotionSort === 1) {
+    if (plan.memberExclusive && !isMember.value)
+      return '会员可购'
+    return '咨询'
+  }
   if (plan.memberExclusive && !isMember.value)
     return '会员可购'
-  return '购买'
+  if (plan.promotionSort === 2)
+    return `¥${plan.price} 咨询购买`
+  return '咨询'
 }
 
 async function handleLoginSuccess() {
@@ -187,49 +191,59 @@ async function handleLoginSuccess() {
 
     <scroll-view scroll-y class="paywall-scroll" :show-scrollbar="false">
       <view class="paywall-inner">
+        <!-- 1. 多项会员权益入口 -->
         <view class="paywall-hero" @tap="goMember">
-          <text class="hero-eyebrow">
-            国心解读
-          </text>
-          <text class="hero-title">
-            多项会员权益
-          </text>
-          <text class="hero-link">
-            点击跳转详情页
+          <view class="hero-copy">
+            <text class="hero-eyebrow">
+              国心解读
+            </text>
+            <text class="hero-title">
+              多项会员权益
+            </text>
+            <text class="hero-link">
+              点击跳转详情页
+            </text>
+          </view>
+          <text class="hero-arrow">
+            ›
           </text>
         </view>
 
-        <view v-if="featured" class="featured-offer">
-          <text class="featured-badge">
-            限时优惠
+        <!-- 2. 新人体验包 promotionSort=2 -->
+        <view v-if="trial" class="trial-card">
+          <text class="trial-badge">
+            今日新客专享
           </text>
-          <view class="featured-head">
-            <view class="featured-copy">
-              <text class="featured-name">
-                {{ featured.name }}
+          <view class="trial-head">
+            <view class="trial-copy">
+              <text class="trial-name">
+                {{ trial.name }}
               </text>
-              <text class="featured-title">
-                {{ featured.chatBenefit }}
+              <text class="trial-title">
+                {{ trial.chatBenefit }}
               </text>
             </view>
-            <view class="featured-price">
-              <text v-if="featured.showOrigin" class="price-del">
-                ¥{{ featured.originalPrice }}
+            <view class="trial-price">
+              <text v-if="trial.showOrigin" class="price-del">
+                ¥{{ trial.originalPrice }}
               </text>
               <text class="price-now">
                 <text class="yen">
                   ¥
-                </text>{{ featured.price }}
+                </text>{{ trial.price }}
               </text>
             </view>
           </view>
-          <view class="featured-benefits">
-            <text>{{ featured.reportBenefit }}</text>
-            <text v-if="featured.desc">
-              {{ featured.desc }}
+          <view v-if="trial.benefitChips.length" class="trial-chips">
+            <text
+              v-for="(chip, idx) in trial.benefitChips"
+              :key="idx"
+              class="trial-chip"
+            >
+              {{ chip }}
             </text>
           </view>
-          <view class="featured-foot">
+          <view class="trial-foot">
             <view class="countdown">
               <text>专享价剩余</text>
               <text class="countdown-time">
@@ -237,11 +251,11 @@ async function handleLoginSuccess() {
               </text>
             </view>
             <view
-              class="featured-buy"
-              :class="{ disabled: purchasingId === featured.id }"
-              @tap.stop="purchasePlan(featured)"
+              class="trial-buy"
+              :class="{ disabled: purchasingId === trial.id }"
+              @tap.stop="purchasePlan(trial)"
             >
-              {{ buyLabel(featured) }}
+              {{ buyLabel(trial) }}
             </view>
           </view>
         </view>
@@ -250,53 +264,95 @@ async function handleLoginSuccess() {
           暂无可购买的套餐，请稍后再试。
         </view>
 
-        <view class="package-section">
+        <!-- 3. 普通权益包：同一外框，行间分隔（对齐 demo/体验包/权益包.png） -->
+        <view v-if="regular.length" class="package-section">
           <view
-            v-for="pkg in listPlans"
+            v-for="pkg in regular"
             :key="pkg.id"
-            class="package-card"
-            :class="{ exclusive: pkg.memberExclusive }"
+            class="package-row"
           >
             <view class="package-main">
-              <text v-if="pkg.memberExclusive" class="exclusive-status">
-                {{ isMember ? '会员专享加购价' : '仅限有效会员购买' }}
-              </text>
               <text class="package-name">
                 {{ pkg.name }}
               </text>
               <text class="package-line">
-                <text class="em">
-                  问答
-                </text> {{ pkg.chatBenefit }}
+                <text class="em">问答</text>{{ pkg.chatBenefit }}
               </text>
               <text class="package-line">
-                <text class="em">
-                  报告
-                </text> {{ pkg.reportBenefit }}
+                <text class="em">报告</text>{{ pkg.reportBenefit }}
               </text>
               <text v-if="pkg.footnote" class="package-note">
                 {{ pkg.footnote }}
               </text>
             </view>
-            <view class="package-buy">
-              <text v-if="pkg.memberExclusive" class="member-badge">
-                会员专属
-              </text>
-              <text v-if="pkg.showOrigin" class="price-del">
-                ¥{{ pkg.originalPrice }}
-              </text>
-              <text v-if="pkg.showOrigin" class="sale-label">
-                折后价
-              </text>
-              <text class="sale-price">
-                ¥{{ pkg.price }}
-              </text>
+            <view class="package-side">
+              <view class="package-price-block">
+                <text v-if="pkg.showOrigin" class="price-del">
+                  ¥{{ pkg.originalPrice }}
+                </text>
+                <text v-if="pkg.showOrigin" class="sale-label">
+                  折后价
+                </text>
+                <text class="sale-price">
+                  ¥{{ pkg.price }}
+                </text>
+              </view>
               <view
                 class="buy-btn"
                 :class="{ disabled: purchasingId === pkg.id }"
                 @tap="purchasePlan(pkg)"
               >
                 {{ buyLabel(pkg) }}
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 4. 单次报告加油包 promotionSort=1，置底（对齐 demo/体验包/单次报告加油包.png） -->
+        <view
+          v-if="boost"
+          class="boost-card"
+        >
+          <view class="boost-badge">
+            <text class="boost-badge-text">
+              会员专属
+            </text>
+          </view>
+          <view class="boost-body">
+            <view class="boost-main">
+              <text class="boost-status">
+                仅限有效会员购买
+              </text>
+              <text class="boost-name">
+                {{ boost.name }}
+              </text>
+              <text class="boost-desc">
+                增加 {{ boost.reports > 0 ? boost.reports : 1 }} 次完整报告额度，不改变每日问答次数。
+              </text>
+            </view>
+            <view class="boost-side">
+              <view class="boost-price-block">
+                <text v-if="boost.showOrigin" class="boost-price-del">
+                  ¥{{ boost.originalPrice }}
+                </text>
+                <text v-if="boost.showOrigin" class="boost-sale-label">
+                  折后价
+                </text>
+                <text class="boost-sale-price">
+                  ¥{{ boost.price }}
+                </text>
+              </view>
+              <view
+                class="boost-btn"
+                :class="{
+                  locked: boost.memberExclusive && !isMember,
+                  disabled: purchasingId === boost.id,
+                }"
+                @tap="purchasePlan(boost)"
+              >
+                <text class="boost-btn-text" :lines="1">
+                  {{ buyLabel(boost) }}
+                </text>
               </view>
             </view>
           </view>
@@ -340,7 +396,11 @@ async function handleLoginSuccess() {
 }
 
 .paywall-hero {
-  padding: 40rpx 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 36rpx 32rpx;
   margin-bottom: 24rpx;
   border-radius: var(--gx-chat-radius);
   color: #fffdf7;
@@ -348,6 +408,11 @@ async function handleLoginSuccess() {
     radial-gradient(circle at 88% 14%, rgba(213, 164, 61, 0.45), transparent 32%),
     linear-gradient(150deg, var(--gx-chat-red), var(--gx-chat-red-deep));
   box-shadow: var(--gx-chat-shadow);
+}
+
+.hero-copy {
+  min-width: 0;
+  flex: 1;
 }
 
 .hero-eyebrow {
@@ -359,7 +424,7 @@ async function handleLoginSuccess() {
 
 .hero-title {
   display: block;
-  margin: 12rpx 0;
+  margin: 10rpx 0 8rpx;
   font-family: "Noto Serif SC", "Songti SC", serif;
   font-size: 44rpx;
   font-weight: 800;
@@ -372,70 +437,90 @@ async function handleLoginSuccess() {
   color: rgba(255, 253, 247, 0.82);
 }
 
-.featured-offer {
+.hero-arrow {
+  flex-shrink: 0;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(255, 253, 247, 0.16);
+  color: #fffdf7;
+  font-size: 36rpx;
+  line-height: 48rpx;
+  text-align: center;
+}
+
+.trial-card {
   position: relative;
   margin-bottom: 24rpx;
-  padding: 32rpx 28rpx 28rpx;
+  padding: 36rpx 28rpx 28rpx;
   border-radius: var(--gx-chat-radius);
-  background: linear-gradient(180deg, #fffdf8, #fff1e8);
-  border: 2rpx solid var(--gx-chat-border);
+  color: #fffdf7;
+  background:
+    radial-gradient(circle at 90% 10%, rgba(255, 214, 140, 0.35), transparent 36%),
+    linear-gradient(145deg, #c9484a 0%, #9b2429 55%, #7f1f26 100%);
   box-shadow: var(--gx-chat-shadow);
   overflow: hidden;
 }
 
-.featured-badge {
+.trial-badge {
   position: absolute;
   top: 0;
-  left: 0;
-  padding: 8rpx 20rpx;
-  border-bottom-right-radius: 16rpx;
-  background: var(--gx-chat-gold);
+  right: 0;
+  padding: 10rpx 22rpx;
+  border-bottom-left-radius: 20rpx;
+  background: linear-gradient(135deg, #f0c15a, #d5a43d);
   color: #5a3a12;
   font-size: 22rpx;
   font-weight: 800;
 }
 
-.featured-head {
+.trial-head {
   display: flex;
   justify-content: space-between;
   gap: 20rpx;
-  margin-top: 28rpx;
+  padding-right: 8rpx;
 }
 
-.featured-name {
+.trial-name {
   display: block;
   font-size: 24rpx;
-  color: var(--gx-chat-muted);
+  color: rgba(255, 253, 247, 0.78);
   font-weight: 700;
 }
 
-.featured-title {
+.trial-title {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 10rpx;
   font-family: "Noto Serif SC", "Songti SC", serif;
-  font-size: 36rpx;
+  font-size: 40rpx;
   font-weight: 800;
-  color: var(--gx-chat-ink);
+  color: #fffdf7;
+  line-height: 1.2;
 }
 
-.featured-price {
+.trial-price {
   text-align: right;
   flex-shrink: 0;
+  padding-top: 8rpx;
 }
 
 .price-del {
   display: block;
   font-size: 22rpx;
-  color: var(--gx-chat-hint);
+  color: rgba(255, 253, 247, 0.55);
   text-decoration: line-through;
+}
+
+.trial-price .price-del {
+  color: rgba(255, 253, 247, 0.55);
 }
 
 .price-now {
   display: block;
   margin-top: 4rpx;
-  font-size: 48rpx;
+  font-size: 52rpx;
   font-weight: 800;
-  color: var(--gx-chat-red);
+  color: #fffdf7;
   line-height: 1;
 }
 
@@ -444,16 +529,24 @@ async function handleLoginSuccess() {
   margin-right: 4rpx;
 }
 
-.featured-benefits {
+.trial-chips {
   display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  margin: 24rpx 0;
-  font-size: 24rpx;
-  color: var(--gx-chat-muted);
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin: 24rpx 0 28rpx;
 }
 
-.featured-foot {
+.trial-chip {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 253, 247, 0.14);
+  border: 2rpx solid rgba(255, 253, 247, 0.22);
+  color: #fffdf7;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.trial-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -462,28 +555,29 @@ async function handleLoginSuccess() {
 
 .countdown {
   font-size: 22rpx;
-  color: var(--gx-chat-brown);
+  color: rgba(255, 253, 247, 0.78);
 }
 
 .countdown-time {
   display: block;
   margin-top: 6rpx;
-  font-size: 30rpx;
+  font-size: 34rpx;
   font-weight: 800;
-  color: var(--gx-chat-red);
+  color: #ffe08a;
   letter-spacing: 2rpx;
 }
 
-.featured-buy,
-.buy-btn {
+.trial-buy {
   flex-shrink: 0;
-  padding: 16rpx 28rpx;
+  min-width: 220rpx;
+  padding: 20rpx 28rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, var(--gx-chat-red), var(--gx-chat-red-deep));
-  color: #fffdf7;
+  background: linear-gradient(135deg, #f6d27a, #e2b24a);
+  color: #6a4012;
   font-size: 26rpx;
   font-weight: 800;
   text-align: center;
+  box-shadow: 0 8rpx 18rpx rgba(90, 40, 20, 0.22);
 
   &.disabled {
     opacity: 0.55;
@@ -500,20 +594,21 @@ async function handleLoginSuccess() {
 .package-section {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  border-radius: 32rpx;
+  background: #fffdf9;
+  border: 1rpx solid rgba(232, 200, 178, 0.55);
+  box-shadow: 0 8rpx 24rpx rgba(127, 31, 38, 0.06);
+  overflow: hidden;
 }
 
-.package-card {
+.package-row {
   display: flex;
-  gap: 20rpx;
-  padding: 28rpx 24rpx;
-  border-radius: var(--gx-chat-radius-sm);
-  background: var(--gx-chat-paper);
-  border: 2rpx solid var(--gx-chat-border);
+  align-items: stretch;
+  gap: 12rpx;
+  padding: 32rpx 28rpx;
 
-  &.exclusive {
-    background: #fff8f0;
-    border-style: dashed;
+  & + .package-row {
+    border-top: 1rpx solid rgba(232, 200, 178, 0.45);
   }
 }
 
@@ -522,73 +617,236 @@ async function handleLoginSuccess() {
   min-width: 0;
 }
 
-.exclusive-status {
-  display: block;
-  margin-bottom: 8rpx;
-  font-size: 22rpx;
-  color: var(--gx-chat-brown);
-  font-weight: 700;
-}
-
 .package-name {
   display: block;
   font-family: "Noto Serif SC", "Songti SC", serif;
-  font-size: 30rpx;
+  font-size: 34rpx;
   font-weight: 800;
   color: var(--gx-chat-ink);
-  margin-bottom: 10rpx;
+  margin-bottom: 14rpx;
+  line-height: 1.2;
 }
 
 .package-line {
   display: block;
   font-size: 24rpx;
-  color: var(--gx-chat-muted);
-  line-height: 1.5;
+  color: #8a6a5a;
+  line-height: 1.6;
 }
 
 .em {
   font-weight: 800;
-  color: var(--gx-chat-brown);
-  margin-right: 8rpx;
+  color: #6b3f32;
+  margin-right: 4rpx;
 }
 
 .package-note {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 12rpx;
   font-size: 22rpx;
-  color: var(--gx-chat-hint);
+  color: #b09a8c;
+  line-height: 1.45;
 }
 
-.package-buy {
+.package-side {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  justify-content: center;
+  justify-content: space-between;
   flex-shrink: 0;
-  min-width: 140rpx;
+  min-width: 156rpx;
+  padding-top: 4rpx;
 }
 
-.member-badge {
-  margin-bottom: 8rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 999rpx;
-  background: var(--gx-chat-gold-soft);
-  color: var(--gx-chat-brown);
-  font-size: 20rpx;
-  font-weight: 800;
+.package-price-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.package-side .price-del {
+  color: #c4b0a4;
+  font-size: 22rpx;
+  text-decoration: line-through;
+  line-height: 1.2;
 }
 
 .sale-label {
   font-size: 20rpx;
-  color: var(--gx-chat-hint);
-  margin: 4rpx 0;
+  color: #b09a8c;
+  margin: 2rpx 0 6rpx;
+  line-height: 1;
 }
 
 .sale-price {
-  font-size: 34rpx;
+  font-size: 44rpx;
   font-weight: 800;
   color: var(--gx-chat-red);
-  margin-bottom: 12rpx;
+  line-height: 1;
+  margin-bottom: 0;
+  letter-spacing: -1rpx;
+}
+
+.boost-card {
+  position: relative;
+  margin-top: 28rpx;
+  padding: 32rpx 28rpx 30rpx;
+  border-radius: 28rpx;
+  background: #fff8ef;
+  border: 2rpx dashed #d4ae82;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.boost-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  padding: 10rpx 22rpx;
+  border-radius: 0;
+  border-bottom-left-radius: 20rpx;
+  background: #b43a3d;
+  white-space: nowrap;
+}
+
+.boost-badge-text {
+  font-size: 22rpx;
+  font-weight: 800;
+  color: #fffdf7;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.boost-body {
+  display: flex;
+  align-items: stretch;
+  gap: 16rpx;
+}
+
+.boost-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.boost-status {
+  display: block;
+  margin-bottom: 8rpx;
+  font-size: 22rpx;
+  color: #9a673a;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.boost-name {
+  display: block;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #2b1a14;
+  margin-bottom: 10rpx;
+  line-height: 1.25;
+}
+
+.boost-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #9a7b68;
+  line-height: 1.55;
+}
+
+.boost-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-shrink: 0;
+  width: 168rpx;
+  padding-top: 28rpx;
+}
+
+.boost-price-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.boost-price-del {
+  font-size: 22rpx;
+  color: #c2aea2;
+  text-decoration: line-through;
+  line-height: 1.2;
+}
+
+.boost-sale-label {
+  margin: 2rpx 0 4rpx;
+  font-size: 20rpx;
+  color: #b39a8c;
+  line-height: 1;
+}
+
+.boost-sale-price {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: #b43a3d;
+  line-height: 1;
+  letter-spacing: -1rpx;
+}
+
+.boost-btn {
+  margin-top: 16rpx;
+  width: 168rpx;
+  height: 64rpx;
+  padding: 0;
+  border-radius: 999rpx;
+  background: #b43a3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  /* 非会员：设计稿浅金「会员可购」，单行 */
+  &.locked {
+    background: #f2d6a3;
+  }
+
+  &.disabled {
+    opacity: 0.55;
+  }
+}
+
+.boost-btn-text {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #fffdf7;
+  line-height: 64rpx;
+  white-space: nowrap;
+}
+
+.boost-btn.locked .boost-btn-text {
+  color: #8d5a2b;
+}
+
+.buy-btn {
+  flex-shrink: 0;
+  margin-top: 20rpx;
+  min-width: 120rpx;
+  height: 68rpx;
+  padding: 0 32rpx;
+  border-radius: 999rpx;
+  background: var(--gx-chat-red);
+  color: #fffdf7;
+  font-size: 26rpx;
+  font-weight: 800;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 14rpx rgba(167, 36, 41, 0.28);
+
+  &.disabled {
+    opacity: 0.55;
+  }
 }
 
 .paywall-tip {

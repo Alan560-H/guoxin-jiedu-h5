@@ -34,7 +34,7 @@ export const getUserInfo = (config?: Record<string, unknown>): Promise<ResponseD
 
 /** 获取商品列表(上架) */
 export const getProducts = (): Promise<ResponseData<any[]>> =>
-  http.get(`${BASE}/products`)
+  http.get(`${BASE}/products`, { productType: 'member' })
 
 /** 获取用户订单列表（userId由后端从JWT解析） */
 export const getOrders = (): Promise<ResponseData<any[]>> =>

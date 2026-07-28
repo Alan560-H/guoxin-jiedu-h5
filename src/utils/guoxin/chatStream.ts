@@ -115,9 +115,10 @@ export async function postChatMessagesStream(
     : body.profileId
 
   const files = (body.files?.length ? body.files : defaultStreamChatFiles()).map(f => ({
-    tyep: f.tyep || 'image',
-    transfer_method: f.transfer_method || 'remote_url',
+    type: f.type || 'image',
+    transfer_method: f.transfer_method || 'local_file',
     url: f.url ?? '',
+    upload_file_id: f.upload_file_id ?? '',
   }))
 
   const mergedSignal = mergeAbortWithTimeout(signal, STREAM_TIMEOUT_MS)

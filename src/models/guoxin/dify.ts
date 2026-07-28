@@ -28,7 +28,7 @@ export interface DifyUploadResult {
   extension?: string
   mime_type?: string
   size?: number
-  /** 上传成功后的可访问地址（streamChat files[].url 用这个） */
+  /** 上传成功后的文件 id（streamChat files[].upload_file_id 用这个） */
   source_url?: string
   preview_url?: string | null
   original_url?: string | null

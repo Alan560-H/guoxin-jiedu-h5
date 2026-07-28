@@ -35,7 +35,7 @@ function uid(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-const HISTORY_LIMIT = 20
+const HISTORY_LIMIT = 99
 
 export const useChatSessionStore = defineStore('chatSession', () => {
   /** 内存态：以服务端历史为准，不 persist 消息 */

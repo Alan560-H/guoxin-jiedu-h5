@@ -1,13 +1,14 @@
 /** 问答流式请求 / SSE 相关类型 */
 
 /**
- * streamChat 附件字段（与后端约定一致；字段名即为 tyep）
+ * streamChat 附件字段（对齐 Dify files）
  * 请求体字段名为 files
  */
 export interface StreamChatFile {
-  tyep: string
+  type: string
   transfer_method: 'remote_url' | 'local_file'
   url: string
+  upload_file_id: string
 }
 
 export interface ChatMessageRequest {
@@ -37,21 +38,23 @@ export function createChatStreamQuotaError(message = '今日问答次数已用�
 /** 无图时仍按约定传占位 files */
 export function defaultStreamChatFiles(): StreamChatFile[] {
   return [{
-    tyep: 'image',
-    transfer_method: 'remote_url',
+    type: 'image',
+    transfer_method: 'local_file',
     url: '',
+    upload_file_id: '',
   }]
 }
 
-/** 有远程图时组装 streamChat files；空 url 则回退占位 */
-export function buildStreamChatFiles(remoteUrl?: string): StreamChatFile[] {
-  const url = String(remoteUrl || '').trim()
-  if (!url)
+/** 有图时用 upload 返回的 id 组装 files；无 id 则回退占位 */
+export function buildStreamChatFiles(uploadFileId?: string): StreamChatFile[] {
+  const id = String(uploadFileId || '').trim()
+  if (!id)
     return defaultStreamChatFiles()
   return [{
-    tyep: 'image',
-    transfer_method: 'remote_url',
-    url,
+    type: 'image',
+    transfer_method: 'local_file',
+    url: '',
+    upload_file_id: id,
   }]
 }
 

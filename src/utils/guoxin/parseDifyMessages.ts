@@ -6,7 +6,7 @@ import type { DifyHistoryMessageItem, DifyHistoryMessagesPage } from '@/models/g
  *   code: 200,
  *   data: {
  *     data: [{ id, query, answer, conversation_id, created_at, ... }],
- *     limit: 20,
+ *     limit: 99,
  *     has_more: false
  *   }
  * }
