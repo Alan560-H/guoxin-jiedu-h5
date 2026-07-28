@@ -35,21 +35,11 @@ export function createChatStreamQuotaError(message = '今日问答次数已用�
   return err
 }
 
-/** 无图时仍按约定传占位 files */
-export function defaultStreamChatFiles(): StreamChatFile[] {
-  return [{
-    type: 'image',
-    transfer_method: 'local_file',
-    url: '',
-    upload_file_id: '',
-  }]
-}
-
-/** 有图时用 upload 返回的 id 组装 files；无 id 则回退占位 */
+/** 有图时用 upload 返回的 id 组装 files；无图返回空数组（请求体不带 files） */
 export function buildStreamChatFiles(uploadFileId?: string): StreamChatFile[] {
   const id = String(uploadFileId || '').trim()
   if (!id)
-    return defaultStreamChatFiles()
+    return []
   return [{
     type: 'image',
     transfer_method: 'local_file',

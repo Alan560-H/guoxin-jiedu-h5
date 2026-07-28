@@ -1,6 +1,7 @@
 import type { ChatMessageRequest, ChatStreamSession } from '@/models/guoxin/chat'
-import { createChatStreamQuotaError, defaultStreamChatFiles } from '@/models/guoxin/chat'
+import { createChatStreamQuotaError } from '@/models/guoxin/chat'
 import { isAppEmbeddedWebView } from '@/utils/appWebView'
+import { repairStreamMarkdownArtifacts } from '@/utils/guoxin/chat'
 import { getSource } from '@/utils/guoxin/source'
 
 const STREAM_TIMEOUT_MS = 180_000
@@ -114,22 +115,27 @@ export async function postChatMessagesStream(
     ? profileIdNum
     : body.profileId
 
-  const files = (body.files?.length ? body.files : defaultStreamChatFiles()).map(f => ({
-    type: f.type || 'image',
-    transfer_method: f.transfer_method || 'local_file',
-    url: f.url ?? '',
-    upload_file_id: f.upload_file_id ?? '',
-  }))
+  const files = (body.files ?? [])
+    .filter(f => String(f.upload_file_id || '').trim())
+    .map(f => ({
+      type: f.type || 'image',
+      transfer_method: f.transfer_method || 'local_file',
+      url: f.url ?? '',
+      upload_file_id: String(f.upload_file_id).trim(),
+    }))
+
+  const payload: Record<string, unknown> = {
+    profileId,
+    query,
+  }
+  if (files.length)
+    payload.files = files
 
   const mergedSignal = mergeAbortWithTimeout(signal, STREAM_TIMEOUT_MS)
   const response = await fetch(CHAT_MESSAGES_PATH, {
     method: 'POST',
     headers: buildAuthHeaders(),
-    body: JSON.stringify({
-      profileId,
-      query,
-      files,
-    }),
+    body: JSON.stringify(payload),
     signal: mergedSignal,
   })
 
@@ -161,7 +167,10 @@ export async function postChatMessagesStream(
     const session = pickSession(payload)
     if (session)
       handlers.onSession?.(session)
-    const text = extractDeltaText(payload).trim()
+    const text = repairStreamMarkdownArtifacts(extractDeltaText(payload).trim())
+    // 调试：对照原始返回与修复后文本（JSON.stringify 便于看出 \\n）
+    console.log('[guoxin-chat-stream] raw(json)', JSON.stringify(extractDeltaText(payload)))
+    console.log('[guoxin-chat-stream] repaired(json)', JSON.stringify(text))
     if (text)
       handlers.onDelta?.(text)
     return text
@@ -193,16 +202,19 @@ export async function postChatMessagesStream(
   const scheduleEmit = () => {
     if (!handlers.onDelta || isAborted)
       return
+    const emit = () => {
+      if (!isAborted)
+        handlers.onDelta?.(repairStreamMarkdownArtifacts(fullText))
+    }
     if (typeof requestAnimationFrame !== 'function') {
-      handlers.onDelta(fullText)
+      emit()
       return
     }
     if (chunkRafId !== null)
       return
     chunkRafId = requestAnimationFrame(() => {
       chunkRafId = null
-      if (!isAborted)
-        handlers.onDelta?.(fullText)
+      emit()
     })
   }
 
@@ -221,6 +233,8 @@ export async function postChatMessagesStream(
       const isJson = (trimmed.startsWith('{') && trimmed.endsWith('}'))
         || (trimmed.startsWith('[') && trimmed.endsWith(']'))
       if (!isJson) {
+        if (/^done$/i.test(trimmed))
+          return
         appendText(rawData)
         return
       }
@@ -235,8 +249,13 @@ export async function postChatMessagesStream(
       const session = pickSession(payload)
       if (session)
         handlers.onSession?.(session)
-      if (event === 'message_end' || event === 'workflow_finished')
+      if (
+        event === 'message_end'
+        || event === 'workflow_finished'
+        || event === 'done'
+      ) {
         return
+      }
       const delta = extractDeltaText(payload)
       if (delta)
         appendText(delta)
@@ -289,10 +308,21 @@ export async function postChatMessagesStream(
         handlers.onSession?.({ conversationId })
       return
     }
+    // 结束/心跳事件不当正文（避免气泡末尾出现 done）
+    if (
+      eventName === 'done'
+      || eventName === 'ping'
+      || eventName === 'message_end'
+      || eventName === 'workflow_finished'
+    ) {
+      return
+    }
     if (payload === '') {
       appendText('\n')
       return
     }
+    if (/^done$/i.test(payload.trim()))
+      return
     appendFromSseData(payload)
   }
 
@@ -318,9 +348,13 @@ export async function postChatMessagesStream(
     }
     buffer += decoder.decode()
     consumeBuffer(true)
-    if (handlers.onDelta && fullText)
-      handlers.onDelta(fullText)
-    return fullText.trim()
+    const repaired = repairStreamMarkdownArtifacts(fullText)
+    // 调试：对照 SSE 累计原文与修复后文本（复制控制台字符串即可）
+    console.log('[guoxin-chat-stream] raw', JSON.stringify(fullText))
+    console.log('[guoxin-chat-stream] repaired', JSON.stringify(repaired))
+    if (handlers.onDelta && repaired)
+      handlers.onDelta(repaired)
+    return repaired.trim()
   }
   finally {
     mergedSignal?.removeEventListener('abort', onAbort)

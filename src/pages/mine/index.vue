@@ -3,10 +3,11 @@ import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxChatLoginModal from '@/components/guoxin/chat/GxChatLoginModal.vue'
-import { CHAT_CREDITS_LOCAL_FALLBACK, DAILY_QUESTION_LIMIT } from '@/constants/chatHome'
+import { CHAT_CREDITS_LOCAL_FALLBACK, CHAT_PENDING_QUESTION_KEY, DAILY_QUESTION_LIMIT } from '@/constants/chatHome'
 import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { userInfoStore } from '@/stores/userInfoStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { openCustomerService } from '@/utils/guoxin/customerService'
 
@@ -142,6 +143,28 @@ function onContinueChat() {
     return
   }
   uni.reLaunch({ url: RouterPaths.home })
+}
+
+function onLogout() {
+  if (!isLoggedIn.value)
+    return
+  uni.showModal({
+    title: '退出登录',
+    content: '确定退出当前账号吗？',
+    confirmText: '退出',
+    success: (res) => {
+      if (!res.confirm)
+        return
+      store.clearSession()
+      try {
+        uni.removeStorageSync(CHAT_PENDING_QUESTION_KEY)
+      }
+      catch {
+        // ignore
+      }
+      void userInfoStore().loginOut({ delayMs: 0 })
+    },
+  })
 }
 
 function onReportTap(recordId?: string) {
@@ -338,6 +361,14 @@ function statusLabel(status?: string) {
           <text class="service-arrow">
             ›
           </text>
+        </view>
+
+        <view
+          v-if="isLoggedIn"
+          class="logout-btn"
+          @tap="onLogout"
+        >
+          退出登录
         </view>
 
         <view class="continue-btn" @tap="onContinueChat">
@@ -672,6 +703,20 @@ function statusLabel(status?: string) {
 .service-arrow {
   color: var(--gx-chat-hint, #a28777);
   font-size: 36rpx;
+}
+
+.logout-btn {
+  min-height: 88rpx;
+  margin-bottom: 16rpx;
+  border-radius: 20rpx;
+  border: 2rpx solid var(--gx-chat-border, #eccdbb);
+  background: rgba(255, 253, 248, 0.96);
+  color: var(--gx-chat-muted, #755d52);
+  font-size: 28rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .continue-btn {

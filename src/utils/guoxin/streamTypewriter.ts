@@ -1,17 +1,22 @@
 /**
- * 流式打字机（对齐 ai-im playLocalTypewriter 节奏）。
- * SSE 推送全文目标，本地按字符揭示，避免整包一下子刷上屏。
+ * SSE 累计全文作 target，本地逐步追上（打字机感）。
+ *
+ * 默认约每 50ms 1 字；积压不加速，避免「一下追完」失去打字感。
+ * playLocalTypewriter：整段短文案兜底。
  */
 export function createStreamTypewriter(options: {
   onUpdate: (displayed: string) => void
   onScroll?: () => void
+  /** 默认 50：约每 50ms 出现一个字符 */
   intervalMs?: number
+  /** 每拍追加字数，默认 1 */
+  charsPerTick?: number
 }) {
-  const intervalMs = options.intervalMs ?? 16
+  const intervalMs = options.intervalMs ?? 50
+  const charsPerTick = Math.max(1, options.charsPerTick ?? 1)
   let displayed = ''
   let target = ''
   let timer: ReturnType<typeof setInterval> | null = null
-  let lastScrollAt = 0
   let idleResolvers: Array<() => void> = []
 
   function notifyIdle() {
@@ -31,14 +36,9 @@ export function createStreamTypewriter(options: {
       return
     }
 
-    displayed = target.slice(0, displayed.length + 1)
+    displayed = target.slice(0, displayed.length + charsPerTick)
     options.onUpdate(displayed)
-
-    const now = Date.now()
-    if (options.onScroll && now - lastScrollAt > 80) {
-      lastScrollAt = now
-      options.onScroll()
-    }
+    options.onScroll?.()
   }
 
   function ensureTimer() {
@@ -47,10 +47,9 @@ export function createStreamTypewriter(options: {
     timer = setInterval(tick, intervalMs)
   }
 
-  /** 设置当前应展示到的完整文本（SSE 累计全文） */
+  /** 设置当前应展示到的完整文本（SSE 累计全文，建议已 repair） */
   function setTarget(fullText: string) {
     if (fullText.length < displayed.length) {
-      // 异常回退：以新全文为准重来
       displayed = ''
       options.onUpdate('')
     }
@@ -88,16 +87,17 @@ export function createStreamTypewriter(options: {
   return { setTarget, flush, clear, getDisplayed }
 }
 
-/** 整段本地打字机（兜底文案等），对齐 ai-im playLocalTypewriter */
+/** 整段本地打字机（mock / 空回复兜底短文案） */
 export function playLocalTypewriter(
   fullText: string,
   onUpdate: (displayed: string) => void,
-  options?: { intervalMs?: number, onScroll?: () => void, signal?: AbortSignal },
+  options?: { intervalMs?: number, charsPerTick?: number, onScroll?: () => void, signal?: AbortSignal },
 ): Promise<string> {
   const tw = createStreamTypewriter({
     onUpdate,
     onScroll: options?.onScroll,
     intervalMs: options?.intervalMs,
+    charsPerTick: options?.charsPerTick,
   })
   tw.setTarget(fullText)
 

@@ -25,9 +25,6 @@ const emit = defineEmits<{
           <text class="empty-meta">
             明日恢复
           </text>
-          <view class="refresh-btn" @tap="emit('refresh')">
-            ↻ 换一批
-          </view>
         </view>
       </view>
       <text class="empty-strong">
@@ -50,27 +47,33 @@ const emit = defineEmits<{
           <text class="meta">
             {{ meta }}
           </text>
-          <view class="refresh-btn" @tap="emit('refresh')">
-            ↻ 换一批
-          </view>
         </view>
       </view>
       <text class="lead">
         {{ lead }}
       </text>
-      <view
-        v-for="(item, i) in items"
-        :key="`${i}-${item.question}`"
-        class="followup-card"
-        @tap="emit('pick', item.question)"
+      <scroll-view
+        scroll-x
+        class="followup-scroll"
+        :show-scrollbar="false"
+        enable-flex
       >
-        <text class="q">
-          {{ item.question }}
-        </text>
-        <text class="tip">
-          {{ item.tip }}
-        </text>
-      </view>
+        <view class="followup-row">
+          <view
+            v-for="(item, i) in items"
+            :key="`${i}-${item.question}`"
+            class="followup-card"
+            @tap="emit('pick', item.question)"
+          >
+            <text class="q">
+              {{ item.question }}
+            </text>
+            <text v-if="item.tip" class="tip">
+              {{ item.tip }}
+            </text>
+          </view>
+        </view>
+      </scroll-view>
     </template>
   </view>
 </template>
@@ -129,16 +132,28 @@ const emit = defineEmits<{
   line-height: 1.45;
 }
 
+.followup-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.followup-row {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12rpx;
+  padding-bottom: 4rpx;
+}
+
 .followup-card {
-  padding: 22rpx 20rpx;
-  margin-bottom: 12rpx;
+  flex-shrink: 0;
+  width: 280rpx;
+  box-sizing: border-box;
+  padding: 20rpx 18rpx;
   border-radius: 18rpx;
   background: var(--gx-chat-red-soft, #fae5e2);
   border: 2rpx solid rgba(180, 58, 61, 0.16);
-
-  &:last-child {
-    margin-bottom: 0;
-  }
+  white-space: normal;
 }
 
 .q {
@@ -154,6 +169,7 @@ const emit = defineEmits<{
   margin-top: 8rpx;
   color: var(--gx-chat-muted, #755d52);
   font-size: 22rpx;
+  line-height: 1.35;
 }
 
 .followup-empty {

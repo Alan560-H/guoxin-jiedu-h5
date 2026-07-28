@@ -587,26 +587,27 @@ const sheetDistrictLabels = computed(() => {
         {{ modalLead }}
       </text>
 
-      <scroll-view scroll-y class="form-scroll">
-        <view class="row-2">
-          <view class="field">
-            <text class="label">
-              称呼
-            </text>
-            <input v-model="name" class="input" maxlength="12" placeholder="例如：自己、妈妈">
-          </view>
-          <view class="field">
-            <text class="label">
-              与我的关系
-            </text>
-            <view class="input picker-face" @tap="openSheet('relation')">
-              {{ relationLabels[relationIndex] || '自己' }}
-              <text class="arrow">
-                ▾
+      <scroll-view scroll-y class="form-scroll" :show-scrollbar="false">
+        <view class="form-body">
+          <view class="row-2">
+            <view class="field">
+              <text class="label">
+                称呼
               </text>
+              <input v-model="name" class="input" maxlength="12" placeholder="例如：自己、妈妈">
+            </view>
+            <view class="field">
+              <text class="label">
+                与我的关系
+              </text>
+              <view class="input picker-face" @tap="openSheet('relation')">
+                {{ relationLabels[relationIndex] || '自己' }}
+                <text class="arrow">
+                  ▾
+                </text>
+              </view>
             </view>
           </view>
-        </view>
 
         <view class="field">
           <text class="label">
@@ -708,13 +709,16 @@ const sheetDistrictLabels = computed(() => {
             <view class="knob" />
           </view>
         </view>
+        </view>
       </scroll-view>
 
-      <view class="btn primary" :class="{ disabled: saving }" @tap="saving ? undefined : save()">
-        {{ saveLabel }}
-      </view>
-      <view class="btn secondary" @tap="emit('close')">
-        暂不选择
+      <view v-if="!sheet" class="form-actions">
+        <view class="btn primary" :class="{ disabled: saving }" @tap="saving ? undefined : save()">
+          {{ saveLabel }}
+        </view>
+        <view class="btn secondary" @tap="emit('close')">
+          暂不选择
+        </view>
       </view>
     </view>
 
@@ -860,12 +864,14 @@ const sheetDistrictLabels = computed(() => {
   background: #fffbf5;
   border: 2rpx solid var(--gx-chat-border, #eccdbb);
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .close-x {
   position: absolute;
   top: 16rpx;
   right: 20rpx;
+  z-index: 3;
   width: 64rpx;
   height: 64rpx;
   border-radius: 50%;
@@ -900,9 +906,26 @@ const sheetDistrictLabels = computed(() => {
 }
 
 .form-scroll {
-  flex: 1;
-  min-height: 0;
-  max-height: 58vh;
+  flex: 1 1 auto;
+  min-height: 280rpx;
+  /* uni-app scroll-view 需要明确高度才能滚动 */
+  height: 52vh;
+  max-height: 52vh;
+}
+
+.form-body {
+  padding-bottom: 24rpx;
+  box-sizing: border-box;
+}
+
+.form-actions {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  margin-top: 8rpx;
+  padding-top: 16rpx;
+  background: #fffbf5;
+  box-shadow: 0 -8rpx 20rpx rgba(255, 251, 245, 0.92);
 }
 
 .row-2 {
@@ -1122,7 +1145,7 @@ const sheetDistrictLabels = computed(() => {
 .sheet-dim {
   position: absolute;
   inset: 0;
-  background: rgba(43, 23, 18, 0.28);
+  background: rgba(43, 23, 18, 0.52);
 }
 
 .sheet-panel {

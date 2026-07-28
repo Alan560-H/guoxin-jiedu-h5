@@ -23,6 +23,8 @@ defineProps<{
   followupItems: Array<{ question: string, tip: string }>
   historyHasMore?: boolean
   historyLoadingOlder?: boolean
+  /** 流式输出中：隐藏消息下方小部件，避免「贴底」滚到追问/报告区 */
+  streamingOutput?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -80,26 +82,28 @@ const emit = defineEmits<{
       @feedback="emit('feedback', $event)"
     />
 
-    <GxChatQuotaCard
-      :remaining="remaining"
-      :progress-ratio="progressRatio"
-      :unlimited="chatUnlimited"
-      @buy="emit('buy')"
-    />
+    <template v-if="!streamingOutput">
+      <GxChatQuotaCard
+        :remaining="remaining"
+        :progress-ratio="progressRatio"
+        :unlimited="chatUnlimited"
+        @buy="emit('buy')"
+      />
 
-    <GxChatFollowupPanel
-      v-if="hasConversation || quotaUsedUp"
-      :heading="followupHeading"
-      :lead="followupLead"
-      :meta="followupMeta"
-      :items="followupItems"
-      :empty="quotaUsedUp"
-      @refresh="emit('refreshFollowup')"
-      @pick="emit('pickFollowup', $event)"
-      @buy="emit('buy')"
-    />
+      <GxChatFollowupPanel
+        v-if="hasConversation || quotaUsedUp"
+        :heading="followupHeading"
+        :lead="followupLead"
+        :meta="followupMeta"
+        :items="followupItems"
+        :empty="quotaUsedUp"
+        @refresh="emit('refreshFollowup')"
+        @pick="emit('pickFollowup', $event)"
+        @buy="emit('buy')"
+      />
 
-    <GxChatReportAd @generate="emit('generateReport')" />
+      <GxChatReportAd @generate="emit('generateReport')" />
+    </template>
 
     <view id="chat-bottom-anchor" class="bottom-anchor" />
   </view>

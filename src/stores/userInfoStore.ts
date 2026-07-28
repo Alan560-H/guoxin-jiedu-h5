@@ -62,13 +62,21 @@ export const userInfoStore = defineStore('userInfoStore', () => {
 		console.log("当前用户信息", userInfo, value)
 	}
 	
-	const loginOut = () => {
-		return new Promise((resolve) => {
-			uni.removeStorageSync('apph5UserInfo')
-			uni.removeStorageSync('apph5Token')
+	const loginOut = (options?: { delayMs?: number }) => {
+		uni.removeStorageSync('apph5UserInfo')
+		uni.removeStorageSync('apph5Token')
+		token.value = undefined
+		userInfo.userId = 0
+		userInfo.nickName = ''
+		userInfo.userName = ''
+		userInfo.phonenumber = ''
+		userInfo.avatar = ''
+		const delay = options?.delayMs ?? 1000
+		return new Promise<void>((resolve) => {
 			setTimeout(() => {
 				uni.reLaunch({ url: RouterPaths.home })
-			}, 1000)
+				resolve()
+			}, delay)
 		})
 	}
 	return { userInfo, isLogin, isShowLoginDialog, setIsShowLoginDialog, setToken, setUserInfo, loginOut }

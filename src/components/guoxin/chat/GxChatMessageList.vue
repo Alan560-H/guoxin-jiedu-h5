@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ChatMessage, FeedbackState } from '@/stores/chatSessionStore'
+import { formatChatAnswerHtml } from '@/utils/guoxin/chat'
 
 defineProps<{
   messages: ChatMessage[]
@@ -12,6 +13,43 @@ const emit = defineEmits<{
 
 function isThinking(m: ChatMessage) {
   return m.role === 'assistant' && m.streaming === true && !String(m.content || '').trim()
+}
+
+/** 已有正文且仍在流式：显示末尾光标（不切开 Markdown） */
+function isStreamingAnswer(m: ChatMessage) {
+  return m.role === 'assistant' && m.streaming === true && !!String(m.content || '').trim()
+}
+
+function answerHtml(m: ChatMessage) {
+  return formatChatAnswerHtml(m.content, {
+    messageId: m.id,
+    streaming: m.streaming === true,
+  })
+}
+
+function onMarkdownClick(e: MouseEvent) {
+  const target = e.target as HTMLElement | null
+  if (!target)
+    return
+
+  const img = target.closest?.('img') as HTMLImageElement | null
+  if (img?.src) {
+    uni.previewImage({ urls: [img.src], current: img.src })
+    return
+  }
+
+  const btn = target.closest?.('.copy-code-btn') as HTMLElement | null
+  if (!btn)
+    return
+  const wrap = btn.closest('.md-code-wrap')
+  const pre = wrap?.querySelector('pre')
+  const text = pre?.textContent || ''
+  if (!text)
+    return
+  uni.setClipboardData({
+    data: text,
+    success: () => uni.showToast({ title: '已复制', icon: 'none' }),
+  })
 }
 </script>
 
@@ -50,8 +88,25 @@ function isThinking(m: ChatMessage) {
             :src="m.imageUrl"
             mode="widthFix"
           />
+          <view
+            v-if="m.role === 'assistant' && m.content"
+            class="answer-wrap"
+            :class="{ streaming: isStreamingAnswer(m) }"
+          >
+            <div
+              class="bubble-body message-text markdown-content"
+              @click="onMarkdownClick"
+              v-html="answerHtml(m)"
+            />
+            <view
+              v-if="isStreamingAnswer(m)"
+              :id="`msg-${m.id}-tail`"
+              class="stream-caret"
+              aria-hidden="true"
+            />
+          </view>
           <text
-            v-if="m.content"
+            v-else-if="m.content"
             class="bubble-body"
           >
             {{ m.content }}
@@ -102,7 +157,7 @@ function isThinking(m: ChatMessage) {
 .msg-row {
   display: flex;
   align-items: flex-start;
-  gap: 16rpx;
+  gap: 12rpx;
 
   &.user {
     justify-content: flex-end;
@@ -110,42 +165,40 @@ function isThinking(m: ChatMessage) {
 }
 
 .seal {
+  flex-shrink: 0;
   width: 64rpx;
   height: 64rpx;
   border-radius: 50%;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28rpx;
+  font-size: 22rpx;
   font-weight: 800;
 }
 
 .assistant-seal {
-  border: 3rpx solid rgba(124, 64, 42, 0.35);
-  background: var(--gx-chat-red, #b43a3d);
-  color: #fff;
+  background: linear-gradient(145deg, #f0c15a, #d5a43d);
+  color: #fffdf7;
 }
 
 .user-seal {
-  border: 3rpx solid var(--gx-chat-red, #b43a3d);
-  background: linear-gradient(135deg, var(--gx-chat-gold, #d5a43d), #f0d48a);
+  background: var(--gx-chat-red-soft, #fae5e2);
   color: var(--gx-chat-red-deep, #7f1f26);
 }
 
 .bubble {
-  max-width: 78%;
-  padding: 22rpx 24rpx;
+  max-width: calc(100% - 88rpx);
+  padding: 20rpx 24rpx;
   border-radius: 24rpx;
   box-sizing: border-box;
 
   &.assistant {
-    background: #fff;
-    border: 2rpx solid var(--gx-chat-border, #eccdbb);
+    background: #fffdf9;
+    border: 2rpx solid rgba(236, 205, 187, 0.7);
   }
 
   &.user {
-    background: linear-gradient(154deg, var(--gx-chat-red, #b43a3d), var(--gx-chat-red-deep, #7f1f26));
+    background: linear-gradient(145deg, #c9484a, #9b2429);
     color: #fffdf7;
   }
 
@@ -170,16 +223,192 @@ function isThinking(m: ChatMessage) {
   margin-bottom: 12rpx;
 }
 
+.answer-wrap {
+  display: block;
+  position: relative;
+}
+
+.stream-caret {
+  display: block;
+  width: 4rpx;
+  height: 28rpx;
+  margin-top: 6rpx;
+  background: var(--gx-chat-red, #b43a3d);
+  border-radius: 2rpx;
+  animation: gx-stream-caret 1s steps(1, end) infinite;
+}
+
+@keyframes gx-stream-caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
 .bubble-body {
   display: block;
   font-size: 28rpx;
-  line-height: 1.55;
+  line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .bubble.assistant .bubble-body {
   color: var(--gx-chat-ink, #2b1712);
+}
+
+.markdown-content {
+  white-space: normal;
+
+  :deep(p) {
+    margin: 0 0 0.7em;
+    line-height: 1.65;
+  }
+
+  :deep(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  :deep(h1),
+  :deep(h2),
+  :deep(h3),
+  :deep(h4) {
+    margin: 0.75em 0 0.45em;
+    color: var(--gx-chat-ink, #2b1712);
+    line-height: 1.4;
+    font-size: 30rpx;
+    font-weight: 700;
+  }
+
+  :deep(h3),
+  :deep(h4) {
+    font-size: 28rpx;
+  }
+
+  :deep(ul),
+  :deep(ol) {
+    display: block;
+    margin: 0.5em 0 0.9em;
+    padding-left: 1.5em;
+    list-style-position: outside;
+  }
+
+  :deep(ol) {
+    list-style-type: decimal;
+  }
+
+  :deep(ul) {
+    list-style-type: disc;
+  }
+
+  :deep(li) {
+    display: list-item;
+    margin: 0.35em 0;
+    line-height: 1.65;
+  }
+
+  :deep(li > p) {
+    margin: 0.15em 0;
+  }
+
+  :deep(hr) {
+    border: none;
+    border-top: 1rpx solid rgba(236, 205, 187, 0.7);
+    margin: 0.8em 0;
+  }
+
+  :deep(strong) {
+    font-weight: 800;
+    color: var(--gx-chat-ink, #2b1712);
+  }
+
+  :deep(blockquote) {
+    margin: 0.6em 0;
+    padding: 0.35em 0 0.35em 0.8em;
+    border-left: 4rpx solid rgba(180, 58, 61, 0.35);
+    color: #755d52;
+  }
+
+  :deep(img) {
+    max-width: 100%;
+    border-radius: 12rpx;
+  }
+
+  :deep(.md-table-wrap) {
+    width: 100%;
+    overflow-x: auto;
+    margin: 0.6em 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :deep(table) {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 24rpx;
+  }
+
+  :deep(th),
+  :deep(td) {
+    border: 1rpx solid rgba(236, 205, 187, 0.85);
+    padding: 8rpx 12rpx;
+    text-align: left;
+  }
+
+  :deep(th) {
+    background: rgba(250, 229, 226, 0.55);
+    font-weight: 700;
+  }
+
+  :deep(.md-code-wrap) {
+    position: relative;
+    margin: 0.6em 0;
+  }
+
+  :deep(.copy-code-btn) {
+    position: absolute;
+    top: 8rpx;
+    right: 8rpx;
+    z-index: 1;
+    padding: 4rpx 12rpx;
+    border: none;
+    border-radius: 8rpx;
+    background: rgba(43, 23, 18, 0.72);
+    color: #fffdf7;
+    font-size: 20rpx;
+  }
+
+  :deep(pre) {
+    margin: 0;
+    padding: 20rpx;
+    overflow: auto;
+    border-radius: 16rpx;
+    background: #2b1712;
+    color: #fff7ec;
+    font-size: 24rpx;
+    line-height: 1.5;
+  }
+
+  :deep(code) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  :deep(:not(pre) > code) {
+    background: rgba(180, 58, 61, 0.08);
+    color: var(--gx-chat-red-deep, #7f1f26);
+    padding: 2rpx 8rpx;
+    border-radius: 6rpx;
+    font-size: 24rpx;
+  }
+
+  :deep(.md-error) {
+    color: var(--gx-chat-red, #b43a3d);
+    margin: 0;
+  }
 }
 
 .thinking-skeleton {
@@ -208,79 +437,63 @@ function isThinking(m: ChatMessage) {
   animation: gx-thinking-shimmer 1.2s ease-in-out infinite;
 
   &.short {
-    width: 42%;
-    animation-delay: 0.12s;
+    width: 56%;
   }
 
   &.mid {
-    width: 68%;
-    animation-delay: 0.24s;
+    width: 78%;
   }
 }
 
 .thinking-text {
-  color: var(--gx-chat-hint, #a28777);
-  font-size: 26rpx;
-  line-height: 1.4;
+  font-size: 24rpx;
+  color: var(--gx-chat-muted, #755d52);
 }
 
 @keyframes gx-thinking-shimmer {
   0% {
     background-position: 100% 0;
   }
-
   100% {
     background-position: -100% 0;
   }
 }
 
 .feedback {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12rpx;
-  margin-top: 20rpx;
-  padding-top: 18rpx;
-  border-top: 2rpx solid rgba(180, 58, 61, 0.14);
+  margin-top: 16rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(236, 205, 187, 0.55);
 }
 
 .feedback-label {
-  min-width: 0;
+  width: 100%;
+  font-size: 22rpx;
   color: var(--gx-chat-hint, #a28777);
-  font-size: 20rpx;
-  line-height: 1.3;
 }
 
 .fb-btn {
-  min-height: 54rpx;
-  padding: 0 14rpx;
-  border-radius: 999rpx;
-  border: 2rpx solid rgba(180, 58, 61, 0.22);
-  background: #fffaf2;
-  color: var(--gx-chat-muted, #755d52);
-  font-size: 20rpx;
-  font-weight: 800;
   display: inline-flex;
   align-items: center;
   gap: 6rpx;
-  white-space: nowrap;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid rgba(236, 205, 187, 0.8);
+  font-size: 22rpx;
+  color: var(--gx-chat-muted, #755d52);
 
   &.selected {
     border-color: var(--gx-chat-red, #b43a3d);
-    background: var(--gx-chat-red-soft, #fae5e2);
-    color: var(--gx-chat-red-deep, #7f1f26);
+    color: var(--gx-chat-red, #b43a3d);
+    background: rgba(180, 58, 61, 0.06);
   }
 }
 
 .fb-icon {
-  width: 28rpx;
-  height: 28rpx;
-  border-radius: 50%;
-  background: var(--gx-chat-red-soft, #fae5e2);
-  color: var(--gx-chat-red, #b43a3d);
-  font-size: 18rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 20rpx;
+  font-weight: 800;
 }
 </style>

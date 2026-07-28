@@ -22,6 +22,7 @@ import { isChatStreamQuotaError } from '@/models/guoxin/chat'
 import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { clearChatMarkdownCache } from '@/utils/guoxin/chat'
 import { setSkipAutoEnterChat } from '@/utils/guoxin/chatHistoryNav'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { parseSuggestedPayload, unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
@@ -47,6 +48,10 @@ const abortController = ref<AbortController | null>(null)
 const clearActiveTypewriter = ref<(() => void) | null>(null)
 const lastStreamMessageId = ref('')
 const remoteFollowups = ref<Array<{ question: string, tip: string }> | null>(null)
+/** 发送时是否贴底（非流式场景）；流式输出时强制贴底，不依赖此标记 */
+const stickToBottom = ref(true)
+/** 程序滚动中：忽略 scroll 事件，避免误改 stickToBottom */
+let programmaticScroll = false
 
 const profiles = computed(() => store.profiles)
 const activeId = computed(() => store.activeProfileId)
@@ -144,9 +149,57 @@ function unbindNativeScroll() {
 
 function onNativeScroll(ev: Event) {
   const el = ev.target as HTMLElement | null
-  if (!el || el.scrollTop > 72)
+  if (!el)
+    return
+  // 流式输出中强制贴底，忽略用户滚动意图（下方小部件已隐藏）
+  if (asking.value || programmaticScroll)
+    return
+  const distance = el.scrollHeight - el.scrollTop - el.clientHeight
+  stickToBottom.value = distance <= 140
+  if (el.scrollTop > 72)
     return
   void loadOlderMessages()
+}
+
+function isNearBottom(threshold = 140): boolean {
+  // #ifdef H5
+  if (typeof document !== 'undefined') {
+    const root = document.getElementById('chat-scroll-root')
+    if (root) {
+      return root.scrollHeight - root.scrollTop - root.clientHeight <= threshold
+    }
+  }
+  // #endif
+  return stickToBottom.value
+}
+
+/**
+ * 流式输出：下方小部件已隐藏，直接滚到容器最底即可看到最新字。
+ */
+function pinScrollToBottom() {
+  const run = () => {
+    // #ifdef H5
+    if (typeof document !== 'undefined') {
+      const root = document.getElementById('chat-scroll-root')
+      if (root) {
+        programmaticScroll = true
+        root.scrollTop = root.scrollHeight
+        requestAnimationFrame(() => {
+          programmaticScroll = false
+        })
+        return
+      }
+    }
+    // #endif
+    scrollIntoView.value = ''
+    nextTick(() => {
+      scrollIntoView.value = 'chat-bottom-anchor'
+    })
+  }
+
+  nextTick(() => {
+    requestAnimationFrame(run)
+  })
 }
 
 function onScrollToUpper() {
@@ -210,6 +263,7 @@ watch(activeId, (id) => {
     return
   remoteFollowups.value = null
   lastStreamMessageId.value = ''
+  clearChatMarkdownCache()
   void loadHistoryForProfile(id)
 })
 
@@ -303,6 +357,7 @@ async function bootstrapChat() {
   consumePendingQuestion()
 }
 
+/** 首页带入的问题只预填输入框，绝不自动 streamChat；须用户主动点发送 */
 function consumePendingQuestion() {
   let pending = ''
   try {
@@ -314,7 +369,7 @@ function consumePendingQuestion() {
     // ignore
   }
   if (pending)
-    void askQuestion(pending)
+    draft.value = pending
 }
 
 function onBack() {
@@ -390,7 +445,10 @@ async function loadSuggestedFollowups(messageId: string, forProfileId: string) {
 }
 
 function onPickFollowup(question: string) {
-  void askQuestion(question)
+  const q = String(question || '').trim()
+  if (!q || asking.value)
+    return
+  draft.value = q
 }
 
 function onComposerAttachment(payload: ChatComposerAttachment | null) {
@@ -448,29 +506,36 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
   pendingAttachment.value = null
   composerRef.value?.resetAttachment?.()
   lastStreamMessageId.value = ''
+  stickToBottom.value = isNearBottom(160)
   chatStore.ensureIntro(profileId, profileName.value)
-  chatStore.appendUser(profileId, q, imageUrl ? { imageUrl } : undefined)
+  const userMsg = chatStore.appendUser(profileId, q, imageUrl ? { imageUrl } : undefined)
   const assistant = chatStore.appendAssistant(profileId, '', {
     showFeedback: false,
     streaming: true,
   })
-  scrollToMessage(assistant.id)
+  // loading 阶段不强制拉到底部，避免屏幕闪一下；仅在贴底时轻跟用户气泡
+  if (stickToBottom.value)
+    scrollToMessage(userMsg.id)
 
   const controller = new AbortController()
   abortController.value = controller
 
+  // SSE 累计全文（已 repair）作 target；本地打字机追上，整包到达时仍有逐字感
+  // 展示层 displayMarkdownPrep 会软闭合半截 **，减轻切开闪烁；流式光标仍显示
   const typewriter = createStreamTypewriter({
-    intervalMs: 16,
+    intervalMs: 50,
+    charsPerTick: 1,
     onUpdate: (displayed) => {
       chatStore.patchMessage(profileId, assistant.id, {
         content: displayed,
         streaming: true,
       })
+      pinScrollToBottom()
     },
-    // 跟住 AI 气泡，不要滚到页面最底（否则追问区会把回复顶出视野）
-    onScroll: () => scrollToMessage(assistant.id),
   })
   clearActiveTypewriter.value = () => typewriter.clear()
+  // 隐藏下方小部件后立刻贴底一次
+  pinScrollToBottom()
 
   try {
     const text = await streamChatMessage(
@@ -508,6 +573,7 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
     if (!finalText)
       throw new Error('当前回复失败，请重试')
 
+    clearChatMarkdownCache(assistant.id)
     chatStore.patchMessage(profileId, assistant.id, {
       content: finalText,
       streaming: false,
@@ -562,7 +628,7 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
     abortController.value = null
     asking.value = false
     await refreshCreditsQuiet()
-    scrollToMessage(assistant.id)
+    // 小部件在消息下方重新出现；不要 pin 到底部，否则会把刚打完的回复顶出视口
   }
 }
 
@@ -666,6 +732,7 @@ function scrollToLatestAssistant() {
         :followup-items="followupItems"
         :history-has-more="historyHasMore"
         :history-loading-older="historyLoadingOlder"
+        :streaming-output="asking"
         @select="onSelectProfile"
         @add="onAdd"
         @invite="onInvite"
@@ -704,6 +771,7 @@ function scrollToLatestAssistant() {
         :followup-items="followupItems"
         :history-has-more="historyHasMore"
         :history-loading-older="historyLoadingOlder"
+        :streaming-output="asking"
         @select="onSelectProfile"
         @add="onAdd"
         @invite="onInvite"

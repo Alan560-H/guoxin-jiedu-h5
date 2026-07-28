@@ -59,8 +59,24 @@ function resetAttachment() {
 
 defineExpose({ resetAttachment })
 
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
 function pickUploadFileId(data: DifyUploadResult): string {
   return String(data.id || data.fileId || '').trim()
+}
+
+function resolvePickedFileSize(res: UniApp.ChooseImageSuccessCallbackResult, path: string): Promise<number> {
+  const fromTemp = Number((res.tempFiles as Array<{ size?: number }> | undefined)?.[0]?.size)
+  if (Number.isFinite(fromTemp) && fromTemp > 0)
+    return Promise.resolve(fromTemp)
+
+  return new Promise((resolve) => {
+    uni.getFileInfo({
+      filePath: path,
+      success: (info) => resolve(Number(info.size) || 0),
+      fail: () => resolve(0),
+    })
+  })
 }
 
 async function onPickImage() {
@@ -77,7 +93,14 @@ async function onPickImage() {
         uni.showToast({ title: '未选择到图片', icon: 'none' })
         return
       }
-      void uploadPicked(path)
+      void (async () => {
+        const size = await resolvePickedFileSize(res, path)
+        if (size > MAX_UPLOAD_BYTES) {
+          uni.showToast({ title: '图片不能超过 5MB', icon: 'none' })
+          return
+        }
+        await uploadPicked(path)
+      })()
     },
     fail: (err) => {
       if (/cancel|取消/i.test(err.errMsg || ''))
@@ -102,7 +125,9 @@ async function uploadPicked(localPath: string) {
       throw new Error('上传成功但未返回文件 ID')
 
     const files = buildStreamChatFiles(uploadFileId)
-    const file = files[0] as StreamChatFile
+    const file = files[0]
+    if (!file)
+      throw new Error('上传成功但未返回文件 ID')
     emit('attachment', { localPath, file })
   }
   catch (e) {
