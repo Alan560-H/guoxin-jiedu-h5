@@ -8,6 +8,7 @@ import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { openCustomerService } from '@/utils/guoxin/customerService'
 
 const store = useGuoxinStore()
 const chatStore = useChatSessionStore()
@@ -131,7 +132,7 @@ function onManageUsers() {
 }
 
 function onService() {
-  uni.showToast({ title: '客服下一步开放', icon: 'none' })
+  openCustomerService()
 }
 
 function onContinueChat() {
