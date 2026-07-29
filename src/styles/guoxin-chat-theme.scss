@@ -43,6 +43,7 @@
 /*
  * uni-app H5 原生 picker 默认层级约 999；对话建档弹窗若更高会挡住选择器。
  * 统一抬高 picker / mask，保证关系、日期、地区可点可选。
+ * 注意：showModal 也用 .uni-mask，必须同步抬高 .uni-modal，否则遮罩盖住按钮点不到。
  */
 .uni-mask,
 .uni-picker-container,
@@ -50,4 +51,8 @@
 uni-picker .uni-picker,
 .uni-picker {
   z-index: 10050 !important;
+}
+
+.uni-modal {
+  z-index: 10060 !important;
 }

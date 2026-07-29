@@ -10,8 +10,10 @@ import GxChatComposer from '@/components/guoxin/chat/GxChatComposer.vue'
 import GxChatFeedbackModal from '@/components/guoxin/chat/GxChatFeedbackModal.vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxChatLimitModal from '@/components/guoxin/chat/GxChatLimitModal.vue'
+import GxChatLoginModal from '@/components/guoxin/chat/GxChatLoginModal.vue'
 import GxChatThread from '@/components/guoxin/chat/GxChatThread.vue'
 import GxInviteModal from '@/components/guoxin/chat/GxInviteModal.vue'
+import GxSourceBackBar from '@/components/guoxin/GxSourceBackBar.vue'
 import {
   CHAT_CREDITS_LOCAL_FALLBACK,
   CHAT_PENDING_QUESTION_KEY,
@@ -24,14 +26,13 @@ import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { clearChatMarkdownCache } from '@/utils/guoxin/chat'
-import { setSkipAutoEnterChat } from '@/utils/guoxin/chatHistoryNav'
-import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import {
   parseQuestionBankPayload,
   parseSuggestedPayload,
   pickRandomQuestions,
   unwrapBizPayload,
 } from '@/utils/guoxin/parseDifyLists'
+import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 import { createStreamTypewriter } from '@/utils/guoxin/streamTypewriter'
 
 const store = useGuoxinStore()
@@ -43,6 +44,7 @@ const pendingAttachment = ref<ChatComposerAttachment | null>(null)
 const composerRef = ref<{ resetAttachment?: () => void } | null>(null)
 const historyLoading = ref(false)
 const loadingOlder = ref(false)
+const showLogin = ref(false)
 const showBazi = ref(false)
 const showInvite = ref(false)
 const showLimit = ref(false)
@@ -50,6 +52,8 @@ const showFeedback = ref(false)
 const feedbackMessageId = ref('')
 const scrollIntoView = ref('')
 const bootstrapped = ref(false)
+/** 登录成功后打开邀请弹窗 */
+const pendingInvite = ref(false)
 const abortController = ref<AbortController | null>(null)
 const clearActiveTypewriter = ref<(() => void) | null>(null)
 const lastStreamMessageId = ref('')
@@ -60,6 +64,7 @@ const bankFollowups = ref<Array<{ question: string, tip: string }> | null>(null)
 const questionBankPool = ref<string[]>([])
 /** 发送时是否贴底（非流式场景）；流式输出时强制贴底，不依赖此标记 */
 const stickToBottom = ref(true)
+const showSourceBackBar = ref(isShowBackEntry())
 /** 程序滚动中：忽略 scroll 事件，避免误改 stickToBottom */
 let programmaticScroll = false
 
@@ -70,6 +75,29 @@ const profileName = computed(() => activeProfile.value?.name || '你')
 const userSeal = computed(() => {
   const n = (activeProfile.value?.name || '').trim()
   return n ? n.slice(0, 1) : '我'
+})
+
+/** 可真正开聊：已登录且有当前档案 */
+const canChat = computed(() =>
+  store.isLoggedIn && profiles.value.length > 0 && Boolean(activeId.value),
+)
+
+const gateTitle = computed(() => {
+  if (!store.isLoggedIn)
+    return '登录后开始解读'
+  return '先添加一位解读用户'
+})
+
+const gateDesc = computed(() => {
+  if (!store.isLoggedIn)
+    return '登录后可结合八字档案提问，并保留你的对话记录。'
+  return '添加解读用户后，即可开始提问与追问。'
+})
+
+const gateActionText = computed(() => {
+  if (!store.isLoggedIn)
+    return '去登录'
+  return '添加解读用户'
 })
 
 const messages = computed(() => chatStore.getMessages(activeId.value))
@@ -128,10 +156,17 @@ const followupLead = computed(() => {
 })
 
 const composerPlaceholder = computed(() => {
+  if (!canChat.value) {
+    if (!store.isLoggedIn)
+      return '登录后开始提问'
+    return '添加解读用户后开始提问'
+  }
   if (quotaUsedUp.value)
     return '今日问答已用完'
   return hasConversation.value ? '继续追问' : '问我想了解的问题'
 })
+
+const composerDisabled = computed(() => asking.value || !canChat.value)
 
 const historyHasMore = computed(() => chatStore.getHasMore(activeId.value))
 const historyLoadingOlder = computed(() =>
@@ -258,12 +293,14 @@ async function loadOlderMessages() {
 }
 
 onLoad(() => {
+  showSourceBackBar.value = isShowBackEntry()
   void bootstrapChat()
 })
 
 onShow(() => {
+  showSourceBackBar.value = isShowBackEntry()
   chatStore.ensureQuotaDay()
-  if (bootstrapped.value) {
+  if (bootstrapped.value && canChat.value) {
     void refreshCreditsQuiet()
     consumePendingQuestion()
   }
@@ -277,7 +314,7 @@ onUnload(() => {
 })
 
 watch(activeId, (id) => {
-  if (!id || !bootstrapped.value)
+  if (!id || !bootstrapped.value || !canChat.value)
     return
   remoteFollowups.value = null
   bankFollowups.value = null
@@ -417,30 +454,69 @@ async function precheckChatQuota(): Promise<'ok' | 'empty' | 'fail'> {
 
 async function bootstrapChat() {
   chatStore.ensureQuotaDay()
+  bootstrapped.value = true
+
   if (!store.isLoggedIn) {
-    uni.redirectTo({ url: RouterPaths.home })
+    showLogin.value = true
     return
   }
+
+  await continueAfterAuth()
+}
+
+/** 登录或建档通过后：拉档案、权益与历史 */
+async function continueAfterAuth() {
+  if (!store.isLoggedIn)
+    return
+
   if (store.profiles.length === 0)
     await store.ensureProfilesLoaded()
+
   if (store.profiles.length === 0) {
-    uni.redirectTo({ url: RouterPaths.home })
+    showBazi.value = true
     return
   }
+
   if (!store.activeProfileId || !store.profiles.some(p => p.id === store.activeProfileId))
     store.setActiveProfile(store.profiles[0].id)
 
   await refreshCreditsQuiet()
   await loadHistoryForProfile(store.activeProfileId)
-  bootstrapped.value = true
   // #ifdef H5
   nextTick(() => bindNativeScroll())
   // #endif
   consumePendingQuestion()
 }
 
+async function afterLoginSuccess() {
+  showLogin.value = false
+  await store.bootstrapAfterLogin()
+  if (store.profiles.length > 0 && !store.activeProfileId)
+    store.setActiveProfile(store.profiles[0].id)
+  await continueAfterAuth()
+  if (pendingInvite.value) {
+    pendingInvite.value = false
+    showInvite.value = true
+  }
+}
+
+function onBaziSuccess() {
+  showBazi.value = false
+  void continueAfterAuth()
+}
+
+function onGateAction() {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  showBazi.value = true
+}
+
 /** 首页带入的问题只预填输入框，绝不自动 streamChat；须用户主动点发送 */
 function consumePendingQuestion() {
+  if (!canChat.value)
+    return
   let pending = ''
   try {
     pending = String(uni.getStorageSync(CHAT_PENDING_QUESTION_KEY) || '').trim()
@@ -454,16 +530,24 @@ function consumePendingQuestion() {
     draft.value = pending
 }
 
-function onBack() {
-  setSkipAutoEnterChat(true)
-  navigateBackOrHome()
-}
-
 function onMine() {
   uni.navigateTo({ url: RouterPaths.mine })
 }
 
+/** 快捷进「我的」报告列表 */
+function onViewReports() {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
+  uni.navigateTo({ url: RouterPaths.mine })
+}
+
 function onSelectProfile(id: string) {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
   if (id === store.activeProfileId)
     return
   abortController.value?.abort()
@@ -476,10 +560,19 @@ function onSelectProfile(id: string) {
 }
 
 function onAdd() {
+  if (!store.isLoggedIn) {
+    showLogin.value = true
+    return
+  }
   showBazi.value = true
 }
 
 function onInvite() {
+  if (!store.isLoggedIn) {
+    pendingInvite.value = true
+    showLogin.value = true
+    return
+  }
   showInvite.value = true
 }
 
@@ -548,6 +641,10 @@ function onComposerAttachment(payload: ChatComposerAttachment | null) {
 }
 
 function onSubmitComposer() {
+  if (!canChat.value) {
+    onGateAction()
+    return
+  }
   const q = draft.value.trim()
   if (!q) {
     if (quotaUsedUp.value) {
@@ -565,6 +662,11 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
   if (!q || asking.value)
     return
 
+  if (!canChat.value) {
+    onGateAction()
+    return
+  }
+
   const profileId = activeId.value
   if (!profileId) {
     uni.showToast({ title: '请先选择解读用户', icon: 'none' })
@@ -576,7 +678,7 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
     uni.showToast({ title: '请先选择解读用户', icon: 'none' })
     return
   }
-  const bazi = JSON.stringify(profile)
+  const userinput_bazi = JSON.stringify(profile)
 
   if (typeof fetch !== 'function') {
     uni.showToast({ title: '当前环境不支持流式问答，请使用浏览器打开', icon: 'none' })
@@ -644,7 +746,7 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
       {
         profileId,
         query: q,
-        bazi,
+        userinput_bazi,
         ...(conversationId ? { conversationId } : {}),
         ...(files?.length ? { files } : {}),
       },
@@ -811,94 +913,115 @@ function scrollToLatestAssistant() {
 
 <template>
   <view class="gx-chat-page chat-page">
+    <GxSourceBackBar v-if="showSourceBackBar" />
     <GxChatHeader
-      show-back
-      @back="onBack"
+      show-reports
       @mine="onMine"
+      @reports="onViewReports"
     />
 
-    <!-- H5：原生 overflow 滚动（uni scroll-view 在 flex 高度链下常无法滚） -->
-    <!-- #ifdef H5 -->
-    <view id="chat-scroll-root" class="chat-scroll chat-scroll--native">
-      <GxChatThread
-        :profiles="profiles"
-        :active-id="activeId"
-        :messages="messages"
-        :user-seal="userSeal"
-        :remaining="remaining"
-        :progress-ratio="progressRatio"
-        :chat-unlimited="chatUnlimited"
-        :quota-used-up="quotaUsedUp"
-        :followup-heading="followupHeading"
-        :followup-lead="followupLead"
-        :followup-meta="followupMeta"
-        :followup-items="followupItems"
-        :history-has-more="historyHasMore"
-        :history-loading-older="historyLoadingOlder"
-        :streaming-output="asking"
-        @select="onSelectProfile"
-        @add="onAdd"
-        @invite="onInvite"
-        @feedback="onFeedback"
-        @buy="onBuy"
-        @refresh-followup="onRefreshFollowup"
-        @pick-followup="onPickFollowup"
-        @generate-report="onGenerateReport"
-      />
+    <view v-if="!canChat" class="chat-gate">
+      <text class="gate-title">
+        {{ gateTitle }}
+      </text>
+      <text class="gate-desc">
+        {{ gateDesc }}
+      </text>
+      <view class="gate-btn" @tap="onGateAction">
+        {{ gateActionText }}
+      </view>
     </view>
-    <!-- #endif -->
 
-    <!-- #ifndef H5 -->
-    <scroll-view
-      scroll-y
-      class="chat-scroll"
-      :show-scrollbar="false"
-      :scroll-into-view="scrollIntoView"
-      scroll-with-animation
-      enable-flex
-      @scrolltoupper="onScrollToUpper"
-    >
-      <GxChatThread
-        :profiles="profiles"
-        :active-id="activeId"
-        :messages="messages"
-        :user-seal="userSeal"
-        :remaining="remaining"
-        :progress-ratio="progressRatio"
-        :chat-unlimited="chatUnlimited"
-        :quota-used-up="quotaUsedUp"
-        :followup-heading="followupHeading"
-        :followup-lead="followupLead"
-        :followup-meta="followupMeta"
-        :followup-items="followupItems"
-        :history-has-more="historyHasMore"
-        :history-loading-older="historyLoadingOlder"
-        :streaming-output="asking"
-        @select="onSelectProfile"
-        @add="onAdd"
-        @invite="onInvite"
-        @feedback="onFeedback"
-        @buy="onBuy"
-        @refresh-followup="onRefreshFollowup"
-        @pick-followup="onPickFollowup"
-        @generate-report="onGenerateReport"
-      />
-    </scroll-view>
-    <!-- #endif -->
+    <template v-else>
+      <!-- H5：原生 overflow 滚动（uni scroll-view 在 flex 高度链下常无法滚） -->
+      <!-- #ifdef H5 -->
+      <view id="chat-scroll-root" class="chat-scroll chat-scroll--native">
+        <GxChatThread
+          :profiles="profiles"
+          :active-id="activeId"
+          :messages="messages"
+          :user-seal="userSeal"
+          :remaining="remaining"
+          :progress-ratio="progressRatio"
+          :chat-unlimited="chatUnlimited"
+          :quota-used-up="quotaUsedUp"
+          :followup-heading="followupHeading"
+          :followup-lead="followupLead"
+          :followup-meta="followupMeta"
+          :followup-items="followupItems"
+          :history-has-more="historyHasMore"
+          :history-loading-older="historyLoadingOlder"
+          :streaming-output="asking"
+          @select="onSelectProfile"
+          @add="onAdd"
+          @invite="onInvite"
+          @feedback="onFeedback"
+          @buy="onBuy"
+          @refresh-followup="onRefreshFollowup"
+          @pick-followup="onPickFollowup"
+          @generate-report="onGenerateReport"
+        />
+      </view>
+      <!-- #endif -->
+
+      <!-- #ifndef H5 -->
+      <scroll-view
+        scroll-y
+        class="chat-scroll"
+        :show-scrollbar="false"
+        :scroll-into-view="scrollIntoView"
+        scroll-with-animation
+        enable-flex
+        @scrolltoupper="onScrollToUpper"
+      >
+        <GxChatThread
+          :profiles="profiles"
+          :active-id="activeId"
+          :messages="messages"
+          :user-seal="userSeal"
+          :remaining="remaining"
+          :progress-ratio="progressRatio"
+          :chat-unlimited="chatUnlimited"
+          :quota-used-up="quotaUsedUp"
+          :followup-heading="followupHeading"
+          :followup-lead="followupLead"
+          :followup-meta="followupMeta"
+          :followup-items="followupItems"
+          :history-has-more="historyHasMore"
+          :history-loading-older="historyLoadingOlder"
+          :streaming-output="asking"
+          @select="onSelectProfile"
+          @add="onAdd"
+          @invite="onInvite"
+          @feedback="onFeedback"
+          @buy="onBuy"
+          @refresh-followup="onRefreshFollowup"
+          @pick-followup="onPickFollowup"
+          @generate-report="onGenerateReport"
+        />
+      </scroll-view>
+      <!-- #endif -->
+    </template>
 
     <GxChatComposer
       ref="composerRef"
       v-model="draft"
-      :allow-attach="true"
+      :allow-attach="canChat"
       :placeholder="composerPlaceholder"
-      :disabled="asking"
+      :disabled="composerDisabled"
       @attachment="onComposerAttachment"
       @submit="onSubmitComposer"
     />
 
+    <GxChatLoginModal
+      :show="showLogin"
+      @close="showLogin = false"
+      @success="afterLoginSuccess"
+    />
     <GxBaziProfileModal
       :show="showBazi"
       @close="showBazi = false"
+      @success="onBaziSuccess"
     />
     <GxInviteModal
       :show="showInvite"
@@ -938,5 +1061,45 @@ function scrollToLatestAssistant() {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+}
+
+.chat-gate {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+  padding: 48rpx 56rpx;
+  box-sizing: border-box;
+}
+
+.gate-title {
+  color: var(--gx-chat-ink, #2b1712);
+  font-size: 36rpx;
+  font-weight: 800;
+  text-align: center;
+}
+
+.gate-desc {
+  color: var(--gx-chat-muted, #755d52);
+  font-size: 26rpx;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.gate-btn {
+  margin-top: 12rpx;
+  min-height: 72rpx;
+  padding: 0 40rpx;
+  border-radius: 999rpx;
+  background: var(--gx-chat-red, #b43a3d);
+  color: #fffdf7;
+  font-size: 28rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

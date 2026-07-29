@@ -1,11 +1,10 @@
-import type { DirectionValue } from '@/constants/guoxin'
 import type { ProfileVo } from '@/models/guoxin/profile'
 import type { ReportGenerateInput, ReportGenerateResult, ReportTaskStatusVo } from '@/models/guoxin/report'
 
 /** 组装 report/generate 的 inputJson */
 export function buildReportInputJson(
   profile: ProfileVo,
-  directions: DirectionValue[],
+  directions: string[],
   userQuestion?: string,
 ): string {
   const numericId = Number(profile.id)

@@ -1,4 +1,3 @@
-import type { DirectionValue } from '@/constants/guoxin'
 import type { RecordVo, ReportSection } from '@/models/guoxin/record'
 import type { ReportChapter, ReportComponent, ReportDocument, ReportSectionBlock, ReportSubSection } from '@/models/guoxin/reportContent'
 
@@ -116,18 +115,29 @@ export function chaptersToReportSections(chapters: unknown[]): ReportSection[] {
   return result
 }
 
-/** directions 可能是 JSON 字符串或数组 */
-export function parseReportDirections(raw: unknown): DirectionValue[] {
-  if (Array.isArray(raw))
-    return raw as DirectionValue[]
+/** directions 可能是 JSON 字符串或数组；支持自定义文案 */
+export function parseReportDirections(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map(item => String(item ?? '').trim())
+      .filter(Boolean)
+  }
   if (typeof raw === 'string') {
+    const text = raw.trim()
+    if (!text)
+      return []
     try {
-      const parsed = JSON.parse(raw)
-      return Array.isArray(parsed) ? parsed as DirectionValue[] : []
+      const parsed = JSON.parse(text)
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(item => String(item ?? '').trim())
+          .filter(Boolean)
+      }
     }
     catch {
-      return []
+      // 纯文案
     }
+    return [text]
   }
   return []
 }

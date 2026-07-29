@@ -132,9 +132,9 @@ export async function postChatMessagesStream(
   }
   if (conversationId)
     payload.conversationId = conversationId
-  const bazi = String(body.bazi || '').trim()
-  if (bazi)
-    payload.bazi = bazi
+  const userinputBazi = String(body.userinput_bazi || '').trim()
+  if (userinputBazi)
+    payload.inputs = { userinput_bazi: userinputBazi }
   if (files.length)
     payload.files = files
 

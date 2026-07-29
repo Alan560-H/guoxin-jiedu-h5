@@ -1,10 +1,10 @@
-import type { DirectionValue } from '@/constants/guoxin'
 import type { ProfileVo } from '@/models/guoxin/profile'
 
 /** report/generate 的 inputJson 结构（与档案接口字段一致） */
 export interface ReportGenerateInput {
   profileId: number | string
-  directions: DirectionValue[]
+  /** 解读重点文案列表（支持用户自定义输入） */
+  directions: string[]
   userQuestion?: string
   profileName: string
   relation: ProfileVo['relation']

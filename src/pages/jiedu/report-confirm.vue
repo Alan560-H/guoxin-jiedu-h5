@@ -5,8 +5,7 @@ import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import {
   RELATION_OPTIONS,
-  REPORT_CONFIRM_DIRECTIONS,
-  REPORT_CONFIRM_FOCUS_LABEL,
+  REPORT_CONFIRM_FOCUS_DEFAULT,
 } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
@@ -19,6 +18,8 @@ const store = useGuoxinStore()
 const chatStore = useChatSessionStore()
 const { locking: confirming, runLocked } = useActionLock()
 const showBazi = ref(false)
+/** 解读重点：用户自由输入 */
+const focusText = ref(REPORT_CONFIRM_FOCUS_DEFAULT)
 
 const profile = computed(() => store.activeProfile)
 
@@ -123,6 +124,16 @@ function onBaziSuccess() {
     store.setActiveProfile(store.profiles[0].id)
 }
 
+function onFocusInput(e: { detail?: { value?: string } }) {
+  focusText.value = String(e.detail?.value ?? '')
+}
+
+/** 自由输入 → directions：整段作为一项，保留用户原文 */
+function focusToDirections(text: string): string[] {
+  const t = text.trim()
+  return t ? [t] : []
+}
+
 async function onConfirm() {
   await runLocked(async () => {
     if (!store.activeProfile) {
@@ -135,13 +146,18 @@ async function onConfirm() {
       showBazi.value = true
       return
     }
+    const directions = focusToDirections(focusText.value)
+    if (directions.length === 0) {
+      uni.showToast({ title: '请填写解读重点', icon: 'none' })
+      return
+    }
     await store.ensureCreditsLoaded(true)
     if (store.totalAvailableCount <= 0) {
       uni.navigateTo({ url: RouterPaths.credits })
       return
     }
     await store.confirmJiedu(
-      [...REPORT_CONFIRM_DIRECTIONS],
+      directions,
       lastUserQuestion.value || undefined,
     )
   })
@@ -181,17 +197,31 @@ async function onConfirm() {
               {{ birthSummary }}
             </text>
             <text class="label">
-              解读重点
-            </text>
-            <text class="value">
-              {{ REPORT_CONFIRM_FOCUS_LABEL }}
-            </text>
-            <text class="label">
               本次消耗
             </text>
             <text class="value accent">
               1 次报告额度
             </text>
+          </view>
+
+          <view class="focus-block">
+            <view class="focus-head">
+              <text class="focus-title">
+                解读重点
+              </text>
+              <text class="focus-hint">
+                可自行修改
+              </text>
+            </view>
+            <textarea
+              class="focus-input"
+              :value="focusText"
+              maxlength="200"
+              :auto-height="true"
+              placeholder="例如：整体命理、近期状态、事业方向…"
+              placeholder-class="focus-placeholder"
+              @input="onFocusInput"
+            />
           </view>
         </view>
 
@@ -295,6 +325,50 @@ async function onConfirm() {
   &.accent {
     color: var(--gx-chat-red);
   }
+}
+
+.focus-block {
+  margin-top: 28rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid rgba(236, 205, 187, 0.7);
+}
+
+.focus-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.focus-title {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: var(--gx-chat-ink);
+}
+
+.focus-hint {
+  font-size: 22rpx;
+  color: var(--gx-chat-hint);
+}
+
+.focus-input {
+  width: 100%;
+  min-height: 140rpx;
+  padding: 20rpx 24rpx;
+  box-sizing: border-box;
+  border-radius: 20rpx;
+  border: 2rpx solid var(--gx-chat-border, #eccdbb);
+  background: rgba(255, 253, 248, 0.96);
+  color: var(--gx-chat-ink, #2b1712);
+  font-size: 28rpx;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+.focus-placeholder {
+  color: var(--gx-chat-hint, #a28777);
+  font-weight: 400;
 }
 
 .note-card {

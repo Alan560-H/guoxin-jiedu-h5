@@ -77,7 +77,7 @@ function onMarkdownClick(e: MouseEvent) {
             <view class="bar mid" />
           </view>
           <text class="thinking-text">
-            正在思考中。。。
+            正在思考中......
           </text>
         </view>
 

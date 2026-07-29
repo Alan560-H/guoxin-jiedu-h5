@@ -36,15 +36,8 @@ export const DIRECTION_OPTIONS = [
 
 export type DirectionValue = typeof DIRECTION_OPTIONS[number]
 
-/** 对话版报告确认页：展示文案（非接口枚举值） */
-export const REPORT_CONFIRM_FOCUS_LABEL = '整体命理 · 近期状态 · 行动建议'
-
-/** 对话版报告确认页：提交给 generate 的默认方向（对应上方展示文案） */
-export const REPORT_CONFIRM_DIRECTIONS: DirectionValue[] = [
-  '认识自己',
-  '人生周期',
-  '重大选择',
-]
+/** 对话版报告确认页：解读重点默认文案（可自行改） */
+export const REPORT_CONFIRM_FOCUS_DEFAULT = '整体命理 · 近期状态 · 行动建议'
 
 export type FontScale = 'standard' | 'large' | 'xlarge'
 

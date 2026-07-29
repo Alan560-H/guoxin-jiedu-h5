@@ -3,13 +3,17 @@ withDefaults(defineProps<{
   title?: string
   showBack?: boolean
   showMine?: boolean
+  /** 快捷查看报告入口（文案：查看报告） */
+  showReports?: boolean
 }>(), {
   showMine: true,
+  showReports: false,
 })
 
 const emit = defineEmits<{
   back: []
   mine: []
+  reports: []
 }>()
 </script>
 
@@ -32,8 +36,15 @@ const emit = defineEmits<{
       </text>
       <view class="header-side right">
         <view
+          v-if="showReports"
+          class="header-action"
+          @tap="emit('reports')"
+        >
+          查看报告
+        </view>
+        <view
           v-if="showMine"
-          class="header-mine"
+          class="header-action"
           @tap="emit('mine')"
         >
           我的
@@ -59,17 +70,18 @@ const emit = defineEmits<{
 
 .header-row {
   min-height: 88rpx;
-  padding: 12rpx 36rpx 20rpx;
+  padding: 12rpx 24rpx 20rpx;
   display: grid;
-  grid-template-columns: 128rpx 1fr 128rpx;
+  grid-template-columns: minmax(48rpx, 1fr) auto minmax(48rpx, 1fr);
   align-items: center;
-  gap: 24rpx;
+  gap: 12rpx;
   box-sizing: border-box;
 }
 
 .header-side {
   display: flex;
   align-items: center;
+  gap: 12rpx;
   min-height: 76rpx;
 
   &.left {
@@ -83,10 +95,11 @@ const emit = defineEmits<{
 
 .header-title {
   text-align: center;
-  font-size: 44rpx;
+  font-size: 40rpx;
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .header-back {
@@ -98,17 +111,18 @@ const emit = defineEmits<{
   color: #fffdf7;
 }
 
-.header-mine {
+.header-action {
   min-height: 60rpx;
-  padding: 0 20rpx;
+  padding: 0 18rpx;
   border-radius: 999rpx;
   border: 2rpx solid rgba(255, 253, 247, 0.35);
   background: rgba(255, 253, 247, 0.14);
   color: #fffdf7;
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 </style>

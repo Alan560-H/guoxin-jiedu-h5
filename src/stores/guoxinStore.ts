@@ -1,4 +1,4 @@
-import type { DirectionValue, FontScale } from '@/constants/guoxin'
+import type { FontScale } from '@/constants/guoxin'
 import type { CreateProfileDto, ProfileVo } from '@/models/guoxin/profile'
 import type { RecordVo } from '@/models/guoxin/record'
 import type { GuoxinLoginSession } from '@/utils/guoxin/parseLoginResponse'
@@ -56,7 +56,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
   const profiles = ref<ProfileVo[]>([])
   const activeProfileId = ref('')
   const activeRecordId = ref('')
-  const selectedDirections = ref<DirectionValue[]>([])
+  const selectedDirections = ref<string[]>([])
   const userQuestion = ref('')
   const fontScale = ref<FontScale>('standard')
   const isLoggedIn = ref(false)
@@ -380,9 +380,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
       navigateToSetup(id)
   }
 
-  async function confirmJiedu(directions: DirectionValue[], question?: string): Promise<boolean> {
+  async function confirmJiedu(directions: string[], question?: string): Promise<boolean> {
     if (directions.length === 0) {
-      uni.showToast({ title: '请至少选择一个解读方向', icon: 'none' })
+      uni.showToast({ title: '请填写解读重点', icon: 'none' })
       return false
     }
     userQuestion.value = question?.trim() || ''

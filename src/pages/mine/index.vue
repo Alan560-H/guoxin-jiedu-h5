@@ -137,12 +137,7 @@ function onService() {
 }
 
 function onContinueChat() {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    uni.navigateBack({ delta: 1 })
-    return
-  }
-  uni.reLaunch({ url: RouterPaths.home })
+  uni.reLaunch({ url: RouterPaths.jieduChat })
 }
 
 function onLogout() {

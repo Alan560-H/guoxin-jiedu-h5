@@ -1,9 +1,8 @@
-import type { DirectionValue } from '@/constants/guoxin'
 import type { RecordVo } from '@/models/guoxin/record'
 
 export interface JieduTaskCreateReq {
   profileId: string
-  directions: DirectionValue[]
+  directions: string[]
   userQuestion?: string
 }
 
