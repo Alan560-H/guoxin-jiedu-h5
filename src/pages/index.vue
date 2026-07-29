@@ -15,7 +15,7 @@ import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { setSkipAutoEnterChat, shouldSkipAutoEnterChat } from '@/utils/guoxin/chatHistoryNav'
-import { parseQuestionBankPayload, unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
+import { parseQuestionBankPayload, pickRandomQuestions, unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 
 const store = useGuoxinStore()
@@ -27,7 +27,6 @@ const showLogin = ref(false)
 const showBazi = ref(false)
 const showInvite = ref(false)
 const draft = ref('')
-const bankIndex = ref(0)
 const remoteBanks = ref<string[][] | null>(null)
 const pendingQuestion = ref('')
 /** 登录成功后打开邀请弹窗 */
@@ -43,12 +42,21 @@ const questionBanks = computed(() =>
     ? remoteBanks.value
     : HOME_QUESTION_BANKS,
 )
-const questions = computed(() => questionBanks.value[bankIndex.value % questionBanks.value.length] ?? questionBanks.value[0] ?? [])
+/** 全量题库扁平池 */
+const questionPool = computed(() => questionBanks.value.flat())
+/** 无聊天记录时展示的随机 3 条 */
+const questions = ref<string[]>(pickRandomQuestions(HOME_QUESTION_BANKS.flat(), 3))
+
+function refreshRandomQuestions() {
+  questions.value = pickRandomQuestions(questionPool.value, 3)
+}
 
 onMounted(() => {
   // 未登录不打题库接口；档案列表交给 onShow
   if (store.isLoggedIn)
     void loadRemoteQuestionBank()
+  else
+    refreshRandomQuestions()
 })
 
 onLoad((query) => {
@@ -82,11 +90,12 @@ async function loadRemoteQuestionBank() {
     const banks = parseQuestionBankPayload(unwrapBizPayload(res))
     if (banks.length > 0) {
       remoteBanks.value = banks
-      bankIndex.value = 0
+      refreshRandomQuestions()
     }
   }
   catch {
     // 回退本地 HOME_QUESTION_BANKS
+    refreshRandomQuestions()
   }
 }
 
@@ -214,10 +223,7 @@ function onSelectProfile(id: string) {
 }
 
 function onRefreshQuestions() {
-  const banks = questionBanks.value
-  if (!banks.length)
-    return
-  bankIndex.value = (bankIndex.value + 1) % banks.length
+  refreshRandomQuestions()
 }
 
 function onPickQuestion(q: string) {

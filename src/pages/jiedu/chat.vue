@@ -4,7 +4,7 @@ import type { FeedbackState } from '@/stores/chatSessionStore'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { streamChatMessage } from '@/api/chat'
-import { getDifySuggested } from '@/api/dify'
+import { getDifyQuestionBank, getDifySuggested } from '@/api/dify'
 import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
 import GxChatComposer from '@/components/guoxin/chat/GxChatComposer.vue'
 import GxChatFeedbackModal from '@/components/guoxin/chat/GxChatFeedbackModal.vue'
@@ -17,6 +17,7 @@ import {
   CHAT_PENDING_QUESTION_KEY,
   DAILY_QUESTION_LIMIT,
   FOLLOWUP_BANKS,
+  HOME_QUESTION_BANKS,
 } from '@/constants/chatHome'
 import { isChatStreamQuotaError } from '@/models/guoxin/chat'
 import { RouterPaths } from '@/routerPaths'
@@ -25,7 +26,12 @@ import { useGuoxinStore } from '@/stores/guoxinStore'
 import { clearChatMarkdownCache } from '@/utils/guoxin/chat'
 import { setSkipAutoEnterChat } from '@/utils/guoxin/chatHistoryNav'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
-import { parseSuggestedPayload, unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
+import {
+  parseQuestionBankPayload,
+  parseSuggestedPayload,
+  pickRandomQuestions,
+  unwrapBizPayload,
+} from '@/utils/guoxin/parseDifyLists'
 import { createStreamTypewriter } from '@/utils/guoxin/streamTypewriter'
 
 const store = useGuoxinStore()
@@ -48,6 +54,10 @@ const abortController = ref<AbortController | null>(null)
 const clearActiveTypewriter = ref<(() => void) | null>(null)
 const lastStreamMessageId = ref('')
 const remoteFollowups = ref<Array<{ question: string, tip: string }> | null>(null)
+/** 无历史时：question/bank 随机推荐 */
+const bankFollowups = ref<Array<{ question: string, tip: string }> | null>(null)
+/** bank 全量扁平池（缓存，换一批时复用） */
+const questionBankPool = ref<string[]>([])
 /** 发送时是否贴底（非流式场景）；流式输出时强制贴底，不依赖此标记 */
 const stickToBottom = ref(true)
 /** 程序滚动中：忽略 scroll 事件，避免误改 stickToBottom */
@@ -90,6 +100,8 @@ const followupBank = computed(() => {
 const followupItems = computed(() => {
   if (remoteFollowups.value && remoteFollowups.value.length > 0)
     return remoteFollowups.value
+  if (bankFollowups.value && bankFollowups.value.length > 0)
+    return bankFollowups.value
   return (followupBank.value?.items ?? []).map(([question, tip]) => ({ question, tip }))
 })
 
@@ -99,21 +111,27 @@ const followupMeta = computed(() => {
   return quotaUsedUp.value ? '明日恢复' : `还可问 ${remaining.value} 次`
 })
 
-const followupHeading = computed(() =>
-  remoteFollowups.value?.length
-    ? '可以继续追问'
-    : (followupBank.value?.heading || '可以继续追问'),
-)
+const followupHeading = computed(() => {
+  if (remoteFollowups.value?.length)
+    return '可以继续追问'
+  if (bankFollowups.value?.length)
+    return '试试这样问'
+  return followupBank.value?.heading || '可以继续追问'
+})
 
-const followupLead = computed(() =>
-  remoteFollowups.value?.length
-    ? '根据刚才的回答，可以试试下面这些问题。'
-    : (followupBank.value?.lead || ''),
-)
+const followupLead = computed(() => {
+  if (remoteFollowups.value?.length)
+    return '根据刚才的回答，可以试试下面这些问题。'
+  if (bankFollowups.value?.length)
+    return '还没有开始聊，可以从这些问题开始。'
+  return followupBank.value?.lead || ''
+})
 
-const composerPlaceholder = computed(() =>
-  quotaUsedUp.value ? '今日问答已用完' : '继续追问',
-)
+const composerPlaceholder = computed(() => {
+  if (quotaUsedUp.value)
+    return '今日问答已用完'
+  return hasConversation.value ? '继续追问' : '问我想了解的问题'
+})
 
 const historyHasMore = computed(() => chatStore.getHasMore(activeId.value))
 const historyLoadingOlder = computed(() =>
@@ -262,25 +280,89 @@ watch(activeId, (id) => {
   if (!id || !bootstrapped.value)
     return
   remoteFollowups.value = null
+  bankFollowups.value = null
   lastStreamMessageId.value = ''
   clearChatMarkdownCache()
   void loadHistoryForProfile(id)
 })
+
+/** 历史气泡 id 为 `${difyMessageId}-a`，suggested 需要原始 messageId */
+function resolveLatestDifyMessageId(
+  list: Array<{ id: string, role: string }>,
+): string {
+  for (let i = list.length - 1; i >= 0; i--) {
+    const m = list[i]
+    if (!m || m.role !== 'assistant')
+      continue
+    const mid = String(m.id || '').trim()
+    if (!mid || mid.startsWith('intro_'))
+      continue
+    if (mid.endsWith('-a'))
+      return mid.slice(0, -2)
+  }
+  return ''
+}
+
+function applyBankFollowups(pool: string[], forProfileId: string) {
+  if (store.activeProfileId !== forProfileId)
+    return
+  const list = pickRandomQuestions(pool, 3)
+  questionBankPool.value = pool
+  bankFollowups.value = list.map(question => ({ question, tip: '' }))
+  remoteFollowups.value = null
+  lastStreamMessageId.value = ''
+}
+
+/** 无聊天记录：拉 question/bank，随机 3 条 */
+async function loadQuestionBankFollowups(forProfileId: string) {
+  const profileId = String(forProfileId || '').trim()
+  if (!profileId)
+    return
+
+  if (questionBankPool.value.length > 0) {
+    applyBankFollowups(questionBankPool.value, profileId)
+    return
+  }
+
+  try {
+    const res = await getDifyQuestionBank()
+    const banks = parseQuestionBankPayload(unwrapBizPayload(res))
+    const pool = banks.flat().map(q => String(q || '').trim()).filter(Boolean)
+    if (pool.length > 0) {
+      applyBankFollowups(pool, profileId)
+      return
+    }
+  }
+  catch {
+    // 回退本地 HOME_QUESTION_BANKS
+  }
+  applyBankFollowups(HOME_QUESTION_BANKS.flat(), profileId)
+}
 
 async function loadHistoryForProfile(profileId: string) {
   const id = String(profileId || '').trim()
   if (!id)
     return
   historyLoading.value = true
+  remoteFollowups.value = null
+  bankFollowups.value = null
+  lastStreamMessageId.value = ''
   const introName = store.profiles.find(p => p.id === id)?.name || '你'
   try {
     const { messages } = await chatStore.loadRemoteHistory(id)
     if (id !== store.activeProfileId)
       return
-    if (messages.length === 0)
+    if (messages.length === 0) {
       chatStore.ensureIntro(id, introName)
-    else
-      scrollToLatestAssistant()
+      void loadQuestionBankFollowups(id)
+      return
+    }
+    scrollToLatestAssistant()
+    const difyMsgId = resolveLatestDifyMessageId(messages)
+    if (!difyMsgId)
+      return
+    lastStreamMessageId.value = difyMsgId
+    void loadSuggestedFollowups(difyMsgId, id)
   }
   catch (e) {
     if (id !== store.activeProfileId)
@@ -416,10 +498,19 @@ function onGenerateReport() {
 }
 
 function onRefreshFollowup() {
-  if (remoteFollowups.value?.length) {
-    remoteFollowups.value = null
-    lastStreamMessageId.value = ''
+  if (!hasConversation.value) {
+    const pool = questionBankPool.value.length > 0
+      ? questionBankPool.value
+      : HOME_QUESTION_BANKS.flat()
+    applyBankFollowups(pool, activeId.value)
+    return
   }
+  if (lastStreamMessageId.value) {
+    void loadSuggestedFollowups(lastStreamMessageId.value, activeId.value)
+    return
+  }
+  remoteFollowups.value = null
+  bankFollowups.value = null
   chatStore.nextFollowupBatch()
 }
 
@@ -437,6 +528,7 @@ async function loadSuggestedFollowups(messageId: string, forProfileId: string) {
       && lastStreamMessageId.value === id
     ) {
       remoteFollowups.value = items
+      bankFollowups.value = null
     }
   }
   catch {
@@ -479,6 +571,13 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
     return
   }
 
+  const profile = store.profiles.find(p => p.id === profileId) ?? store.activeProfile
+  if (!profile) {
+    uni.showToast({ title: '请先选择解读用户', icon: 'none' })
+    return
+  }
+  const bazi = JSON.stringify(profile)
+
   if (typeof fetch !== 'function') {
     uni.showToast({ title: '当前环境不支持流式问答，请使用浏览器打开', icon: 'none' })
     return
@@ -506,6 +605,8 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
   pendingAttachment.value = null
   composerRef.value?.resetAttachment?.()
   lastStreamMessageId.value = ''
+  bankFollowups.value = null
+  remoteFollowups.value = null
   stickToBottom.value = isNearBottom(160)
   chatStore.ensureIntro(profileId, profileName.value)
   const userMsg = chatStore.appendUser(profileId, q, imageUrl ? { imageUrl } : undefined)
@@ -538,10 +639,13 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
   pinScrollToBottom()
 
   try {
+    const conversationId = chatStore.getConversationId(profileId)
     const text = await streamChatMessage(
       {
         profileId,
         query: q,
+        bazi,
+        ...(conversationId ? { conversationId } : {}),
         ...(files?.length ? { files } : {}),
       },
       {
@@ -724,7 +828,6 @@ function scrollToLatestAssistant() {
         :remaining="remaining"
         :progress-ratio="progressRatio"
         :chat-unlimited="chatUnlimited"
-        :has-conversation="hasConversation"
         :quota-used-up="quotaUsedUp"
         :followup-heading="followupHeading"
         :followup-lead="followupLead"
@@ -763,7 +866,6 @@ function scrollToLatestAssistant() {
         :remaining="remaining"
         :progress-ratio="progressRatio"
         :chat-unlimited="chatUnlimited"
-        :has-conversation="hasConversation"
         :quota-used-up="quotaUsedUp"
         :followup-heading="followupHeading"
         :followup-lead="followupLead"

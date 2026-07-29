@@ -15,7 +15,6 @@ defineProps<{
   remaining: number
   progressRatio: number
   chatUnlimited: boolean
-  hasConversation: boolean
   quotaUsedUp: boolean
   followupHeading: string
   followupLead: string
@@ -91,7 +90,6 @@ const emit = defineEmits<{
       />
 
       <GxChatFollowupPanel
-        v-if="hasConversation || quotaUsedUp"
         :heading="followupHeading"
         :lead="followupLead"
         :meta="followupMeta"

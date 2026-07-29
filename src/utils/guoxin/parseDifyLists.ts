@@ -22,7 +22,7 @@ function fromArray(arr: unknown[]): string[] {
   return out
 }
 
-/** 题库：string[] / 二维数组 / { list|questions|items } */
+/** 题库：string[] / 二维数组 / { 分类: string[] } / { list|questions|items } */
 export function parseQuestionBankPayload(raw: unknown): string[][] {
   if (!raw)
     return []
@@ -41,12 +41,39 @@ export function parseQuestionBankPayload(raw: unknown): string[][] {
 
   if (typeof raw === 'object') {
     const o = raw as Record<string, unknown>
+
+    // { "八字基础解读": string[], "财运财富运势": string[], ... }
+    const entries = Object.entries(o)
+    if (
+      entries.length > 0
+      && entries.every(([, v]) => Array.isArray(v))
+    ) {
+      return entries
+        .map(([, v]) => fromArray(v as unknown[]))
+        .filter(g => g.length > 0)
+    }
+
     const nested = o.list ?? o.questions ?? o.items ?? o.data ?? o.bank ?? o.banks
     if (nested != null)
       return parseQuestionBankPayload(nested)
   }
 
   return []
+}
+
+/** 从题库扁平池中随机抽取 n 条（不重复） */
+export function pickRandomQuestions(pool: string[], n = 3): string[] {
+  const unique = [...new Set(pool.map(q => String(q || '').trim()).filter(Boolean))]
+  if (unique.length <= n)
+    return unique
+  const copy = [...unique]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = copy[i]!
+    copy[i] = copy[j]!
+    copy[j] = tmp
+  }
+  return copy.slice(0, n)
 }
 
 export interface SuggestedItem {

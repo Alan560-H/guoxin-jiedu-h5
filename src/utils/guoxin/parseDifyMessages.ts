@@ -134,5 +134,13 @@ export function parseDifyMessagesPayload(raw: unknown): ParsedDifyHistory {
 
   const hasMore = Boolean(page?.has_more ?? page?.hasMore)
 
+  // 分页壳上也可能带 conversation_id（优先用消息里已取到的）
+  if (!conversationId && page) {
+    const pageRec = page as Record<string, unknown>
+    conversationId = String(
+      pageRec.conversation_id ?? pageRec.conversationId ?? '',
+    ).trim()
+  }
+
   return { messages, conversationId, hasMore, firstId }
 }

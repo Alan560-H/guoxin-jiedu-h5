@@ -124,10 +124,17 @@ export async function postChatMessagesStream(
       upload_file_id: String(f.upload_file_id).trim(),
     }))
 
+  const conversationId = String(body.conversationId || '').trim()
+
   const payload: Record<string, unknown> = {
     profileId,
     query,
   }
+  if (conversationId)
+    payload.conversationId = conversationId
+  const bazi = String(body.bazi || '').trim()
+  if (bazi)
+    payload.bazi = bazi
   if (files.length)
     payload.files = files
 
@@ -168,9 +175,6 @@ export async function postChatMessagesStream(
     if (session)
       handlers.onSession?.(session)
     const text = repairStreamMarkdownArtifacts(extractDeltaText(payload).trim())
-    // 调试：对照原始返回与修复后文本（JSON.stringify 便于看出 \\n）
-    console.log('[guoxin-chat-stream] raw(json)', JSON.stringify(extractDeltaText(payload)))
-    console.log('[guoxin-chat-stream] repaired(json)', JSON.stringify(text))
     if (text)
       handlers.onDelta?.(text)
     return text
@@ -349,9 +353,6 @@ export async function postChatMessagesStream(
     buffer += decoder.decode()
     consumeBuffer(true)
     const repaired = repairStreamMarkdownArtifacts(fullText)
-    // 调试：对照 SSE 累计原文与修复后文本（复制控制台字符串即可）
-    console.log('[guoxin-chat-stream] raw', JSON.stringify(fullText))
-    console.log('[guoxin-chat-stream] repaired', JSON.stringify(repaired))
     if (handlers.onDelta && repaired)
       handlers.onDelta(repaired)
     return repaired.trim()
