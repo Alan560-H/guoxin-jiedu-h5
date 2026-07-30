@@ -141,8 +141,12 @@ export async function wxChoosePay(param: WxPayOrderInput): Promise<void> {
   let payParams: WxPayParamsVo
   try {
     const res = await createWxPayOrder({ productId: param.productId, payChannel: 'jsapi' })
-    if (res.code !== 200 || !res.data)
-      throw new Error('pay_create_failed')
+    if (res.code !== 200 || !res.data) {
+      const msg = typeof res.msg === 'string' && res.msg.trim()
+        ? res.msg.trim()
+        : 'pay_create_failed'
+      throw new Error(msg)
+    }
     payParams = normalizeJsapiPayParams(res.data)
   }
   finally {
@@ -165,8 +169,12 @@ export async function wxMwebPay(param: WxPayOrderInput): Promise<WxPayMwebRedire
       h5ScenceType: resolveH5ScenceType(),
       redirectUrl: buildCreditsPayReturnUrl(),
     })
-    if (res.code !== 200 || !res.data)
-      throw new Error('pay_create_failed')
+    if (res.code !== 200 || !res.data) {
+      const msg = typeof res.msg === 'string' && res.msg.trim()
+        ? res.msg.trim()
+        : 'pay_create_failed'
+      throw new Error(msg)
+    }
     const mwebUrl = extractMwebUrl(res.data)
     if (!mwebUrl)
       throw new Error('mweb_url_missing')
@@ -185,22 +193,31 @@ export async function wxPay(param: WxPayOrderInput): Promise<void | WxPayMwebRed
   return wxMwebPay(param)
 }
 
+const WX_PAY_KNOWN_ERRORS: Record<string, string> = {
+  not_wechat: OPEN_IN_WECHAT_MESSAGE,
+  no_weixin_bridge: '微信支付环境未就绪，请稍后重试',
+  cancel: '已取消支付',
+  pay_create_failed: '创建订单失败，请稍后重试',
+  mweb_url_missing: '未获取到支付链接，请稍后重试',
+  mweb_in_wechat: '当前环境请使用微信内支付',
+  invalid_jsapi_params: '支付参数不完整，请确认 pay/create 返回有效 prepay_id 与 paySign',
+}
+
 export function formatWxPayError(err: unknown): string {
   const code = err instanceof Error ? err.message : ''
-  if (code === 'not_wechat')
-    return OPEN_IN_WECHAT_MESSAGE
-  if (code === 'no_weixin_bridge')
-    return '微信支付环境未就绪，请稍后重试'
-  if (code === 'cancel')
-    return '已取消支付'
-  if (code === 'pay_create_failed')
-    return '创建订单失败，请稍后重试'
-  if (code === 'mweb_url_missing')
-    return '未获取到支付链接，请稍后重试'
-  if (code === 'mweb_in_wechat')
-    return '当前环境请使用微信内支付'
-  if (code === 'invalid_jsapi_params')
-    return '支付参数不完整，请确认 pay/create 返回有效 prepay_id 与 paySign'
+  if (code && WX_PAY_KNOWN_ERRORS[code])
+    return WX_PAY_KNOWN_ERRORS[code]
+
+  // 拦截器业务失败会 reject { code, msg }，优先展示后端 msg（如体验包限购）
+  if (err && typeof err === 'object') {
+    const msg = (err as { msg?: unknown }).msg
+    if (typeof msg === 'string' && msg.trim())
+      return msg.trim()
+  }
+  // 非已知错误码的 Error.message（可能已是后端文案）
+  if (err instanceof Error && err.message.trim())
+    return err.message.trim()
+
   return '支付失败，请稍后重试'
 }
 

@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
+import GxCustomerServiceModal from '@/components/guoxin/GxCustomerServiceModal.vue'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
-import { openCustomerService } from '@/utils/guoxin/customerService'
 
 const store = useGuoxinStore()
+const showService = ref(false)
 
 /** 对齐设计稿：会员优势对比表 */
 const comparisonRows = [
@@ -31,7 +32,7 @@ function onBack() {
 }
 
 function onContactService() {
-  openCustomerService()
+  showService.value = true
 }
 </script>
 
@@ -125,6 +126,11 @@ function onContactService() {
 
       <view class="safe-bottom" />
     </scroll-view>
+
+    <GxCustomerServiceModal
+      :show="showService"
+      @close="showService = false"
+    />
   </view>
 </template>
 

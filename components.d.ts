@@ -23,6 +23,7 @@ declare module 'vue' {
     GxChatThread: typeof import('./src/components/guoxin/chat/GxChatThread.vue')['default']
     GxChip: typeof import('./src/components/guoxin/GxChip.vue')['default']
     GxCreditsIcon: typeof import('./src/components/guoxin/GxCreditsIcon.vue')['default']
+    GxCustomerServiceModal: typeof import('./src/components/guoxin/GxCustomerServiceModal.vue')['default']
     GxFontScaleNav: typeof import('./src/components/guoxin/GxFontScaleNav.vue')['default']
     GxInviteModal: typeof import('./src/components/guoxin/chat/GxInviteModal.vue')['default']
     GxLoginModal: typeof import('./src/components/guoxin/GxLoginModal.vue')['default']

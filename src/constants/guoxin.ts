@@ -92,6 +92,13 @@ export const CREDITS_PAY_HINT
 export const IS_SHOW_BACK_QUERY_KEY = 'isShowBack'
 export const IS_SHOW_BACK_QUERY_VALUE = '1'
 
+/**
+ * 入口开关：?isShowPay=1 或未传走微信支付（默认 1）；?isShowPay=0 咨询弹客服二维码。
+ */
+export const IS_SHOW_PAY_QUERY_KEY = 'isShowPay'
+export const IS_SHOW_PAY_QUERY_ON = '1'
+export const IS_SHOW_PAY_QUERY_OFF = '0'
+
 /** 轻舟云课堂发现页地址（isShowBack=1 时「返回上一页」跳转目标） */
 export const SHOW_BACK_ENTRY_URL = 'https://nr.cxfangtang.cn/'
 

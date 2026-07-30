@@ -33,6 +33,7 @@ import {
   unwrapBizPayload,
 } from '@/utils/guoxin/parseDifyLists'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
+import { captureShowPayFromUrl } from '@/utils/guoxin/showPay'
 import { createStreamTypewriter } from '@/utils/guoxin/streamTypewriter'
 
 const store = useGuoxinStore()
@@ -292,7 +293,8 @@ async function loadOlderMessages() {
   }
 }
 
-onLoad(() => {
+onLoad((query) => {
+  captureShowPayFromUrl(query as Record<string, string | undefined>)
   showSourceBackBar.value = isShowBackEntry()
   void bootstrapChat()
 })

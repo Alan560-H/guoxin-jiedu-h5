@@ -100,4 +100,5 @@ export const deleteProfile = (id: number, config?: Record<string, unknown>): Pro
 
 /** 创建微信支付订单（JSAPI / MWEB 共用 pay/create，必传 payChannel） */
 export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayCreateVo | WxPayMwebCreateVo>> =>
-  http.post(`${BASE}/pay/create`, data, { meta: { loading: false, toast: true } })
+  // toast 交给购买流程 formatWxPayError，避免拦截器 toast 被后续通用文案覆盖
+  http.post(`${BASE}/pay/create`, data, { meta: { loading: false, toast: false } })

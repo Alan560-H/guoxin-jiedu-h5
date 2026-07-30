@@ -19,10 +19,12 @@ import '@/styles/report-html-theme.scss'
 import 'uno.css'
 import { i18n } from '@/i18n'
 import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
+import { captureShowPayFromUrl } from '@/utils/guoxin/showPay'
 import { captureSourceFromUrl } from '@/utils/guoxin/source'
 
 scheduleMarkAppEmbeddedWebView()
 captureSourceFromUrl()
+captureShowPayFromUrl()
 
 export function createApp() {
   const app = createSSRApp(App)

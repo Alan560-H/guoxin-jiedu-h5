@@ -3,18 +3,19 @@ import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxChatLoginModal from '@/components/guoxin/chat/GxChatLoginModal.vue'
+import GxCustomerServiceModal from '@/components/guoxin/GxCustomerServiceModal.vue'
 import { CHAT_CREDITS_LOCAL_FALLBACK, CHAT_PENDING_QUESTION_KEY, DAILY_QUESTION_LIMIT } from '@/constants/chatHome'
 import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { userInfoStore } from '@/stores/userInfoStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
-import { openCustomerService } from '@/utils/guoxin/customerService'
 
 const store = useGuoxinStore()
 const chatStore = useChatSessionStore()
 
 const showLogin = ref(false)
+const showService = ref(false)
 const loadingReports = ref(false)
 
 const isLoggedIn = computed(() => store.isLoggedIn)
@@ -133,7 +134,7 @@ function onManageUsers() {
 }
 
 function onService() {
-  openCustomerService()
+  showService.value = true
 }
 
 function onContinueChat() {
@@ -376,6 +377,10 @@ function statusLabel(status?: string) {
       :show="showLogin"
       @close="showLogin = false"
       @success="afterLogin"
+    />
+    <GxCustomerServiceModal
+      :show="showService"
+      @close="showService = false"
     />
   </view>
 </template>

@@ -3,6 +3,7 @@ import type { DisplayMemberPlan } from '@/constants/memberPlans'
 import { onShow } from '@dcloudio/uni-app'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
+import GxCustomerServiceModal from '@/components/guoxin/GxCustomerServiceModal.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
 import { mapProductsToPlans, splitPlansByPromotion } from '@/constants/memberPlans'
 import { RouterPaths } from '@/routerPaths'
@@ -10,10 +11,12 @@ import { useGuoxinStore } from '@/stores/guoxinStore'
 import { ensureH5RouterBasePath } from '@/utils/guoxin/h5RouterBase'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { savePendingPaidPlan, takePendingPaidPlan } from '@/utils/guoxin/pendingPaidPlan'
+import { isShowPayEnabled } from '@/utils/guoxin/showPay'
 
 const store = useGuoxinStore()
 const purchasingId = ref('')
 const showLogin = ref(false)
+const showService = ref(false)
 const showCount = ref(0)
 const productsReady = ref(false)
 const countdownText = ref('00:00:00')
@@ -25,6 +28,8 @@ const trial = computed(() => split.value.trial)
 const regular = computed(() => split.value.regular)
 const boost = computed(() => split.value.boost)
 const isMember = computed(() => store.chatUnlimited)
+/** 入口 ?isShowPay=1（默认）时走微信支付 */
+const payEnabled = computed(() => isShowPayEnabled())
 
 onMounted(async () => {
   if (!store.isLoggedIn) {
@@ -128,6 +133,10 @@ async function handlePayReturnIfNeeded() {
   uni.showToast({ title: '支付处理中，请稍候', icon: 'none' })
 }
 
+/**
+ * isShowPay=1 / 默认 → 微信支付；
+ * isShowPay=0 → 弹客服二维码。
+ */
 async function purchasePlan(plan: DisplayMemberPlan) {
   if (plan.memberExclusive && !isMember.value) {
     uni.showToast({ title: '该套餐仅限有效会员购买', icon: 'none' })
@@ -135,6 +144,12 @@ async function purchasePlan(plan: DisplayMemberPlan) {
   }
   if (!requirePurchaseReady())
     return
+
+  if (!isShowPayEnabled()) {
+    showService.value = true
+    return
+  }
+
   if (purchasingId.value)
     return
 
@@ -166,13 +181,13 @@ function buyLabel(plan: DisplayMemberPlan) {
   if (plan.promotionSort === 1) {
     if (plan.memberExclusive && !isMember.value)
       return '会员可购'
-    return '咨询'
+    return payEnabled.value ? '购买' : '咨询'
   }
   if (plan.memberExclusive && !isMember.value)
     return '会员可购'
   if (plan.promotionSort === 2)
-    return `¥${plan.price} 咨询购买`
-  return '咨询'
+    return payEnabled.value ? `¥${plan.price} 立即购买` : `¥${plan.price} 咨询购买`
+  return payEnabled.value ? '购买' : '咨询'
 }
 
 async function handleLoginSuccess() {
@@ -362,7 +377,7 @@ async function handleLoginSuccess() {
           当前剩余报告次数 {{ store.displayCredits }}；问答与报告额度独立计算。
         </view>
         <view class="paywall-tip muted">
-          购买即表示同意《用户服务协议》与《隐私权政策》；支付走微信网页支付。
+          购买即表示同意《用户服务协议》与《隐私权政策》；{{ payEnabled ? '支付走微信网页支付。' : '当前请联系客服开通。' }}
         </view>
         <view class="safe-bottom" />
       </view>
@@ -373,6 +388,10 @@ async function handleLoginSuccess() {
       mode="bindMobile"
       @close="showLogin = false"
       @success="handleLoginSuccess"
+    />
+    <GxCustomerServiceModal
+      :show="showService"
+      @close="showService = false"
     />
   </view>
 </template>
