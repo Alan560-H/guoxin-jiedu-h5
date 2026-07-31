@@ -10,6 +10,7 @@ import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { userInfoStore } from '@/stores/userInfoStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
+import { isShowPayEnabled } from '@/utils/guoxin/showPay'
 
 const store = useGuoxinStore()
 const chatStore = useChatSessionStore()
@@ -17,6 +18,8 @@ const chatStore = useChatSessionStore()
 const showLogin = ref(false)
 const showService = ref(false)
 const loadingReports = ref(false)
+/** isShowPay=1 显示「我的报告」区块 */
+const showReportsSection = computed(() => isShowPayEnabled())
 
 const isLoggedIn = computed(() => store.isLoggedIn)
 const nickname = computed(() => {
@@ -273,74 +276,76 @@ function statusLabel(status?: string) {
           </text>
         </view>
 
-        <view class="list-title">
-          <text class="list-h2">
-            我的报告
-          </text>
-          <text class="list-p">
-            {{ reportListCopy }}
-          </text>
-        </view>
-
-        <view v-if="!isLoggedIn" class="login-save-card">
-          <text class="save-strong">
-            登录后保存信息
-          </text>
-          <text class="save-span">
-            当前未登录，不能发起问答。登录后会保存个人资料、每日问答次数和历史报告。
-          </text>
-          <view class="save-btn" @tap="showLogin = true">
-            立即登录
-          </view>
-        </view>
-
-        <view v-if="!isLoggedIn" class="report-list">
-          <view
-            v-for="row in guestRows"
-            :key="row.title"
-            class="report-row locked"
-            @tap="showLogin = true"
-          >
-            <view class="report-main">
-              <text class="report-title">
-                {{ row.title }}
-              </text>
-              <text class="report-em">
-                {{ row.guest }}
-              </text>
-            </view>
-            <text class="report-action">
-              登录
+        <template v-if="showReportsSection">
+          <view class="list-title">
+            <text class="list-h2">
+              我的报告
+            </text>
+            <text class="list-p">
+              {{ reportListCopy }}
             </text>
           </view>
-        </view>
 
-        <view v-else class="report-list">
-          <view v-if="loadingReports" class="empty-hint">
-            加载中…
+          <view v-if="!isLoggedIn" class="login-save-card">
+            <text class="save-strong">
+              登录后保存信息
+            </text>
+            <text class="save-span">
+              当前未登录，不能发起问答。登录后会保存个人资料、每日问答次数和历史报告。
+            </text>
+            <view class="save-btn" @tap="showLogin = true">
+              立即登录
+            </view>
           </view>
-          <view v-else-if="reportRows.length === 0" class="empty-hint">
-            暂无报告，去问答后可生成
-          </view>
-          <view
-            v-for="row in reportRows"
-            :key="row.id"
-            class="report-row"
-            @tap="onReportTap(row.id)"
-          >
-            <view class="report-main">
-              <text class="report-title">
-                {{ row.title }}
-              </text>
-              <text class="report-em">
-                {{ row.time || row.profileName }}
+
+          <view v-if="!isLoggedIn" class="report-list">
+            <view
+              v-for="row in guestRows"
+              :key="row.title"
+              class="report-row locked"
+              @tap="showLogin = true"
+            >
+              <view class="report-main">
+                <text class="report-title">
+                  {{ row.title }}
+                </text>
+                <text class="report-em">
+                  {{ row.guest }}
+                </text>
+              </view>
+              <text class="report-action">
+                登录
               </text>
             </view>
-            <text class="report-action">
-              {{ statusLabel(row.status) }}
-            </text>
           </view>
-        </view>
+
+          <view v-else class="report-list">
+            <view v-if="loadingReports" class="empty-hint">
+              加载中…
+            </view>
+            <view v-else-if="reportRows.length === 0" class="empty-hint">
+              暂无报告，去问答后可生成
+            </view>
+            <view
+              v-for="row in reportRows"
+              :key="row.id"
+              class="report-row"
+              @tap="onReportTap(row.id)"
+            >
+              <view class="report-main">
+                <text class="report-title">
+                  {{ row.title }}
+                </text>
+                <text class="report-em">
+                  {{ row.time || row.profileName }}
+                </text>
+              </view>
+              <text class="report-action">
+                {{ statusLabel(row.status) }}
+              </text>
+            </view>
+          </view>
+        </template>
 
         <view class="reports-service-entry" @tap="onService">
           <view class="service-icon">

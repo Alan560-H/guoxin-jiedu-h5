@@ -46,7 +46,8 @@ function buildAuthHeaders(): Record<string, string> {
 }
 
 function looksLikeQuotaMessage(msg: string): boolean {
-  return /次数|额度|用完|用尽|quota|剩余\s*0/i.test(msg)
+  // 避免普通回复里带「次数/额度」被误判为配额错误
+  return /问答.*用完|次数.*用完|次数.*用尽|额度.*不足|quota\s*exceed|剩余\s*0\s*次/i.test(msg)
 }
 
 function extractDeltaText(payload: Record<string, unknown>): string {

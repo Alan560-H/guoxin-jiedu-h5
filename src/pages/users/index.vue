@@ -6,6 +6,7 @@ import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxChatLoginModal from '@/components/guoxin/chat/GxChatLoginModal.vue'
 import GxInviteModal from '@/components/guoxin/chat/GxInviteModal.vue'
+import { INVITE_BAZI_FEATURE_ENABLED } from '@/constants/chatHome'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
@@ -207,7 +208,10 @@ async function afterBaziSuccess() {
           </view>
         </view>
 
-        <view class="share-fill-card">
+        <view
+          v-if="INVITE_BAZI_FEATURE_ENABLED"
+          class="share-fill-card"
+        >
           <view class="share-icon">
             邀
           </view>

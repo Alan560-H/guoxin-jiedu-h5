@@ -33,7 +33,7 @@ import { RouterPaths } from '@/routerPaths'
 import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
 import { navigateToReportConfirm as goReportConfirm, navigateToHome, navigateToProfileList } from '@/utils/guoxin/navigation'
 import { normalizeProfileVo } from '@/utils/guoxin/normalizeProfile'
-import { parseCreditsPayload } from '@/utils/guoxin/parseCredits'
+import { parseCreditsPayload, isUnlimitedChatRemaining } from '@/utils/guoxin/parseCredits'
 import { unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
 import { clearGuoxinUserSessionSnapshot, parseGuoxinLoginData, writeGuoxinUserSessionSnapshot } from '@/utils/guoxin/parseLoginResponse'
 import { mapReportDetailToRecordVo, parseReportDirections } from '@/utils/guoxin/parseReportDetail'
@@ -100,11 +100,11 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     isLoggedIn.value ? totalAvailableCount.value : 0,
   )
 
-  /** 能否继续发问：只看问答权益，绝不看报告次 */
+  /** 能否继续发问：只看问答权益，绝不看报告次；-1 / unlimited 不拦截 */
   function canAskChat(): boolean {
     if (!isLoggedIn.value)
       return false
-    if (chatUnlimited.value)
+    if (chatUnlimited.value || isUnlimitedChatRemaining(chatRemaining.value))
       return true
     return chatRemaining.value > 0
   }
@@ -781,6 +781,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         chatCreditsFromServer.value = true
       }
       else {
+        // member/status 成功但未带问答字段时，勿静默走本地 3 次；保持未从服务端确认
         chatCreditsFromServer.value = false
       }
 

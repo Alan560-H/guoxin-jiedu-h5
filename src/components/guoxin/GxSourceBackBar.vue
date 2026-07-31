@@ -1,19 +1,13 @@
 <script setup lang="ts">
 /**
- * 轻舟发现页（?isShowBack=1）进入时，首页顶部白底「返回上一页」栏。
+ * 轻舟发现页（?projectCode=xxx）进入时，顶部白底「返回上一页」栏。
  */
-import { SHOW_BACK_ENTRY_URL } from '@/constants/guoxin'
-
-const props = withDefaults(defineProps<{
-  backUrl?: string
-}>(), {
-  backUrl: SHOW_BACK_ENTRY_URL,
-})
+import { buildShowBackEntryUrl } from '@/utils/guoxin/projectCode'
 
 function goBack() {
   if (typeof window === 'undefined')
     return
-  window.location.href = props.backUrl
+  window.location.href = buildShowBackEntryUrl()
 }
 </script>
 

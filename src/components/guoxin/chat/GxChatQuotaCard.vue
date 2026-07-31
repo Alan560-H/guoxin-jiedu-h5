@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { DAILY_QUESTION_LIMIT } from '@/constants/chatHome'
+import { isShowPayEnabled } from '@/utils/guoxin/showPay'
 
-defineProps<{
+const props = defineProps<{
   remaining: number
   progressRatio: number
   unlimited?: boolean
@@ -10,6 +12,13 @@ defineProps<{
 const emit = defineEmits<{
   buy: []
 }>()
+
+/** isShowPay=1 显示购买与真实额度；=0 隐藏购买并展示限时不限次文案 */
+const payEnabled = computed(() => isShowPayEnabled())
+const showBuyBtn = payEnabled
+/** isShowPay=0：营销态「不限次数 / 限时福利」 */
+const promoUnlimited = computed(() => !payEnabled.value)
+const showMeter = computed(() => payEnabled.value && !props.unlimited)
 </script>
 
 <template>
@@ -19,8 +28,8 @@ const emit = defineEmits<{
         <text class="qa-label">
           今日问答
         </text>
-        <text v-if="unlimited" class="qa-remain">
-          套餐期内不限次
+        <text v-if="promoUnlimited || unlimited" class="qa-remain">
+          不限次数
         </text>
         <text v-else class="qa-remain">
           还可问
@@ -30,15 +39,22 @@ const emit = defineEmits<{
           次
         </text>
       </view>
-      <view class="buy-btn" @tap="emit('buy')">
+      <view
+        v-if="showBuyBtn"
+        class="buy-btn"
+        @tap="emit('buy')"
+      >
         购买套餐
       </view>
     </view>
-    <view v-if="!unlimited" class="qa-meter">
+    <view v-if="showMeter" class="qa-meter">
       <view class="qa-meter-fill" :style="{ width: `${Math.round(progressRatio * 100)}%` }" />
     </view>
     <text class="qa-foot">
-      <template v-if="unlimited">
+      <template v-if="promoUnlimited">
+        限时福利，无限畅聊
+      </template>
+      <template v-else-if="unlimited">
         当前问答套餐有效期内不限制次数
       </template>
       <template v-else>

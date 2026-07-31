@@ -7,13 +7,12 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import GxSourceBackBar from '@/components/guoxin/GxSourceBackBar.vue'
 import {
-  IS_SHOW_BACK_QUERY_KEY,
-  IS_SHOW_BACK_QUERY_VALUE,
   IS_SHOW_PAY_QUERY_KEY,
   IS_SHOW_PAY_QUERY_OFF,
   IS_SHOW_PAY_QUERY_ON,
 } from '@/constants/guoxin'
 import { RouterPaths } from '@/routerPaths'
+import { captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
 import { captureShowPayFromUrl, isShowPayEnabled } from '@/utils/guoxin/showPay'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 
@@ -23,6 +22,9 @@ const entered = ref(false)
 
 onLoad((query) => {
   const q = query as Record<string, string | undefined>
+  // 补抓页面 query（不 clear，避免路由丢参后误清 main 已写入的值）
+  captureProjectCodeFromUrl(q)
+  showSourceBackBar.value = isShowBackEntry()
   captureShowPayFromUrl(q)
   routeInviteIfNeeded(q)
 })
@@ -31,6 +33,7 @@ onShow(() => {
   showSourceBackBar.value = isShowBackEntry()
   // 仅从当前 URL 补抓；无参时不覆盖已写入的 0/1
   captureShowPayFromUrl()
+  captureProjectCodeFromUrl()
   // #ifdef H5
   if (typeof window !== 'undefined') {
     try {
@@ -79,8 +82,6 @@ function enterChat() {
     return
   entered.value = true
   const params = new URLSearchParams()
-  if (isShowBackEntry())
-    params.set(IS_SHOW_BACK_QUERY_KEY, IS_SHOW_BACK_QUERY_VALUE)
   // 带上支付开关，避免跳转后仅靠 storage 时调试不直观
   params.set(
     IS_SHOW_PAY_QUERY_KEY,

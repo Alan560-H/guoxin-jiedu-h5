@@ -13,7 +13,6 @@ import GxChatLimitModal from '@/components/guoxin/chat/GxChatLimitModal.vue'
 import GxChatLoginModal from '@/components/guoxin/chat/GxChatLoginModal.vue'
 import GxChatThread from '@/components/guoxin/chat/GxChatThread.vue'
 import GxInviteModal from '@/components/guoxin/chat/GxInviteModal.vue'
-import GxSourceBackBar from '@/components/guoxin/GxSourceBackBar.vue'
 import {
   CHAT_CREDITS_LOCAL_FALLBACK,
   CHAT_PENDING_QUESTION_KEY,
@@ -32,8 +31,10 @@ import {
   pickRandomQuestions,
   unwrapBizPayload,
 } from '@/utils/guoxin/parseDifyLists'
+import { buildShowBackEntryUrl, captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
-import { captureShowPayFromUrl } from '@/utils/guoxin/showPay'
+import { captureShowPayFromUrl, isShowPayEnabled } from '@/utils/guoxin/showPay'
+import { isUnlimitedChatRemaining } from '@/utils/guoxin/parseCredits'
 import { createStreamTypewriter } from '@/utils/guoxin/streamTypewriter'
 
 const store = useGuoxinStore()
@@ -66,6 +67,8 @@ const questionBankPool = ref<string[]>([])
 /** 发送时是否贴底（非流式场景）；流式输出时强制贴底，不依赖此标记 */
 const stickToBottom = ref(true)
 const showSourceBackBar = ref(isShowBackEntry())
+/** 顶栏「查看报告」与购买入口一致：isShowPay=1 才显示 */
+const showReportsEntry = computed(() => isShowPayEnabled())
 /** 程序滚动中：忽略 scroll 事件，避免误改 stickToBottom */
 let programmaticScroll = false
 
@@ -106,15 +109,35 @@ const hasConversation = computed(() =>
   messages.value.some(m => m.role === 'user'),
 )
 
-const chatUnlimited = computed(() => store.chatUnlimited)
+const chatUnlimited = computed(() =>
+  store.chatUnlimited || isUnlimitedChatRemaining(store.chatRemaining),
+)
 const remaining = computed(() => {
+  // 服务端已声明不限次时，绝不以本地日额度覆盖
+  if (chatUnlimited.value)
+    return isUnlimitedChatRemaining(store.chatRemaining) ? -1 : Math.max(store.chatRemaining, 1)
   if (store.chatCreditsFromServer || !CHAT_CREDITS_LOCAL_FALLBACK)
     return store.chatRemaining
   return chatStore.localRemaining
 })
-const quotaUsedUp = computed(() => !chatUnlimited.value && remaining.value <= 0)
+/**
+ * 跳过前端次数拦截：
+ * - questionRemaining=-1 / chatUnlimited
+ * - isShowPay=0（客服入口，文案为限时不限次）
+ */
+const skipChatQuotaGate = computed(() =>
+  chatUnlimited.value
+  || isUnlimitedChatRemaining(remaining.value)
+  || !isShowPayEnabled(),
+)
+/** 用尽态：仅「剩余正好为 0」；负数(-1)永不视为用尽 */
+const quotaUsedUp = computed(() => {
+  if (skipChatQuotaGate.value)
+    return false
+  return remaining.value === 0
+})
 const progressRatio = computed(() => {
-  if (chatUnlimited.value)
+  if (skipChatQuotaGate.value || remaining.value < 0)
     return 0
   const used = DAILY_QUESTION_LIMIT - remaining.value
   return Math.min(1, Math.max(0, used / DAILY_QUESTION_LIMIT))
@@ -135,7 +158,7 @@ const followupItems = computed(() => {
 })
 
 const followupMeta = computed(() => {
-  if (chatUnlimited.value)
+  if (skipChatQuotaGate.value)
     return '不限次'
   return quotaUsedUp.value ? '明日恢复' : `还可问 ${remaining.value} 次`
 })
@@ -294,7 +317,9 @@ async function loadOlderMessages() {
 }
 
 onLoad((query) => {
-  captureShowPayFromUrl(query as Record<string, string | undefined>)
+  const q = query as Record<string, string | undefined>
+  captureShowPayFromUrl(q)
+  captureProjectCodeFromUrl(q)
   showSourceBackBar.value = isShowBackEntry()
   void bootstrapChat()
 })
@@ -429,11 +454,17 @@ async function refreshCreditsQuiet() {
 
 /** 发送前强制拉权益；失败则拒绝发送 */
 async function precheckChatQuota(): Promise<'ok' | 'empty' | 'fail'> {
+  // 先拉最新权益，再判断 -1（避免用过期的 remaining=0 误拦）
   const ok = await store.ensureCreditsLoaded(true)
+  if (skipChatQuotaGate.value)
+    return 'ok'
+
   if (!ok) {
     if (CHAT_CREDITS_LOCAL_FALLBACK) {
       chatStore.ensureQuotaDay()
-      return chatStore.localRemaining > 0 ? 'ok' : 'empty'
+      return (isUnlimitedChatRemaining(chatStore.localRemaining) || chatStore.localRemaining > 0)
+        ? 'ok'
+        : 'empty'
     }
     return 'fail'
   }
@@ -442,10 +473,12 @@ async function precheckChatQuota(): Promise<'ok' | 'empty' | 'fail'> {
     if (!CHAT_CREDITS_LOCAL_FALLBACK)
       return 'fail'
     chatStore.ensureQuotaDay()
-    return chatStore.localRemaining > 0 ? 'ok' : 'empty'
+    return (isUnlimitedChatRemaining(chatStore.localRemaining) || chatStore.localRemaining > 0)
+      ? 'ok'
+      : 'empty'
   }
 
-  if (store.chatUnlimited)
+  if (store.chatUnlimited || isUnlimitedChatRemaining(store.chatRemaining))
     return 'ok'
   if (store.chatRemaining > 0) {
     chatStore.syncLocalRemaining(store.chatRemaining)
@@ -530,6 +563,12 @@ function consumePendingQuestion() {
   }
   if (pending)
     draft.value = pending
+}
+
+function onSourceBack() {
+  if (typeof window === 'undefined')
+    return
+  window.location.href = buildShowBackEntryUrl()
 }
 
 function onMine() {
@@ -814,8 +853,13 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
     }
     else if (isChatStreamQuotaError(e)) {
       chatStore.removeMessage(profileId, assistant.id)
-      showLimit.value = true
-      uni.showToast({ title: e.message || '今日问答已用完', icon: 'none' })
+      if (skipChatQuotaGate.value) {
+        uni.showToast({ title: e.message || '问答暂时不可用，请稍后重试', icon: 'none' })
+      }
+      else {
+        showLimit.value = true
+        uni.showToast({ title: e.message || '今日问答已用完', icon: 'none' })
+      }
     }
     else {
       const msg = e instanceof Error ? e.message : '当前回复失败，请重试'
@@ -915,9 +959,10 @@ function scrollToLatestAssistant() {
 
 <template>
   <view class="gx-chat-page chat-page">
-    <GxSourceBackBar v-if="showSourceBackBar" />
     <GxChatHeader
-      show-reports
+      :show-source-back="showSourceBackBar"
+      :show-reports="showReportsEntry"
+      @source-back="onSourceBack"
       @mine="onMine"
       @reports="onViewReports"
     />

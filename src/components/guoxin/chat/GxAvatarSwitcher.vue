@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ProfileVo } from '@/models/guoxin/profile'
 import { computed } from 'vue'
+import { INVITE_BAZI_FEATURE_ENABLED } from '@/constants/chatHome'
 
 const props = withDefaults(defineProps<{
   profiles: ProfileVo[]
@@ -15,6 +16,8 @@ const emit = defineEmits<{
   add: []
   invite: []
 }>()
+
+const showInviteEntry = INVITE_BAZI_FEATURE_ENABLED
 
 const activeName = computed(() => {
   const hit = props.profiles.find(p => p.id === props.activeId)
@@ -38,7 +41,11 @@ function sealChar(name: string) {
           {{ activeName }}
         </text>
       </view>
-      <view class="invite-btn" @tap="emit('invite')">
+      <view
+        v-if="showInviteEntry"
+        class="invite-btn"
+        @tap="emit('invite')"
+      >
         邀请好友
       </view>
     </view>

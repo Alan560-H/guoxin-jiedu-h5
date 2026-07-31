@@ -19,12 +19,15 @@ import '@/styles/report-html-theme.scss'
 import 'uno.css'
 import { i18n } from '@/i18n'
 import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
+import { captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
 import { captureShowPayFromUrl } from '@/utils/guoxin/showPay'
 import { captureSourceFromUrl } from '@/utils/guoxin/source'
 
 scheduleMarkAppEmbeddedWebView()
 captureSourceFromUrl()
 captureShowPayFromUrl()
+// 应用启动时 URL 尚完整：有 projectCode 则存，无则清
+captureProjectCodeFromUrl(undefined, { clearIfAbsent: true })
 
 export function createApp() {
   const app = createSSRApp(App)

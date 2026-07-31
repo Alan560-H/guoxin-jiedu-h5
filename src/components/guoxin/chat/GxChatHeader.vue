@@ -5,13 +5,17 @@ withDefaults(defineProps<{
   showMine?: boolean
   /** 快捷查看报告入口（文案：查看报告） */
   showReports?: boolean
+  /** 轻舟入口：标题左侧「返回上一页」 */
+  showSourceBack?: boolean
 }>(), {
   showMine: true,
   showReports: false,
+  showSourceBack: false,
 })
 
 const emit = defineEmits<{
   back: []
+  sourceBack: []
   mine: []
   reports: []
 }>()
@@ -24,7 +28,15 @@ const emit = defineEmits<{
     <view class="header-row">
       <view class="header-side left">
         <view
-          v-if="showBack"
+          v-if="showSourceBack"
+          class="header-source-back"
+          @tap="emit('sourceBack')"
+        >
+          <text class="header-source-back-arrow">‹</text>
+          <text class="header-source-back-label">返回上一页</text>
+        </view>
+        <view
+          v-else-if="showBack"
           class="header-back"
           @tap="emit('back')"
         >
@@ -72,7 +84,7 @@ const emit = defineEmits<{
   min-height: 88rpx;
   padding: 12rpx 24rpx 20rpx;
   display: grid;
-  grid-template-columns: minmax(48rpx, 1fr) auto minmax(48rpx, 1fr);
+  grid-template-columns: minmax(160rpx, 1fr) auto minmax(160rpx, 1fr);
   align-items: center;
   gap: 12rpx;
   box-sizing: border-box;
@@ -109,6 +121,28 @@ const emit = defineEmits<{
   place-items: center;
   font-size: 40rpx;
   color: #fffdf7;
+}
+
+.header-source-back {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  min-height: 60rpx;
+  max-width: 100%;
+  padding: 0 4rpx;
+  color: #fffdf7;
+}
+
+.header-source-back-arrow {
+  font-size: 36rpx;
+  line-height: 1;
+  margin-top: -2rpx;
+}
+
+.header-source-back-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .header-action {

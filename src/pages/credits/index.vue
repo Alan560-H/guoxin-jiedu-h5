@@ -16,6 +16,8 @@ import { isShowPayEnabled } from '@/utils/guoxin/showPay'
 const store = useGuoxinStore()
 const purchasingId = ref('')
 const showLogin = ref(false)
+/** 未登录走短信登录；已登录未绑手机走绑定 */
+const loginMode = ref<'smsLogin' | 'bindMobile'>('smsLogin')
 const showService = ref(false)
 const showCount = ref(0)
 const productsReady = ref(false)
@@ -31,18 +33,30 @@ const isMember = computed(() => store.chatUnlimited)
 /** 入口 ?isShowPay=1（默认）时走微信支付 */
 const payEnabled = computed(() => isShowPayEnabled())
 
-onMounted(async () => {
-  if (!store.isLoggedIn) {
-    uni.reLaunch({ url: RouterPaths.home })
-    return
-  }
-  startCountdown()
+async function loadCreditsPageData(force = false) {
   await Promise.all([
-    store.ensureProductsLoaded(true),
-    store.ensureCreditsLoaded(),
-    store.ensureOrdersLoaded(),
+    store.ensureProductsLoaded(force),
+    store.ensureCreditsLoaded(force),
+    store.ensureOrdersLoaded(force),
   ])
   productsReady.value = true
+}
+
+onMounted(async () => {
+  startCountdown()
+  // 未登录也可看套餐；登录弹窗挡住购买，登录后留在本页
+  if (!store.isLoggedIn) {
+    loginMode.value = 'smsLogin'
+    showLogin.value = true
+    await store.ensureProductsLoaded(true)
+    productsReady.value = true
+    return
+  }
+  if (store.needsBindMobile()) {
+    loginMode.value = 'bindMobile'
+    showLogin.value = true
+  }
+  await loadCreditsPageData(true)
 })
 
 onUnmounted(() => {
@@ -90,9 +104,21 @@ function startCountdown() {
   countdownTimer = setInterval(tick, 1000)
 }
 
-function requirePurchaseReady(): boolean {
-  if (store.needsBindMobile()) {
+function openLoginForPurchase(): void {
+  if (!store.isLoggedIn) {
+    loginMode.value = 'smsLogin'
     showLogin.value = true
+    return
+  }
+  if (store.needsBindMobile()) {
+    loginMode.value = 'bindMobile'
+    showLogin.value = true
+  }
+}
+
+function requirePurchaseReady(): boolean {
+  if (!store.isLoggedIn || store.needsBindMobile()) {
+    openLoginForPurchase()
     return false
   }
   return true
@@ -191,7 +217,7 @@ function buyLabel(plan: DisplayMemberPlan) {
 }
 
 async function handleLoginSuccess() {
-  await store.ensureCreditsLoaded(true)
+  await loadCreditsPageData(true)
 }
 </script>
 
@@ -385,7 +411,7 @@ async function handleLoginSuccess() {
 
     <GxLoginModal
       :show="showLogin"
-      mode="bindMobile"
+      :mode="loginMode"
       @close="showLogin = false"
       @success="handleLoginSuccess"
     />

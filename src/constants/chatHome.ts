@@ -69,6 +69,9 @@ export const FEEDBACK_REASONS = [
 
 export const DAILY_QUESTION_LIMIT = 3
 
+/** 暂时关闭「邀请对方填写八字」入口；恢复时改为 true */
+export const INVITE_BAZI_FEATURE_ENABLED = false
+
 export const CHAT_PENDING_QUESTION_KEY = 'guoxin-chat-pending-question'
 
 /**

@@ -313,9 +313,11 @@ export const useChatSessionStore = defineStore('chatSession', () => {
     )
   }
 
-  /** 仅本地兜底扣次；服务端权威路径请刷 credits */
+  /** 仅本地兜底扣次；服务端权威路径请刷 credits；-1 表示不限次不扣 */
   function consumeLocalQuota(): boolean {
     ensureQuotaDay()
+    if (dailyRemaining.value < 0)
+      return true
     if (dailyRemaining.value <= 0)
       return false
     dailyRemaining.value -= 1
@@ -324,7 +326,8 @@ export const useChatSessionStore = defineStore('chatSession', () => {
 
   function syncLocalRemaining(n: number) {
     ensureQuotaDay()
-    dailyRemaining.value = Math.max(0, n)
+    // -1 约定不限次，保留原值
+    dailyRemaining.value = n < 0 ? n : Math.max(0, n)
   }
 
   function setFeedback(

@@ -1,11 +1,20 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { isShowPayEnabled } from '@/utils/guoxin/showPay'
+
 const emit = defineEmits<{
   generate: []
 }>()
+
+/** isShowPay=1 显示报告入口；=0 隐藏 */
+const visible = computed(() => isShowPayEnabled())
 </script>
 
 <template>
-  <view class="report-ad">
+  <view
+    v-if="visible"
+    class="report-ad"
+  >
     <view class="ad-mark">
       报告<br>入口
     </view>

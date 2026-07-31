@@ -87,9 +87,14 @@ export const CREDITS_PAY_HINT
   = '支付前请确认次数、有效期、适用档案与扣次规则。'
 
 /**
- * 轻舟发现页入口：URL 带 ?isShowBack=1 时首页展示「返回上一页」栏。
+ * 轻舟发现页入口：URL 带 ?projectCode=xxx 时展示「返回上一页」，并回跳时带回该参数。
+ * （历史 ?isShowBack=1 已弃用，改以 projectCode 有值为准）
  */
+export const PROJECT_CODE_QUERY_KEY = 'projectCode'
+
+/** @deprecated 改用 PROJECT_CODE_QUERY_KEY */
 export const IS_SHOW_BACK_QUERY_KEY = 'isShowBack'
+/** @deprecated */
 export const IS_SHOW_BACK_QUERY_VALUE = '1'
 
 /**
@@ -99,7 +104,7 @@ export const IS_SHOW_PAY_QUERY_KEY = 'isShowPay'
 export const IS_SHOW_PAY_QUERY_ON = '1'
 export const IS_SHOW_PAY_QUERY_OFF = '0'
 
-/** 轻舟云课堂发现页地址（isShowBack=1 时「返回上一页」跳转目标） */
+/** 轻舟云课堂发现页地址（有 projectCode 时「返回上一页」跳转目标） */
 export const SHOW_BACK_ENTRY_URL = 'https://nr.cxfangtang.cn/'
 
 /** 来源统计：URL query / 请求头字段名（如 ?source=1） */
