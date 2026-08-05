@@ -174,7 +174,8 @@ const emit = defineEmits<{
   margin-top: 16rpx;
   color: #4e4034;
   font-family: "Noto Serif SC", STSong, serif;
-  font-size: 21rpx;
+  font-size: 26rpx;
+  font-weight: 700;
   line-height: 1.5;
   white-space: nowrap;
   text-shadow: 0 1rpx 6rpx rgba(255, 251, 240, 0.94);

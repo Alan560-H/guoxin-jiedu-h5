@@ -461,6 +461,9 @@ function statusLabel(status?: string) {
 }
 
 .entitlement-ledger {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   margin-bottom: 20rpx;
   padding: 24rpx;
   border-radius: 24rpx;
@@ -469,6 +472,24 @@ function statusLabel(status?: string) {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16rpx;
+}
+
+.entitlement-ledger::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: -18rpx;
+  right: -62rpx;
+  width: 340rpx;
+  height: 200rpx;
+  opacity: 0.28;
+  background: url("@/static/assets/gx-white-clouds.png") center / contain no-repeat;
+  pointer-events: none;
+}
+
+.entitlement-ledger > * {
+  position: relative;
+  z-index: 1;
 }
 
 .ledger-label {

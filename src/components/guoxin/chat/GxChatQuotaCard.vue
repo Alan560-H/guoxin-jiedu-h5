@@ -79,13 +79,12 @@ const showMeter = computed(() => payEnabled.value && !props.unlimited)
     content: "";
     position: absolute;
     z-index: 0;
-    right: 72rpx;
-    top: 54rpx;
-    width: 176rpx;
-    height: 72rpx;
-    background: url("@/static/assets/gx-cloud.png") center / contain no-repeat;
-    opacity: 0.68;
-    filter: sepia(0.18) saturate(1.12) brightness(1.08);
+    right: -12rpx;
+    top: -16rpx;
+    width: 300rpx;
+    height: 190rpx;
+    background: url("@/static/assets/gx-white-clouds.png") center / contain no-repeat;
+    opacity: 0.32;
     pointer-events: none;
   }
 
@@ -137,8 +136,8 @@ const showMeter = computed(() => payEnabled.value && !props.unlimited)
   min-height: 60rpx;
   padding: 0 22rpx;
   border-radius: 14rpx;
-  background: var(--gx-chat-gold, #d5a43d);
-  color: var(--gx-chat-red-deep, #7f1f26);
+  background: #f0c85b;
+  color: #6e2d1d;
   font-size: 24rpx;
   font-weight: 800;
   display: flex;
