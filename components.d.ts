@@ -31,6 +31,7 @@ declare module 'vue' {
     GxQuestionBoard: typeof import('./src/components/guoxin/chat/GxQuestionBoard.vue')['default']
     GxRegionPicker: typeof import('./src/components/guoxin/GxRegionPicker.vue')['default']
     GxSourceBackBar: typeof import('./src/components/guoxin/GxSourceBackBar.vue')['default']
+    GxUserBrief: typeof import('./src/components/guoxin/GxUserBrief.vue')['default']
     ProfileReadingRecordList: typeof import('./src/components/guoxin/ProfileReadingRecordList.vue')['default']
     ReportChapter: typeof import('./src/components/guoxin/report/ReportChapter.vue')['default']
     ReportComponentRenderer: typeof import('./src/components/guoxin/report/ReportComponentRenderer.vue')['default']

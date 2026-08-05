@@ -5,6 +5,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxCustomerServiceModal from '@/components/guoxin/GxCustomerServiceModal.vue'
 import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
+import GxUserBrief from '@/components/guoxin/GxUserBrief.vue'
 import { mapProductsToPlans, splitPlansByPromotion } from '@/constants/memberPlans'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
@@ -33,8 +34,31 @@ const isMember = computed(() => store.chatUnlimited)
 /** 入口 ?isShowPay=1（默认）时走微信支付 */
 const payEnabled = computed(() => isShowPayEnabled())
 
+const displayNickname = computed(() => {
+  if (!store.isLoggedIn)
+    return '未登录'
+  return store.nickname || maskMobile(store.mobile) || '国心用户'
+})
+const userSubtitle = computed(() => {
+  if (!store.isLoggedIn)
+    return '登录后同步权益与报告、问答次数'
+  const chatText = store.chatUnlimited
+    ? '不限次'
+    : `${store.chatRemaining} 次`
+  return `剩余报告 ${store.displayCredits} 次 · 剩余问答 ${chatText}`
+})
+const memberEntryLabel = '会员权益'
+
+function maskMobile(mobile: string) {
+  const m = (mobile || '').trim()
+  if (m.length < 7)
+    return m
+  return `${m.slice(0, 3)}****${m.slice(-4)}`
+}
+
 async function loadCreditsPageData(force = false) {
   await Promise.all([
+    store.loadUserInfo({ skipSessionClear: true }),
     store.ensureProductsLoaded(force),
     store.ensureCreditsLoaded(force),
     store.ensureOrdersLoaded(force),
@@ -232,22 +256,14 @@ async function handleLoginSuccess() {
 
     <scroll-view scroll-y class="paywall-scroll" :show-scrollbar="false">
       <view class="paywall-inner">
-        <!-- 1. 多项会员权益入口 -->
+        <!-- 1. 会员权益入口（含登录用户信息；未登录也展示） -->
         <view class="paywall-hero" @tap="goMember">
-          <view class="hero-copy">
-            <text class="hero-eyebrow">
-              国心解读
-            </text>
-            <text class="hero-title">
-              多项会员权益
-            </text>
-            <text class="hero-link">
-              点击跳转详情页
-            </text>
-          </view>
-          <text class="hero-arrow">
-            ›
-          </text>
+          <GxUserBrief
+            :nickname="displayNickname"
+            :avatar-url="store.isLoggedIn ? store.avatarUrl : ''"
+            :status-label="memberEntryLabel"
+            :subtitle="userSubtitle"
+          />
         </view>
 
         <!-- 2. 新人体验包 promotionSort=2 -->
@@ -441,11 +457,7 @@ async function handleLoginSuccess() {
 }
 
 .paywall-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20rpx;
-  padding: 36rpx 32rpx;
+  padding: 28rpx 28rpx;
   margin-bottom: 24rpx;
   border-radius: var(--gx-chat-radius);
   color: #fffdf7;
@@ -453,45 +465,6 @@ async function handleLoginSuccess() {
     radial-gradient(circle at 88% 14%, rgba(213, 164, 61, 0.45), transparent 32%),
     linear-gradient(150deg, var(--gx-chat-red), var(--gx-chat-red-deep));
   box-shadow: var(--gx-chat-shadow);
-}
-
-.hero-copy {
-  min-width: 0;
-  flex: 1;
-}
-
-.hero-eyebrow {
-  display: block;
-  font-size: 24rpx;
-  font-weight: 800;
-  color: rgba(255, 253, 247, 0.76);
-}
-
-.hero-title {
-  display: block;
-  margin: 10rpx 0 8rpx;
-  font-family: "Noto Serif SC", "Songti SC", serif;
-  font-size: 44rpx;
-  font-weight: 800;
-  color: #fffdf7;
-}
-
-.hero-link {
-  display: block;
-  font-size: 24rpx;
-  color: rgba(255, 253, 247, 0.82);
-}
-
-.hero-arrow {
-  flex-shrink: 0;
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 50%;
-  background: rgba(255, 253, 247, 0.16);
-  color: #fffdf7;
-  font-size: 36rpx;
-  line-height: 48rpx;
-  text-align: center;
 }
 
 .trial-card {
