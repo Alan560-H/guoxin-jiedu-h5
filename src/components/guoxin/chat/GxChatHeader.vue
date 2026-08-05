@@ -7,6 +7,8 @@ withDefaults(defineProps<{
   showReports?: boolean
   /** 轻舟入口：标题左侧「返回上一页」 */
   showSourceBack?: boolean
+  immersive?: boolean
+  scrolled?: boolean
 }>(), {
   showMine: true,
   showReports: false,
@@ -22,7 +24,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <view class="gx-chat-header">
+  <view class="gx-chat-header" :class="{ immersive, scrolled }">
     <!-- 仅占位状态栏，与下方同行同色，避免「多出一块」 -->
     <view class="header-safe" aria-hidden="true" />
     <view class="header-row">
@@ -32,8 +34,12 @@ const emit = defineEmits<{
           class="header-source-back"
           @tap="emit('sourceBack')"
         >
-          <text class="header-source-back-arrow">‹</text>
-          <text class="header-source-back-label">返回上一页</text>
+          <text class="header-source-back-arrow">
+            ‹
+          </text>
+          <text class="header-source-back-label">
+            返回上一页
+          </text>
         </view>
         <view
           v-else-if="showBack"
@@ -68,11 +74,30 @@ const emit = defineEmits<{
 
 <style scoped lang="scss">
 .gx-chat-header {
+  position: relative;
+  z-index: 30;
   flex-shrink: 0;
-  background:
-    radial-gradient(circle at 88% 0%, rgba(201, 168, 76, 0.34), transparent 32%),
-    linear-gradient(154deg, var(--gx-chat-red, #b43a3d) 0%, var(--gx-chat-red-deep, #7f1f26) 100%);
-  color: #fffdf7;
+  color: #3b2a1d;
+  background: rgba(250, 245, 233, 0.96);
+  border-bottom: 2rpx solid rgba(183, 142, 85, 0.18);
+  transition: background-color 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.gx-chat-header.immersive {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, rgba(251, 246, 234, 0.84), rgba(251, 246, 234, 0));
+  border-bottom: 0;
+}
+
+.gx-chat-header.immersive.scrolled {
+  background: rgba(250, 245, 233, 0.96);
+  border-bottom: 2rpx solid rgba(183, 142, 85, 0.24);
+  box-shadow: 0 6rpx 18rpx rgba(74, 53, 28, 0.08);
+  backdrop-filter: blur(14rpx);
+  -webkit-backdrop-filter: blur(14rpx);
 }
 
 .header-safe {
@@ -82,7 +107,7 @@ const emit = defineEmits<{
 
 .header-row {
   min-height: 88rpx;
-  padding: 12rpx 24rpx 20rpx;
+  padding: 12rpx 24rpx 16rpx;
   display: grid;
   grid-template-columns: minmax(160rpx, 1fr) auto minmax(160rpx, 1fr);
   align-items: center;
@@ -107,8 +132,10 @@ const emit = defineEmits<{
 
 .header-title {
   text-align: center;
-  font-size: 40rpx;
-  font-weight: 700;
+  font-family: "Noto Serif SC", STSong, serif;
+  font-size: 38rpx;
+  font-weight: 900;
+  color: #312319;
   line-height: 1.1;
   letter-spacing: 0;
   white-space: nowrap;
@@ -120,7 +147,7 @@ const emit = defineEmits<{
   display: grid;
   place-items: center;
   font-size: 40rpx;
-  color: #fffdf7;
+  color: #3b2a1d;
 }
 
 .header-source-back {
@@ -130,7 +157,7 @@ const emit = defineEmits<{
   min-height: 60rpx;
   max-width: 100%;
   padding: 0 4rpx;
-  color: #fffdf7;
+  color: #3b2a1d;
 }
 
 .header-source-back-arrow {
@@ -149,14 +176,17 @@ const emit = defineEmits<{
   min-height: 60rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  border: 2rpx solid rgba(255, 253, 247, 0.35);
-  background: rgba(255, 253, 247, 0.14);
-  color: #fffdf7;
+  border: 2rpx solid rgba(185, 126, 51, 0.3);
+  background: rgba(248, 235, 211, 0.92);
+  color: #963e29;
   font-size: 22rpx;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.72),
+    0 4rpx 10rpx rgba(95, 67, 30, 0.08);
 }
 </style>

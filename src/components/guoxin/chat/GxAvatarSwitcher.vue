@@ -89,20 +89,59 @@ function sealChar(name: string) {
 
 <style scoped lang="scss">
 .avatar-switcher {
-  margin-bottom: 24rpx;
-  padding: 22rpx 24rpx 20rpx;
-  border: 3rpx solid rgba(180, 58, 61, 0.22);
-  border-radius: 24rpx;
-  background:
-    radial-gradient(circle at 94% 0%, rgba(180, 58, 61, 0.12), transparent 34%),
-    rgba(255, 253, 248, 0.97);
-  box-shadow: var(--gx-chat-shadow, 0 8rpx 24rpx rgba(121, 38, 32, 0.1));
+  position: relative;
+  z-index: 3;
+  margin: -48rpx 0 24rpx;
+  padding: 30rpx 28rpx 26rpx;
+  border: 2rpx solid rgba(186, 133, 65, 0.38);
+  border-radius: 34rpx;
+  background: rgba(255, 250, 239, 0.97);
+  box-shadow: 0 12rpx 28rpx rgba(91, 60, 27, 0.11);
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: 48rpx;
+    top: 8rpx;
+    width: 360rpx;
+    height: 240rpx;
+    background: url("@/static/assets/gx-white-clouds.png") center / contain no-repeat;
+    opacity: 0.46;
+    pointer-events: none;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: 24rpx;
+    top: -8rpx;
+    width: 68rpx;
+    height: 112rpx;
+    background: url("@/static/assets/gx-auspicious-charm.webp") center / contain no-repeat;
+    pointer-events: none;
+  }
 
   &.compact {
-    padding-top: 18rpx;
-    padding-bottom: 16rpx;
-    margin-bottom: 20rpx;
+    padding-top: 28rpx;
+    padding-bottom: 24rpx;
+    margin-bottom: 24rpx;
   }
+
+}
+
+.avatar-switcher > * {
+  position: relative;
+  z-index: 1;
+}
+
+.avatar-switcher {
+  box-shadow:
+    inset 0 0 0 8rpx rgba(255, 250, 239, 0.9),
+    inset 0 0 0 10rpx rgba(186, 133, 65, 0.22),
+    0 12rpx 28rpx rgba(91, 60, 27, 0.11);
 }
 
 .switcher-head {
@@ -110,30 +149,32 @@ function sealChar(name: string) {
   align-items: center;
   justify-content: space-between;
   gap: 24rpx;
-  margin-bottom: 16rpx;
+  margin-bottom: 20rpx;
+  padding-right: 102rpx;
 }
 
 .head-label {
   display: block;
-  color: var(--gx-chat-hint, #a28777);
+  color: #75685b;
   font-size: 20rpx;
 }
 
 .head-name {
   display: block;
   margin-top: 4rpx;
-  color: var(--gx-chat-ink, #2b1712);
-  font-size: 26rpx;
-  font-weight: 700;
+  color: #211b16;
+  font-family: "Noto Serif SC", STSong, serif;
+  font-size: 32rpx;
+  font-weight: 800;
 }
 
 .invite-btn {
   min-height: 60rpx;
   padding: 0 20rpx;
-  border: 2rpx solid rgba(180, 58, 61, 0.25);
+  border: 2rpx solid rgba(177, 91, 55, 0.42);
   border-radius: 999rpx;
-  background: var(--gx-chat-red-soft, #fae5e2);
-  color: var(--gx-chat-red-deep, #7f1f26);
+  background: rgba(255, 247, 232, 0.9);
+  color: #a3422c;
   font-size: 22rpx;
   font-weight: 700;
   display: flex;
@@ -142,8 +183,8 @@ function sealChar(name: string) {
 
 .switcher-row {
   display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
+  align-items: center;
+  gap: 12rpx;
   min-width: 0;
 }
 
@@ -155,7 +196,7 @@ function sealChar(name: string) {
 
 .user-list {
   display: inline-flex;
-  gap: 16rpx;
+  gap: 12rpx;
   padding: 4rpx 2rpx;
   align-items: flex-start;
 }
@@ -163,7 +204,7 @@ function sealChar(name: string) {
 .user-empty {
   display: inline-flex;
   align-items: center;
-  min-height: 108rpx;
+  min-height: 82rpx;
   padding: 0 8rpx;
   color: var(--gx-chat-hint, #a28777);
   font-size: 22rpx;
@@ -173,22 +214,22 @@ function sealChar(name: string) {
 }
 
 .user-option {
-  width: 108rpx;
+  width: 78rpx;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 8rpx;
+  gap: 4rpx;
 }
 
 .user-avatar {
   position: relative;
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 50%;
-  border: 4rpx solid transparent;
-  background: var(--gx-chat-red-soft, #fae5e2);
-  color: var(--gx-chat-red-deep, #7f1f26);
-  font-size: 36rpx;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 22rpx;
+  border: 2rpx solid rgba(190, 92, 57, 0.34);
+  background: rgba(255, 247, 234, 0.86);
+  color: #b04b33;
+  font-size: 32rpx;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -196,21 +237,22 @@ function sealChar(name: string) {
 }
 
 .user-option.active .user-avatar {
-  border-color: var(--gx-chat-red, #b43a3d);
-  background: linear-gradient(135deg, var(--gx-chat-red, #b43a3d), #d96a6c);
-  color: #fffdf7;
+  border-color: #b95b3c;
+  background: linear-gradient(145deg, #fff6e7, #f8e8d5);
+  color: #a83f29;
+  box-shadow: inset 0 0 0 2rpx rgba(255, 255, 255, 0.72);
 }
 
 .check-badge {
   position: absolute;
-  right: -4rpx;
-  bottom: -4rpx;
-  width: 32rpx;
-  height: 32rpx;
+  right: -3rpx;
+  bottom: -3rpx;
+  width: 26rpx;
+  height: 26rpx;
   border-radius: 50%;
-  background: var(--gx-chat-red, #b43a3d);
+  background: #b54b31;
   color: #fff;
-  font-size: 18rpx;
+  font-size: 15rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,11 +260,11 @@ function sealChar(name: string) {
 }
 
 .user-name {
-  max-width: 108rpx;
+  max-width: 78rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 22rpx;
+  font-size: 18rpx;
   color: var(--gx-chat-muted, #755d52);
   text-align: center;
 }
@@ -233,21 +275,28 @@ function sealChar(name: string) {
 }
 
 .add-user {
-  width: 108rpx;
+  width: auto;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 8rpx;
+  justify-content: center;
+  gap: 4rpx;
+  min-height: 58rpx;
+  margin-left: auto;
+  padding: 0 20rpx;
+  border: 2rpx solid rgba(185, 91, 56, 0.38);
+  border-radius: 999rpx;
+  background: rgba(255, 247, 232, 0.92);
+  color: #a9442e;
 }
 
 .add-plus {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 50%;
-  border: 3rpx dashed rgba(162, 135, 119, 0.55);
-  color: var(--gx-chat-muted, #755d52);
-  font-size: 40rpx;
+  width: auto;
+  height: auto;
+  border: 0;
+  color: currentColor;
+  font-size: 28rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -256,6 +305,6 @@ function sealChar(name: string) {
 
 .add-label {
   font-size: 22rpx;
-  color: var(--gx-chat-hint, #a28777);
+  color: currentColor;
 }
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChatComposerAttachment, StreamChatFile } from '@/models/guoxin/chat'
+import type { ChatComposerAttachment } from '@/models/guoxin/chat'
 import type { DifyUploadResult } from '@/models/guoxin/dify'
 import { computed, ref, watch } from 'vue'
 import { uploadDifyFile } from '@/api/dify'
@@ -73,7 +73,7 @@ function resolvePickedFileSize(res: UniApp.ChooseImageSuccessCallbackResult, pat
   return new Promise((resolve) => {
     uni.getFileInfo({
       filePath: path,
-      success: (info) => resolve(Number(info.size) || 0),
+      success: info => resolve(Number(info.size) || 0),
       fail: () => resolve(0),
     })
   })
@@ -201,8 +201,9 @@ async function uploadPicked(localPath: string) {
 <style scoped lang="scss">
 .composer-wrap {
   flex-shrink: 0;
-  background: rgba(255, 246, 238, 0.96);
-  border-top: 2rpx solid rgba(236, 205, 187, 0.8);
+  background: rgba(250, 245, 233, 0.97);
+  border-top: 2rpx solid rgba(181, 122, 35, 0.22);
+  box-shadow: 0 -6rpx 22rpx rgba(79, 57, 29, 0.07);
 }
 
 .composer-preview {
@@ -240,8 +241,8 @@ async function uploadPicked(localPath: string) {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 16rpx 24rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  padding: 12rpx 24rpx;
+  padding-bottom: calc(12rpx + env(safe-area-inset-bottom));
 }
 
 .composer-attach {
@@ -249,7 +250,7 @@ async function uploadPicked(localPath: string) {
   height: 72rpx;
   border-radius: 50%;
   border: 2rpx solid var(--gx-chat-border, #eccdbb);
-  background: #fff;
+  background: rgba(255, 251, 242, 0.98);
   color: var(--gx-chat-red, #b43a3d);
   display: flex;
   align-items: center;
@@ -273,7 +274,7 @@ async function uploadPicked(localPath: string) {
   height: 84rpx;
   padding: 0 32rpx;
   border-radius: 999rpx;
-  background: #fff;
+  background: rgba(255, 251, 242, 0.98);
   border: 2rpx solid var(--gx-chat-border, #eccdbb);
   color: var(--gx-chat-ink, #2b1712);
   font-size: 28rpx;

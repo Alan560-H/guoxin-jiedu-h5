@@ -1,22 +1,22 @@
 /* 对话版主题 — 对齐原型丙火红 / 暖金 / 米白 */
 
 :root {
-  --gx-chat-bg: #fae5e2;
-  --gx-chat-paper: #fffdf8;
-  --gx-chat-paper-warm: #fff1e8;
-  --gx-chat-red: #b43a3d;
-  --gx-chat-red-deep: #7f1f26;
-  --gx-chat-red-soft: #fae5e2;
-  --gx-chat-gold: #d5a43d;
-  --gx-chat-gold-soft: #fff0c7;
-  --gx-chat-brown: #7c402a;
-  --gx-chat-ink: #2b1712;
-  --gx-chat-muted: #755d52;
-  --gx-chat-hint: #a28777;
-  --gx-chat-border: #eccdbb;
+  --gx-chat-bg: #f4eddd;
+  --gx-chat-paper: #fffaf0;
+  --gx-chat-paper-warm: #f8eedc;
+  --gx-chat-red: #b24d34;
+  --gx-chat-red-deep: #743324;
+  --gx-chat-red-soft: #f7e7d8;
+  --gx-chat-gold: #b77924;
+  --gx-chat-gold-soft: #f4e4c4;
+  --gx-chat-brown: #704832;
+  --gx-chat-ink: #2c241d;
+  --gx-chat-muted: #6f6257;
+  --gx-chat-hint: #9a8979;
+  --gx-chat-border: #e1d1b7;
   --gx-chat-radius: 32rpx;
   --gx-chat-radius-sm: 20rpx;
-  --gx-chat-shadow: 0 8rpx 24rpx rgba(121, 38, 32, 0.1);
+  --gx-chat-shadow: 0 8rpx 24rpx rgba(89, 62, 31, 0.09);
 }
 
 .gx-chat-root {
@@ -32,11 +32,9 @@
   --gx-text-hint: var(--gx-chat-hint);
   --gx-border: var(--gx-chat-border);
   background:
-    linear-gradient(rgba(255, 250, 249, 0.72) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 250, 249, 0.62) 1px, transparent 1px),
-    url("@/static/assets/rice-paper-bg.svg") center / cover no-repeat,
-    linear-gradient(180deg, #fae5e2 0%, #f5d4cf 100%);
-  background-size: 56rpx 56rpx, 56rpx 56rpx, cover, auto;
+    radial-gradient(circle at 84% 6%, rgba(226, 204, 159, 0.25), transparent 34%),
+    linear-gradient(180deg, #faf6ec 0%, #f2ead9 100%);
+  background-size: auto, auto;
   color: var(--gx-chat-ink);
 }
 

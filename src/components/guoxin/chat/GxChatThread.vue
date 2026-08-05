@@ -40,13 +40,21 @@ const emit = defineEmits<{
 
 <template>
   <view class="chat-inner">
-    <view v-if="historyLoadingOlder || historyHasMore" class="history-tip">
-      <text v-if="historyLoadingOlder">
-        正在加载更早对话…
-      </text>
-      <text v-else-if="historyHasMore">
-        滚到顶部加载更早对话
-      </text>
+    <view class="conversation-hero">
+      <view class="hero-copy">
+        <text class="hero-title">
+          观心见性，
+        </text>
+        <text class="hero-title">
+          顺势而行
+        </text>
+        <text class="hero-badge">
+          国心老师
+        </text>
+        <text class="hero-desc">
+          结合命理 · 看见选择 · 安顿内心
+        </text>
+      </view>
     </view>
 
     <GxAvatarSwitcher
@@ -58,21 +66,13 @@ const emit = defineEmits<{
       @invite="emit('invite')"
     />
 
-    <view class="conversation-cover compact">
-      <view class="cover-copy">
-        <text class="cover-eyebrow">
-          正在解读
-        </text>
-        <text class="cover-title">
-          继续说下去
-        </text>
-        <text class="cover-desc">
-          你可以沿着当前问题继续问，我会把关键点拆得更清楚。
-        </text>
-      </view>
-      <view class="cover-token" aria-hidden="true">
-        聊
-      </view>
+    <view v-if="historyLoadingOlder || historyHasMore" class="history-tip">
+      <text v-if="historyLoadingOlder">
+        正在加载更早对话…
+      </text>
+      <text v-else-if="historyHasMore">
+        滚到顶部加载更早对话
+      </text>
     </view>
 
     <GxChatMessageList
@@ -109,7 +109,7 @@ const emit = defineEmits<{
 
 <style scoped lang="scss">
 .chat-inner {
-  padding: 20rpx 28rpx 24rpx;
+  padding: 0 28rpx 24rpx;
   box-sizing: border-box;
 }
 
@@ -120,68 +120,64 @@ const emit = defineEmits<{
   color: var(--gx-chat-hint, #a28777);
 }
 
-.conversation-cover {
+.conversation-hero {
   position: relative;
-  display: flex;
-  align-items: stretch;
-  gap: 16rpx;
-  margin-bottom: 24rpx;
-  padding: 24rpx 22rpx;
-  border-radius: var(--gx-chat-radius, 32rpx);
-  border: 2rpx solid var(--gx-chat-border, #eccdbb);
-  background:
-    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(255, 241, 232, 0.92));
-  box-shadow: var(--gx-chat-shadow, 0 8rpx 24rpx rgba(121, 38, 32, 0.08));
+  height: 500rpx;
+  margin: 0 -28rpx;
+  background: url("@/static/assets/gx-sage-hero.webp") center top / cover no-repeat;
   overflow: hidden;
 
-  &.compact {
-    padding-top: 20rpx;
-    padding-bottom: 18rpx;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 112rpx;
+    background: linear-gradient(180deg, rgba(247, 240, 224, 0), var(--gx-chat-bg));
+    pointer-events: none;
   }
 }
 
-.cover-copy {
-  flex: 1;
-  min-width: 0;
+.hero-copy {
+  position: absolute;
+  z-index: 1;
+  top: 150rpx;
+  left: 51%;
+  right: 24rpx;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  align-items: flex-start;
 }
 
-.cover-eyebrow {
-  color: var(--gx-chat-red, #b43a3d);
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.cover-title {
-  color: var(--gx-chat-ink, #2b1712);
-  font-size: 36rpx;
-  font-weight: 800;
-  line-height: 1.25;
-}
-
-.cover-desc {
-  color: var(--gx-chat-muted, #755d52);
-  font-size: 24rpx;
-  line-height: 1.5;
-}
-
-.cover-token {
-  flex-shrink: 0;
-  width: 96rpx;
-  height: 128rpx;
-  border-radius: 48rpx 48rpx 24rpx 24rpx;
-  border: 6rpx solid var(--gx-chat-gold-soft, #fff0c7);
-  background: linear-gradient(180deg, var(--gx-chat-red, #b43a3d), var(--gx-chat-red-deep, #7f1f26));
-  color: #fffdf7;
+.hero-title {
+  color: #2d2118;
+  font-family: "Noto Serif SC", STSong, serif;
   font-size: 44rpx;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 10rpx 24rpx rgba(127, 31, 38, 0.28);
-  align-self: center;
+  font-weight: 900;
+  line-height: 1.28;
+  letter-spacing: 4rpx;
+  white-space: nowrap;
+  text-shadow: 0 2rpx 8rpx rgba(255, 251, 240, 0.88);
+}
+
+.hero-badge {
+  margin-top: 18rpx;
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, #d99a30, #b86e17);
+  color: #fff9ed;
+  font-size: 24rpx;
+  line-height: 1.3;
+  box-shadow: 0 6rpx 14rpx rgba(128, 75, 18, 0.18);
+}
+
+.hero-desc {
+  margin-top: 16rpx;
+  color: #4e4034;
+  font-family: "Noto Serif SC", STSong, serif;
+  font-size: 21rpx;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-shadow: 0 1rpx 6rpx rgba(255, 251, 240, 0.94);
 }
 
 .bottom-anchor {

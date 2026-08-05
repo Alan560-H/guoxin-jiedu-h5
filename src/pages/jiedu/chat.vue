@@ -25,6 +25,7 @@ import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { clearChatMarkdownCache } from '@/utils/guoxin/chat'
+import { isUnlimitedChatRemaining } from '@/utils/guoxin/parseCredits'
 import {
   parseQuestionBankPayload,
   parseSuggestedPayload,
@@ -32,9 +33,8 @@ import {
   unwrapBizPayload,
 } from '@/utils/guoxin/parseDifyLists'
 import { buildShowBackEntryUrl, captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
-import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 import { captureShowPayFromUrl, isShowPayEnabled } from '@/utils/guoxin/showPay'
-import { isUnlimitedChatRemaining } from '@/utils/guoxin/parseCredits'
+import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 import { createStreamTypewriter } from '@/utils/guoxin/streamTypewriter'
 
 const store = useGuoxinStore()
@@ -46,6 +46,7 @@ const pendingAttachment = ref<ChatComposerAttachment | null>(null)
 const composerRef = ref<{ resetAttachment?: () => void } | null>(null)
 const historyLoading = ref(false)
 const loadingOlder = ref(false)
+const headerScrolled = ref(false)
 const showLogin = ref(false)
 const showBazi = ref(false)
 const showInvite = ref(false)
@@ -217,6 +218,7 @@ function bindNativeScroll() {
   unbindNativeScroll()
   nativeScrollEl = document.getElementById('chat-scroll-root')
   nativeScrollEl?.addEventListener('scroll', onNativeScroll, { passive: true })
+  headerScrolled.value = Boolean(nativeScrollEl && nativeScrollEl.scrollTop > 12)
 }
 
 function unbindNativeScroll() {
@@ -228,6 +230,7 @@ function onNativeScroll(ev: Event) {
   const el = ev.target as HTMLElement | null
   if (!el)
     return
+  headerScrolled.value = el.scrollTop > 12
   // 流式输出中强制贴底，忽略用户滚动意图（下方小部件已隐藏）
   if (asking.value || programmaticScroll)
     return
@@ -281,6 +284,10 @@ function pinScrollToBottom() {
 
 function onScrollToUpper() {
   void loadOlderMessages()
+}
+
+function onChatScroll(e: { detail?: { scrollTop?: number } }) {
+  headerScrolled.value = Number(e.detail?.scrollTop || 0) > 12
 }
 
 async function loadOlderMessages() {
@@ -960,6 +967,8 @@ function scrollToLatestAssistant() {
 <template>
   <view class="gx-chat-page chat-page">
     <GxChatHeader
+      immersive
+      :scrolled="headerScrolled"
       :show-source-back="showSourceBackBar"
       :show-reports="showReportsEntry"
       @source-back="onSourceBack"
@@ -968,14 +977,17 @@ function scrollToLatestAssistant() {
     />
 
     <view v-if="!canChat" class="chat-gate">
-      <text class="gate-title">
-        {{ gateTitle }}
-      </text>
-      <text class="gate-desc">
-        {{ gateDesc }}
-      </text>
-      <view class="gate-btn" @tap="onGateAction">
-        {{ gateActionText }}
+      <view class="gate-hero" aria-hidden="true" />
+      <view class="gate-card">
+        <text class="gate-title">
+          {{ gateTitle }}
+        </text>
+        <text class="gate-desc">
+          {{ gateDesc }}
+        </text>
+        <view class="gate-btn" @tap="onGateAction">
+          {{ gateActionText }}
+        </view>
       </view>
     </view>
 
@@ -1019,6 +1031,7 @@ function scrollToLatestAssistant() {
         :scroll-into-view="scrollIntoView"
         scroll-with-animation
         enable-flex
+        @scroll="onChatScroll"
         @scrolltoupper="onScrollToUpper"
       >
         <GxChatThread
@@ -1090,6 +1103,7 @@ function scrollToLatestAssistant() {
 
 <style scoped lang="scss">
 .chat-page {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1 1 0%;
@@ -1115,31 +1129,59 @@ function scrollToLatestAssistant() {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20rpx;
-  padding: 48rpx 56rpx;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
   box-sizing: border-box;
+  background: var(--gx-chat-bg, #f4eddd);
+}
+
+.gate-hero {
+  flex: 1 1 0%;
+  min-height: 360rpx;
+  width: 100%;
+  background:
+    linear-gradient(180deg, rgba(244, 237, 221, 0) 62%, var(--gx-chat-bg, #f4eddd) 100%),
+    url("@/static/assets/gx-sage-hero.webp") center top / 100% auto no-repeat;
+}
+
+.gate-card {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+  width: auto;
+  margin: -48rpx 40rpx 28rpx;
+  padding: 40rpx 36rpx 36rpx;
+  box-sizing: border-box;
+  border: 2rpx solid rgba(181, 122, 35, 0.28);
+  border-radius: 30rpx;
+  background: rgba(255, 250, 239, 0.96);
+  box-shadow: 0 10rpx 28rpx rgba(80, 57, 29, 0.08);
+  position: relative;
+  z-index: 1;
 }
 
 .gate-title {
-  color: var(--gx-chat-ink, #2b1712);
+  color: #211b16;
   font-size: 36rpx;
   font-weight: 800;
   text-align: center;
+  line-height: 1.35;
 }
 
 .gate-desc {
-  color: var(--gx-chat-muted, #755d52);
+  color: #544a41;
   font-size: 26rpx;
   line-height: 1.55;
   text-align: center;
 }
 
 .gate-btn {
-  margin-top: 12rpx;
+  margin-top: 4rpx;
   min-height: 72rpx;
-  padding: 0 40rpx;
+  padding: 0 48rpx;
   border-radius: 999rpx;
   background: var(--gx-chat-red, #b43a3d);
   color: #fffdf7;

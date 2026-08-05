@@ -243,7 +243,7 @@ function statusLabel(status?: string) {
               次
             </text>
           </view>
-          <view class="ledger-col">
+          <view class="ledger-col ledger-report">
             <text class="ledger-label">
               深度报告
             </text>
@@ -475,6 +475,10 @@ function statusLabel(status?: string) {
   display: block;
   font-size: 22rpx;
   opacity: 0.88;
+}
+
+.ledger-report {
+  text-align: right;
 }
 
 .ledger-value {

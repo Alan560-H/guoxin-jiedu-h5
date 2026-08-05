@@ -198,8 +198,29 @@ function onMarkdownClick(e: MouseEvent) {
   }
 
   &.user {
+    position: relative;
+    padding-right: 54rpx;
     background: linear-gradient(145deg, #c9484a, #9b2429);
     color: #fffdf7;
+    overflow: hidden;
+
+    &::after {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      top: -12rpx;
+      right: -4rpx;
+      width: 44rpx;
+      height: 76rpx;
+      background: url("@/static/assets/gx-auspicious-charm.webp") center / contain no-repeat;
+      opacity: 0.86;
+      pointer-events: none;
+    }
+
+    > * {
+      position: relative;
+      z-index: 1;
+    }
   }
 
   &.thinking {

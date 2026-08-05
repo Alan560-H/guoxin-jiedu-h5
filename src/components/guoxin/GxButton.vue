@@ -64,9 +64,9 @@ function handleClick() {
 }
 
 .gx-btn-primary {
-  background: linear-gradient(180deg, var(--gx-chat-red, #b43a3d) 0%, var(--gx-chat-red-deep, #7f1f26) 100%);
+  background: linear-gradient(180deg, var(--gx-chat-red, #b24d34) 0%, var(--gx-chat-red-deep, #743324) 100%);
   color: #fffdf7;
-  border: 4rpx solid rgba(213, 164, 61, 0.55);
+  border: 2rpx solid rgba(181, 122, 35, 0.5);
   box-shadow:
     inset 0 2rpx 0 rgba(255, 255, 255, 0.16),
     0 8rpx 18rpx rgba(127, 31, 38, 0.22);
@@ -74,26 +74,9 @@ function handleClick() {
   position: relative;
   overflow: hidden;
 
-  /* Left/Right Cloud Vectors decoration */
   &::before,
   &::after {
-    content: "";
-    position: absolute;
-    bottom: -10rpx;
-    width: 130rpx;
-    height: 70rpx;
-    background: url("@/static/assets/button-cloud.svg") center / contain no-repeat;
-    opacity: 0.85;
-    pointer-events: none;
-  }
-
-  &::before {
-    left: 10rpx;
-  }
-
-  &::after {
-    right: 10rpx;
-    transform: scaleX(-1);
+    display: none;
   }
 }
 

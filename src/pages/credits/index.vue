@@ -457,6 +457,7 @@ async function handleLoginSuccess() {
 }
 
 .paywall-hero {
+  position: relative;
   padding: 28rpx 28rpx;
   margin-bottom: 24rpx;
   border-radius: var(--gx-chat-radius);
@@ -465,6 +466,38 @@ async function handleLoginSuccess() {
     radial-gradient(circle at 88% 14%, rgba(213, 164, 61, 0.45), transparent 32%),
     linear-gradient(150deg, var(--gx-chat-red), var(--gx-chat-red-deep));
   box-shadow: var(--gx-chat-shadow);
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: 36rpx;
+    bottom: -4rpx;
+    width: 190rpx;
+    height: 76rpx;
+    background: url("@/static/assets/gx-cloud.png") center / contain no-repeat;
+    opacity: 0.34;
+    pointer-events: none;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: -8rpx;
+    top: -22rpx;
+    width: 64rpx;
+    height: 110rpx;
+    background: url("@/static/assets/gx-auspicious-charm.webp") center / contain no-repeat;
+    opacity: 0.88;
+    pointer-events: none;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 .trial-card {
@@ -478,10 +511,29 @@ async function handleLoginSuccess() {
     linear-gradient(145deg, #c9484a 0%, #9b2429 55%, #7f1f26 100%);
   box-shadow: var(--gx-chat-shadow);
   overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: 30rpx;
+    top: 112rpx;
+    width: 220rpx;
+    height: 86rpx;
+    background: url("@/static/assets/gx-cloud.png") center / contain no-repeat;
+    opacity: 0.2;
+    pointer-events: none;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 .trial-badge {
   position: absolute;
+  z-index: 2;
   top: 0;
   right: 0;
   padding: 10rpx 22rpx;
@@ -610,16 +662,21 @@ async function handleLoginSuccess() {
 }
 
 .package-section {
+  position: relative;
   display: flex;
   flex-direction: column;
   border-radius: 32rpx;
-  background: #fffdf9;
-  border: 1rpx solid rgba(232, 200, 178, 0.55);
+  background:
+    linear-gradient(90deg, rgba(251, 244, 228, 0.99) 0%, rgba(251, 244, 228, 0.92) 62%, rgba(251, 244, 228, 0.28) 100%),
+    url("@/static/assets/gx-bamboo-card.webp") right bottom / auto 94% no-repeat,
+    #fbf4e4;
+  border: 1rpx solid rgba(218, 188, 146, 0.52);
   box-shadow: 0 8rpx 24rpx rgba(127, 31, 38, 0.06);
   overflow: hidden;
 }
 
 .package-row {
+  position: relative;
   display: flex;
   align-items: stretch;
   gap: 12rpx;

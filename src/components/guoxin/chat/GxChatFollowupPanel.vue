@@ -80,11 +80,33 @@ const emit = defineEmits<{
 
 <style scoped lang="scss">
 .followup-panel {
+  position: relative;
+  isolation: isolate;
   margin-bottom: 20rpx;
-  padding: 24rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 253, 248, 0.96);
-  border: 2rpx solid var(--gx-chat-border, #eccdbb);
+  padding: 28rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 250, 239, 0.97);
+  border: 2rpx solid rgba(181, 122, 35, 0.25);
+  box-shadow: 0 6rpx 18rpx rgba(78, 57, 31, 0.06);
+  overflow: hidden;
+
+  &::after {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    background: url("@/static/assets/gx-followup-bamboo-bg.jpg") center / 100% 100% no-repeat;
+    content: "";
+    opacity: 0.72;
+    pointer-events: none;
+  }
+}
+
+.board-head,
+.lead,
+.followup-scroll,
+.followup-empty {
+  position: relative;
+  z-index: 1;
 }
 
 .board-head {
@@ -98,7 +120,7 @@ const emit = defineEmits<{
 .board-title {
   font-size: 30rpx;
   font-weight: 800;
-  color: var(--gx-chat-ink, #2b1712);
+  color: #211b16;
 }
 
 .board-actions {
@@ -127,7 +149,7 @@ const emit = defineEmits<{
 .lead {
   display: block;
   margin-bottom: 16rpx;
-  color: var(--gx-chat-muted, #755d52);
+  color: #544a41;
   font-size: 24rpx;
   line-height: 1.45;
 }
@@ -151,14 +173,14 @@ const emit = defineEmits<{
   box-sizing: border-box;
   padding: 20rpx 18rpx;
   border-radius: 18rpx;
-  background: var(--gx-chat-red-soft, #fae5e2);
-  border: 2rpx solid rgba(180, 58, 61, 0.16);
+  background: #fff8eb;
+  border: 2rpx solid rgba(181, 122, 35, 0.22);
   white-space: normal;
 }
 
 .q {
   display: block;
-  color: var(--gx-chat-ink, #2b1712);
+  color: #211b16;
   font-size: 26rpx;
   font-weight: 700;
   line-height: 1.4;

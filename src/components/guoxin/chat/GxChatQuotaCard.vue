@@ -66,12 +66,46 @@ const showMeter = computed(() => payEnabled.value && !props.unlimited)
 
 <style scoped lang="scss">
 .qa-status {
+  position: relative;
   margin-bottom: 20rpx;
   padding: 24rpx;
   border-radius: 24rpx;
   background: linear-gradient(154deg, var(--gx-chat-red, #b43a3d), var(--gx-chat-red-deep, #7f1f26));
   color: #fffdf7;
   box-shadow: 0 10rpx 24rpx rgba(127, 31, 38, 0.22);
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: 72rpx;
+    top: 54rpx;
+    width: 176rpx;
+    height: 72rpx;
+    background: url("@/static/assets/gx-cloud.png") center / contain no-repeat;
+    opacity: 0.68;
+    filter: sepia(0.18) saturate(1.12) brightness(1.08);
+    pointer-events: none;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: 12rpx;
+    bottom: -26rpx;
+    width: 62rpx;
+    height: 108rpx;
+    background: url("@/static/assets/gx-auspicious-charm.webp") center / contain no-repeat;
+    opacity: 0.82;
+    pointer-events: none;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 .qa-status-copy {

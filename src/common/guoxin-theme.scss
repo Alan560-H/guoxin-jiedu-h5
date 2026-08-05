@@ -1,18 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;700;900&display=swap');
 
 :root {
-  --gx-bg: #fae5e2;
-  --gx-card: #FFF9ED;
-  --gx-green: #153F33;
-  --gx-green-dark: #1E3F35;
-  --gx-green-light: #EEF3EA;
-  --gx-gold: #B9945F;
-  --gx-gold-bg: #FDF5DC;
-  --gx-text: #241F19;
-  --gx-text-sub: #665B4E;
-  --gx-text-hint: #958878;
-  --gx-border: #E2DCD3;
-  --gx-radius: 36rpx;
+  --gx-bg: #f4eddd;
+  --gx-card: #fff9ed;
+  --gx-green: #b24d34;
+  --gx-green-dark: #743324;
+  --gx-green-light: #f8eadb;
+  --gx-gold: #b77924;
+  --gx-gold-bg: #f6ead3;
+  --gx-text: #2c241d;
+  --gx-text-sub: #6f6257;
+  --gx-text-hint: #9a8979;
+  --gx-border: #e1d1b7;
+  --gx-radius: 30rpx;
   --gx-font-scale: 1;
 }
 
@@ -26,9 +26,8 @@ html.gx-scale-xlarge {
 
 page {
   background:
-    url("@/static/assets/rice-paper-bg.svg") center / cover no-repeat,
-    linear-gradient(140deg, rgba(255, 245, 243, 0.95), rgba(250, 229, 226, 0.92)),
-    #fae5e2;
+    radial-gradient(circle at 82% 8%, rgba(231, 213, 176, 0.32), transparent 34%),
+    linear-gradient(180deg, #faf6ec 0%, #f2ead9 100%);
   color: var(--gx-text);
   font-family: "Noto Sans SC", system-ui, -apple-system, sans-serif;
   font-size: calc(28rpx * var(--gx-font-scale));
@@ -140,7 +139,7 @@ page {
   padding: 0 24rpx;
   border: 1px solid var(--gx-border);
   border-radius: 16rpx;
-  background: #fff;
+  background: rgba(255, 251, 242, 0.94);
   font-size: calc(28rpx * var(--gx-font-scale));
   box-sizing: border-box;
 }
@@ -152,12 +151,12 @@ page {
   padding: 0 24rpx;
   border: 1px solid var(--gx-border);
   border-radius: 16rpx;
-  background: #fff;
+  background: rgba(255, 251, 242, 0.94);
   font-size: calc(28rpx * var(--gx-font-scale));
 }
 
 .gx-chat-bubble {
-  background: #fff;
+  background: rgba(255, 251, 242, 0.96);
   border: 1px solid var(--gx-border);
   border-radius: 20rpx;
   padding: 24rpx;
@@ -271,7 +270,9 @@ page {
 }
 
 .gx-hero {
-  background: linear-gradient(160deg, var(--gx-green-dark), var(--gx-green));
+  background:
+    linear-gradient(90deg, rgba(255, 250, 239, 0.1), transparent),
+    linear-gradient(160deg, #7d3b29, #b4603d);
   padding: 48rpx 32rpx 40rpx;
   text-align: center;
   color: #fff;

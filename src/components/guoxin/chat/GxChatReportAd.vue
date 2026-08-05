@@ -34,6 +34,7 @@ const visible = computed(() => isShowPayEnabled())
 
 <style scoped lang="scss">
 .report-ad {
+  position: relative;
   margin: 8rpx 0 24rpx;
   padding: 24rpx;
   border-radius: 20rpx;
@@ -42,6 +43,38 @@ const visible = computed(() => isShowPayEnabled())
   display: flex;
   align-items: center;
   gap: 16rpx;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: 72rpx;
+    bottom: -4rpx;
+    width: 180rpx;
+    height: 70rpx;
+    background: url("@/static/assets/gx-cloud.png") center / contain no-repeat;
+    opacity: 0.58;
+    pointer-events: none;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    right: -8rpx;
+    top: -18rpx;
+    width: 58rpx;
+    height: 102rpx;
+    background: url("@/static/assets/gx-auspicious-charm.webp") center / contain no-repeat;
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 .ad-mark {
