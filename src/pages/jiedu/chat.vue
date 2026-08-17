@@ -726,7 +726,15 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
     uni.showToast({ title: '请先选择解读用户', icon: 'none' })
     return
   }
-  const userinput_bazi = JSON.stringify(profile)
+  let userinput_bazi = store.getStreamChatBazi(profileId)
+  if (!userinput_bazi && !Number.isNaN(Number(profileId))) {
+    await store.loadProfileDetail(Number(profileId))
+    userinput_bazi = store.getStreamChatBazi(profileId)
+  }
+  if (!userinput_bazi) {
+    uni.showToast({ title: '档案信息缺失，请稍后重试', icon: 'none' })
+    return
+  }
 
   if (typeof fetch !== 'function') {
     uni.showToast({ title: '当前环境不支持流式问答，请使用浏览器打开', icon: 'none' })

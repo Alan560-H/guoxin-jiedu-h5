@@ -99,6 +99,15 @@ export function resolveShichenLabel(hour: number, minute = 0): string {
   return SHICHEN_OPTIONS[resolveShichenIndex(hour, minute)]?.label ?? '子时(早)'
 }
 
+/** 列表/详情用农历文案，避免「1983年2月17日」被看成阳历 */
+export function formatLunarBirthDayDisplay(
+  parts: { year: number, month: number, day: number, hour: number, minute: number },
+  lunarLeapMonth?: boolean,
+): string {
+  const month = lunarLeapMonth ? -Math.abs(parts.month) : parts.month
+  return `农历 ${toChineseYear(parts.year)}${formatLunarMonthLabel(month)}${formatLunarDayLabel(parts.day)} ${resolveShichenLabel(parts.hour, parts.minute)}`
+}
+
 export function shichenLabels(): string[] {
   return SHICHEN_OPTIONS.map(o => o.label)
 }

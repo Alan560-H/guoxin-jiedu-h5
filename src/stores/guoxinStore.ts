@@ -32,7 +32,12 @@ import {
 import { RouterPaths } from '@/routerPaths'
 import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
 import { navigateToReportConfirm as goReportConfirm, navigateToHome, navigateToProfileList } from '@/utils/guoxin/navigation'
-import { normalizeProfileVo } from '@/utils/guoxin/normalizeProfile'
+import {
+  indexServerProfiles,
+  isStreamChatProfilePayload,
+  normalizeProfileVo,
+  toServerProfileRecord,
+} from '@/utils/guoxin/normalizeProfile'
 import { parseCreditsPayload, isUnlimitedChatRemaining } from '@/utils/guoxin/parseCredits'
 import { unwrapBizPayload } from '@/utils/guoxin/parseDifyLists'
 import { clearGuoxinUserSessionSnapshot, parseGuoxinLoginData, writeGuoxinUserSessionSnapshot } from '@/utils/guoxin/parseLoginResponse'
@@ -54,6 +59,8 @@ const PROFILE_MUTATION_META = { meta: { loading: false } }
 
 export const useGuoxinStore = defineStore('guoxin', () => {
   const profiles = ref<ProfileVo[]>([])
+  /** 档案接口原文，供 streamChat userinput_bazi 原样发送（不 persist） */
+  const serverProfilesById = ref<Record<string, Record<string, unknown>>>({})
   const activeProfileId = ref('')
   const activeRecordId = ref('')
   const selectedDirections = ref<string[]>([])
@@ -205,6 +212,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     memberSku.value = ''
     memberExpiresAt.value = ''
     profiles.value = []
+    serverProfilesById.value = {}
     activeProfileId.value = ''
     remoteCache.invalidate('all')
     try {
@@ -249,6 +257,49 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return profiles.value.find(p => p.id === id) ?? null
   }
 
+  /** 仅缓存接口原文；缺出生时间字段则忽略，避免用不完整响应覆盖 */
+  function rememberServerProfile(raw: unknown): boolean {
+    const rec = toServerProfileRecord(raw)
+    if (!rec || !isStreamChatProfilePayload(rec))
+      return false
+    serverProfilesById.value = {
+      ...serverProfilesById.value,
+      [String(rec.id)]: rec,
+    }
+    return true
+  }
+
+  function forgetServerProfile(id: string) {
+    if (!(id in serverProfilesById.value))
+      return
+    const next = { ...serverProfilesById.value }
+    delete next[id]
+    serverProfilesById.value = next
+  }
+
+  /** streamChat 八字：档案接口原文 JSON，不做农历/公历换算 */
+  function getStreamChatBazi(profileId: string): string | null {
+    const raw = serverProfilesById.value[String(profileId)]
+    if (!raw || !isStreamChatProfilePayload(raw))
+      return null
+    return JSON.stringify(raw)
+  }
+
+  async function refreshServerProfileForChat(id: string, raw?: unknown) {
+    if (rememberServerProfile(raw))
+      return
+    if (Number.isNaN(Number(id)) || !isLoggedIn.value)
+      return
+    try {
+      const res = await getProfileDetail(Number(id))
+      if (res.code === 200 && res.data)
+        rememberServerProfile(res.data)
+    }
+    catch (e) {
+      console.error('刷新档案原文失败', e)
+    }
+  }
+
   async function createProfile(dto: CreateProfileDto): Promise<ProfileVo> {
     try {
       const res = await apiCreateProfile(dto, PROFILE_MUTATION_META)
@@ -260,6 +311,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
         profiles.value.push(profile)
         activeProfileId.value = profile.id
         remoteCache.invalidate(['profiles'])
+        await refreshServerProfileForChat(profile.id, res.data)
         return profile
       }
       throw res
@@ -274,11 +326,13 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     if (profiles.value.findIndex(p => p.id === id) === -1)
       return null
 
+    let serverPayload: unknown
     if (!Number.isNaN(Number(id))) {
       try {
         const res = await apiUpdateProfile(Number(id), dto, PROFILE_MUTATION_META)
         if (res.code !== 200)
           throw res
+        serverPayload = res.data
       }
       catch (e) {
         console.error('更新档案失败', e)
@@ -297,6 +351,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
     profiles.value[idx] = updated
     remoteCache.invalidate(['profiles'])
+    await refreshServerProfileForChat(id, serverPayload)
     try {
       const { useChatSessionStore } = await import('@/stores/chatSessionStore')
       useChatSessionStore().clearConversationId(id)
@@ -321,6 +376,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
 
     profiles.value = profiles.value.filter(p => p.id !== id)
+    forgetServerProfile(id)
     if (activeProfileId.value === id) {
       activeProfileId.value = profiles.value[0]?.id ?? ''
     }
@@ -666,7 +722,9 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     try {
       const res = await apiGetProfiles()
       if (res.code === 200) {
-        profiles.value = Array.isArray(res.data) ? res.data.map(mapServerProfile) : []
+        const list = Array.isArray(res.data) ? res.data : []
+        serverProfilesById.value = indexServerProfiles(list)
+        profiles.value = list.map(mapServerProfile)
         if (profiles.value.length > 0) {
           if (!activeProfileId.value || !profiles.value.some(p => p.id === activeProfileId.value))
             activeProfileId.value = profiles.value[0].id
@@ -695,6 +753,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     try {
       const res = await getProfileDetail(id)
       if (res.code === 200 && res.data) {
+        rememberServerProfile(res.data)
         const mapped = mapServerProfile(res.data)
         const idx = profiles.value.findIndex(p => p.id === mapped.id)
         if (idx >= 0)
@@ -1086,6 +1145,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     clearSession,
     tryRestoreSession,
     getProfileById,
+    getStreamChatBazi,
     createProfile,
     updateProfile,
     deleteProfile,

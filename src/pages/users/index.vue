@@ -9,6 +9,7 @@ import GxInviteModal from '@/components/guoxin/chat/GxInviteModal.vue'
 import { INVITE_BAZI_FEATURE_ENABLED } from '@/constants/chatHome'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { formatBirthDayDisplay } from '@/utils/guoxin/birthDateTime'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 
 const store = useGuoxinStore()
@@ -54,7 +55,9 @@ function summaryLine(p: ProfileVo) {
 }
 
 function placeLine(p: ProfileVo) {
-  const day = (p.birthDaySolar || p.birthDay || '').slice(0, 16)
+  const day = p.calendarType === 'lunar'
+    ? formatBirthDayDisplay(p.birthDayLunar, 'lunar', '农历', p.lunarLeapMonth)
+    : formatBirthDayDisplay(p.birthDaySolar || p.birthDay, 'solar', '公历')
   return `${day} · ${p.birthPlace || '未填地点'}`
 }
 

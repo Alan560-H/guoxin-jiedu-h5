@@ -54,6 +54,9 @@ const emit = defineEmits<{
         <text class="hero-desc">
           结合命理 · 看见选择 · 安顿内心
         </text>
+        <text class="hero-notice">
+          AI 生成，回答可能有误。注意核实！
+        </text>
       </view>
     </view>
 
@@ -179,6 +182,15 @@ const emit = defineEmits<{
   line-height: 1.5;
   white-space: nowrap;
   text-shadow: 0 1rpx 6rpx rgba(255, 251, 240, 0.94);
+}
+
+.hero-notice {
+  margin-top: 6rpx;
+  color: #9d4230;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .bottom-anchor {

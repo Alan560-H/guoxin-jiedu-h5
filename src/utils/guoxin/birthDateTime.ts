@@ -1,5 +1,6 @@
 import type { CalendarValue } from '@/constants/guoxin'
 import { Lunar, Solar } from 'lunar-javascript'
+import { formatLunarBirthDayDisplay } from '@/utils/guoxin/lunarDisplay'
 
 export interface BirthDateTimeParts {
   year: number
@@ -174,9 +175,10 @@ export function formatBirthDayDisplay(
   const p = parseBirthDay(birthDay)
   if (!p)
     return birthDay || '未填写'
-  const cal = calendarTypeText ?? (calendarType === 'lunar' ? '农历' : '公历')
-  const monthLabel = lunarLeapMonth ? `闰${p.month}` : String(p.month)
-  return `${cal} ${p.year}年${monthLabel}月${p.day}日 ${pad2(p.hour)}:${pad2(p.minute)}:${pad2(p.second ?? 0)}`
+  if (calendarType === 'lunar')
+    return formatLunarBirthDayDisplay(p, lunarLeapMonth)
+  const cal = calendarTypeText ?? '公历'
+  return `${cal} ${p.year}年${p.month}月${p.day}日 ${pad2(p.hour)}:${pad2(p.minute)}:${pad2(p.second ?? 0)}`
 }
 
 export function formatDualBirthDayDisplay(profile: {

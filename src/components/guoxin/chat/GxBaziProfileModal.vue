@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CalendarValue, GenderValue, RelationValue } from '@/constants/guoxin'
 import type { BirthDateTimeParts } from '@/utils/guoxin/birthDateTime'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import {
   CALENDAR_OPTIONS,
   GENDER_OPTIONS,
@@ -15,6 +15,7 @@ import {
   buildYearRange,
   formatBirthDay,
   getDaysInSolarMonth,
+  parseBirthDay,
 } from '@/utils/guoxin/birthDateTime'
 import {
   buildRegionSelection,
@@ -23,6 +24,7 @@ import {
   getProvinceList,
 } from '@/utils/guoxin/chinaRegion'
 import {
+  findLunarMonthIndex,
   getLunarDayOptions,
   getLunarMonthOptions,
   getLunarYearOptions,
@@ -102,6 +104,7 @@ const shichenTouched = ref(false)
 const storedBirthHour = ref(0)
 const storedBirthMinute = ref(0)
 const regionIndex = ref<[number, number, number]>([0, 0, 0])
+const isFillingProfile = ref(false)
 
 const sheet = ref<SheetKind>(null)
 const draftIndex = ref<number[]>([0])
@@ -242,13 +245,15 @@ watch(
 )
 
 watch(calendarType, (type) => {
-  dateIndex.value = [0, 0, 0]
-  dateFilled.value = false
-  timeIndex.value = [0, 0]
-  shichenIndex.value = 0
-  shichenTouched.value = false
-  storedBirthHour.value = 0
-  storedBirthMinute.value = 0
+  if (!isFillingProfile.value) {
+    dateIndex.value = [0, 0, 0]
+    dateFilled.value = false
+    timeIndex.value = [0, 0]
+    shichenIndex.value = 0
+    shichenTouched.value = false
+    storedBirthHour.value = 0
+    storedBirthMinute.value = 0
+  }
   if (type === 'lunar')
     useTrueSolarTime.value = false
 })
@@ -275,40 +280,68 @@ function resetForm() {
 
 async function fillFromProfile(id: string) {
   let profile = store.getProfileById(id)
-  if (!profile && !Number.isNaN(Number(id)))
-    profile = await store.loadProfileDetail(Number(id))
+  if (!Number.isNaN(Number(id)))
+    profile = await store.loadProfileDetail(Number(id)) ?? profile
   if (!profile)
     return
 
+  isFillingProfile.value = true
   name.value = profile.name || ''
   relation.value = profile.relation || 'self'
   gender.value = profile.gender || 'female'
   calendarType.value = profile.calendarType || 'solar'
   birthPlace.value = profile.birthPlace || ''
   areaCode.value = profile.areaCode || ''
-  useTrueSolarTime.value = Boolean(profile.useTrueSolarTime)
+  useTrueSolarTime.value = calendarType.value === 'solar' && Boolean(profile.useTrueSolarTime)
+  timeUncertain.value = false
 
-  const solar = profile.birthDaySolar || profile.birthDay || ''
-  const m = solar.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/)
-  if (m && calendarType.value === 'solar') {
-    const year = Number(m[1])
-    const month = Number(m[2])
-    const day = Number(m[3])
-    const hour = Number(m[4])
-    const minute = Number(m[5])
-    const yi = solarYears.indexOf(year)
-    if (yi >= 0) {
-      dateIndex.value = [yi, Math.max(0, month - 1), Math.max(0, day - 1)]
+  const sourceDay = calendarType.value === 'lunar'
+    ? profile.birthDayLunar
+    : (profile.birthDaySolar || profile.birthDay)
+  const parts = parseBirthDay(sourceDay)
+  if (parts) {
+    if (calendarType.value === 'lunar' && profile.lunarLeapMonth)
+      parts.month = -parts.month
+
+    const years = calendarType.value === 'lunar' ? lunarYears : solarYears
+    const yi = years.indexOf(parts.year)
+    const months = calendarType.value === 'lunar'
+      ? getLunarMonthOptions(parts.year)
+      : Array.from({ length: 12 }, (_, i) => ({
+          month: i + 1,
+          label: `${i + 1}月`,
+          dayCount: getDaysInSolarMonth(parts.year, i + 1),
+        }))
+    const mi = calendarType.value === 'lunar'
+      ? findLunarMonthIndex(months, parts.month)
+      : months.findIndex(m => m.month === parts.month)
+    const days = mi >= 0
+      ? (calendarType.value === 'lunar'
+          ? getLunarDayOptions(parts.year, months[mi]?.month ?? parts.month)
+          : Array.from({ length: months[mi]?.dayCount ?? 0 }, (_, i) => i + 1))
+      : []
+    const di = days.indexOf(parts.day)
+
+    if (yi >= 0 && mi >= 0 && di >= 0) {
+      dateIndex.value = [yi, mi, di]
       dateFilled.value = true
     }
-    const hi = hourOptions.indexOf(hour)
-    const mi = minuteOptions.indexOf(minute)
-    timeIndex.value = [hi >= 0 ? hi : 0, mi >= 0 ? mi : 0]
-    storedBirthHour.value = hour
-    storedBirthMinute.value = minute
-    if (hour === 0 && minute === 0)
-      timeUncertain.value = true
+
+    storedBirthHour.value = parts.hour
+    storedBirthMinute.value = parts.minute
+    if (calendarType.value === 'lunar') {
+      shichenIndex.value = resolveShichenIndex(parts.hour, parts.minute)
+      shichenTouched.value = false
+    }
+    else {
+      const hi = hourOptions.indexOf(parts.hour)
+      const minuteIndex = minuteOptions.indexOf(parts.minute)
+      timeIndex.value = [hi >= 0 ? hi : 0, minuteIndex >= 0 ? minuteIndex : 0]
+    }
   }
+
+  await nextTick()
+  isFillingProfile.value = false
 
   if (areaCode.value) {
     const provinces = getProvinceList()
@@ -594,7 +627,7 @@ const sheetDistrictLabels = computed(() => {
               <text class="label">
                 称呼
               </text>
-              <input v-model="name" class="input" maxlength="12" placeholder="例如：自己、妈妈">
+              <input v-model="name" class="input" :maxlength="12" placeholder="例如：自己、妈妈">
             </view>
             <view class="field">
               <text class="label">

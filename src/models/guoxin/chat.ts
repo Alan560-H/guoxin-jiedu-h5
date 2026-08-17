@@ -18,7 +18,7 @@ export interface ChatMessageRequest {
   /** 已有会话时带上，延续 Dify conversation（来自 messages 历史的 conversation_id） */
   conversationId?: string
   /**
-   * 当前选中档案完整信息（JSON 字符串）。
+   * 当前选中档案的接口原文（JSON 字符串，不做农历/公历换算）。
    * 请求体落在 inputs.userinput_bazi（对齐 Dify App 变量）
    */
   userinput_bazi?: string

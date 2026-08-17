@@ -3,7 +3,7 @@ import type { CalendarValue, GenderValue, RelationValue } from '@/constants/guox
 import type { ProfileVo } from '@/models/guoxin/profile'
 import type { BirthDateTimeParts } from '@/utils/guoxin/birthDateTime'
 import { onLoad } from '@dcloudio/uni-app'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import GxButton from '@/components/guoxin/GxButton.vue'
 import GxCard from '@/components/guoxin/GxCard.vue'
 import GxChip from '@/components/guoxin/GxChip.vue'
@@ -68,6 +68,7 @@ const shichenIndex = ref(0)
 const shichenTouched = ref(false)
 const storedBirthHour = ref(0)
 const storedBirthMinute = ref(0)
+const isFillingProfile = ref(false)
 
 const solarYears = buildYearRange()
 const lunarYears = getLunarYearOptions()
@@ -165,14 +166,16 @@ function resetTimeState() {
 }
 
 watch(calendarType, (type) => {
-  resetDateIndex()
-  if (!isEditMode.value)
+  if (!isFillingProfile.value) {
+    resetDateIndex()
     resetTimeState()
+  }
   if (type === 'lunar')
     useTrueSolarTime.value = false
 })
 
-function applyProfileToForm(p: ProfileVo) {
+async function applyProfileToForm(p: ProfileVo) {
+  isFillingProfile.value = true
   name.value = p.name
   relation.value = p.relation
   gender.value = p.gender
@@ -183,8 +186,11 @@ function applyProfileToForm(p: ProfileVo) {
 
   const sourceDay = p.calendarType === 'lunar' ? p.birthDayLunar : p.birthDaySolar
   const parts = parseBirthDay(sourceDay || p.birthDay)
-  if (!parts)
+  if (!parts) {
+    await nextTick()
+    isFillingProfile.value = false
     return
+  }
   if (p.calendarType === 'lunar' && p.lunarLeapMonth)
     parts.month = -parts.month
 
@@ -219,6 +225,8 @@ function applyProfileToForm(p: ProfileVo) {
     Math.max(0, hourOptions.indexOf(parts.hour)),
     Math.max(0, minuteOptions.indexOf(parts.minute)),
   ]
+  await nextTick()
+  isFillingProfile.value = false
 }
 
 onLoad(async (options: any) => {
@@ -234,7 +242,7 @@ onLoad(async (options: any) => {
     if (!Number.isNaN(Number(options.id)))
       p = await store.loadProfileDetail(Number(options.id)) ?? p
     if (p)
-      applyProfileToForm(p)
+      await applyProfileToForm(p)
   }
 })
 
