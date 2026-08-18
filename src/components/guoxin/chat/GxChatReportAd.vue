@@ -6,7 +6,7 @@ const emit = defineEmits<{
   generate: []
 }>()
 
-/** isShowPay=1 显示报告入口；=0 隐藏 */
+/** 接口 value=1 显示报告入口；value=0 隐藏 */
 const visible = computed(() => isShowPayEnabled())
 </script>
 

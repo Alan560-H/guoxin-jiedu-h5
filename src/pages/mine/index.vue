@@ -18,7 +18,7 @@ const chatStore = useChatSessionStore()
 const showLogin = ref(false)
 const showService = ref(false)
 const loadingReports = ref(false)
-/** isShowPay=1 显示「我的报告」区块 */
+/** 接口 value=1 显示「我的报告」区块 */
 const showReportsSection = computed(() => isShowPayEnabled())
 
 const isLoggedIn = computed(() => store.isLoggedIn)

@@ -1,10 +1,10 @@
-/** uni H5 router.base（如 /h6/），与 manifest h5.router.base 一致 */
+/** uni H5 router.base，与 manifest h5.router.base 一致。 */
 export function getH5RouterBase(): string {
   const raw = import.meta.env.BASE_URL || '/'
   return raw.endsWith('/') ? raw : `${raw}/`
 }
 
-/** 拼接带 base 的 H5 路径，如 /h6/pages/credits/index */
+/** 拼接带 base 的 H5 页面路径。 */
 export function joinH5RouterPath(routerPath: string): string {
   const segment = routerPath.replace(/^\//, '')
   const base = getH5RouterBase()
@@ -24,7 +24,7 @@ export function buildCreditsPayReturnUrl(): string {
 }
 
 /**
- * 微信 MWEB 回跳若落在 /pages/...（无 /h6），纠正到带 base 的地址。
+ * 支付回跳若落在 /pages/... 且缺少自定义 base，则纠正到带 base 的地址。
  * 典型原因：后端 redirect_url 未含子路径前缀。
  */
 export function ensureH5RouterBasePath(): boolean {

@@ -1,42 +1,20 @@
+import { ref } from 'vue'
+import { getH5Module } from '@/api/h5'
 import {
-  IS_SHOW_PAY_QUERY_KEY,
-  IS_SHOW_PAY_QUERY_OFF,
-  IS_SHOW_PAY_QUERY_ON,
+  IS_SHOW_PAY_OFF,
+  IS_SHOW_PAY_ON,
 } from '@/constants/guoxin'
 
-/** 本地持久化：入口带 ?isShowPay 后，跳转丢 query 时权益页仍可读 */
 const STORAGE_KEY = 'guoxin-is-show-pay'
+const MODULE_PROJECT_CODE = 'isShowPay'
 
 function normalizeShowPay(raw: unknown): string | null {
   if (raw == null)
     return null
   const value = String(raw).trim()
-  if (value === IS_SHOW_PAY_QUERY_ON || value === IS_SHOW_PAY_QUERY_OFF)
+  if (value === IS_SHOW_PAY_ON || value === IS_SHOW_PAY_OFF)
     return value
   return null
-}
-
-function readUrlShowPay(): string | null {
-  if (typeof window === 'undefined')
-    return null
-  try {
-    const fromSearch = normalizeShowPay(
-      new URLSearchParams(window.location.search).get(IS_SHOW_PAY_QUERY_KEY),
-    )
-    if (fromSearch)
-      return fromSearch
-    // hash 路由兜底：#/pages/xxx?isShowPay=0
-    const hash = window.location.hash || ''
-    const qIndex = hash.indexOf('?')
-    if (qIndex < 0)
-      return null
-    return normalizeShowPay(
-      new URLSearchParams(hash.slice(qIndex + 1)).get(IS_SHOW_PAY_QUERY_KEY),
-    )
-  }
-  catch {
-    return null
-  }
 }
 
 function persistShowPay(value: string): void {
@@ -58,41 +36,80 @@ function readPersistedShowPay(): string | null {
 }
 
 /**
- * 同步 isShowPay：
- * - URL / 页面 query 有 0/1 → 写入本地（覆盖）
- * - 未带参数 → **不覆盖**已写入值；无本地值时默认 1
- *
- * 注意：勿在「路由已丢掉 query」后再用默认 1 覆盖，否则 `?isShowPay=0` 会被冲掉。
+ * 购买模块开关。先使用最近一次接口成功值，首次访问保持原有默认值 1。
+ * ref 让现有 computed 在接口返回后自动更新显示状态。
  */
-export function captureShowPayFromUrl(
-  pageQuery?: Record<string, string | undefined> | null,
-): void {
-  const fromPage = normalizeShowPay(pageQuery?.[IS_SHOW_PAY_QUERY_KEY])
-  if (fromPage) {
-    persistShowPay(fromPage)
+const showPayValue = ref(readPersistedShowPay() ?? IS_SHOW_PAY_ON)
+let refreshPromise: Promise<boolean> | null = null
+
+/** 清理历史入口遗留的 isShowPay 参数，开关值只以接口为准。 */
+export function removeLegacyShowPayFromUrl(): void {
+  if (typeof window === 'undefined')
     return
+
+  try {
+    const url = new URL(window.location.href)
+    let changed = false
+
+    if (url.searchParams.has(MODULE_PROJECT_CODE)) {
+      url.searchParams.delete(MODULE_PROJECT_CODE)
+      changed = true
+    }
+
+    const hashQueryIndex = url.hash.indexOf('?')
+    if (hashQueryIndex >= 0) {
+      const hashPath = url.hash.slice(0, hashQueryIndex)
+      const hashParams = new URLSearchParams(url.hash.slice(hashQueryIndex + 1))
+      if (hashParams.has(MODULE_PROJECT_CODE)) {
+        hashParams.delete(MODULE_PROJECT_CODE)
+        const query = hashParams.toString()
+        url.hash = `${hashPath}${query ? `?${query}` : ''}`
+        changed = true
+      }
+    }
+
+    if (changed)
+      window.history.replaceState({}, '', url.toString())
   }
-  const fromUrl = readUrlShowPay()
-  if (fromUrl) {
-    persistShowPay(fromUrl)
-    return
+  catch {
+    // URL 清理失败不影响页面启动和接口开关。
   }
-  if (!readPersistedShowPay())
-    persistShowPay(IS_SHOW_PAY_QUERY_ON)
 }
 
 /**
- * 是否走微信支付。
- * 优先 URL / hash；否则读入口持久化；默认 true（等同 isShowPay=1）。
+ * 从 H5 模块配置接口刷新购买模块开关。
+ * 仅接受 data[0].value 的 0/1；请求或数据异常时保留当前值。
  */
-export function isShowPayEnabled(): boolean {
-  const fromUrl = readUrlShowPay()
-  if (fromUrl != null) {
-    persistShowPay(fromUrl)
-    return fromUrl === IS_SHOW_PAY_QUERY_ON
+export async function refreshShowPayFromApi(): Promise<boolean> {
+  if (refreshPromise)
+    return refreshPromise
+
+  const task = (async () => {
+    try {
+      const response = await getH5Module(MODULE_PROJECT_CODE)
+      const value = normalizeShowPay(response.data?.[0]?.value)
+      if (value != null) {
+        showPayValue.value = value
+        persistShowPay(value)
+      }
+    }
+    catch {
+      // 配置接口失败时沿用缓存/当前值，不打断页面主流程。
+    }
+    return showPayValue.value === IS_SHOW_PAY_ON
+  })()
+
+  refreshPromise = task
+  try {
+    return await task
   }
-  const persisted = readPersistedShowPay()
-  if (persisted != null)
-    return persisted === IS_SHOW_PAY_QUERY_ON
-  return true
+  finally {
+    if (refreshPromise === task)
+      refreshPromise = null
+  }
+}
+
+/** value=1 显示购买模块；value=0 隐藏购买模块。 */
+export function isShowPayEnabled(): boolean {
+  return showPayValue.value === IS_SHOW_PAY_ON
 }

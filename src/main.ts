@@ -4,6 +4,11 @@ import uViewPro, { httpPlugin } from 'uview-pro'
 import { createSSRApp } from 'vue'
 
 import { httpInterceptor, httpRequestConfig } from '@/api/http.interceptor'
+import { i18n } from '@/i18n'
+import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
+import { captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
+import { removeLegacyShowPayFromUrl } from '@/utils/guoxin/showPay'
+import { captureSourceFromUrl } from '@/utils/guoxin/source'
 import theme from '@/uview-pro.theme'
 import App from './App.vue'
 
@@ -17,15 +22,10 @@ import './common/guoxin-theme.scss'
 import './styles/guoxin-chat-theme.scss'
 import '@/styles/report-html-theme.scss'
 import 'uno.css'
-import { i18n } from '@/i18n'
-import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
-import { captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
-import { captureShowPayFromUrl } from '@/utils/guoxin/showPay'
-import { captureSourceFromUrl } from '@/utils/guoxin/source'
 
 scheduleMarkAppEmbeddedWebView()
+removeLegacyShowPayFromUrl()
 captureSourceFromUrl()
-captureShowPayFromUrl()
 // 应用启动时 URL 尚完整：有 projectCode 则存，无则清
 captureProjectCodeFromUrl(undefined, { clearIfAbsent: true })
 

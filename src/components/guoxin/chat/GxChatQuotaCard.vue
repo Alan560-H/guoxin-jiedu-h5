@@ -13,10 +13,10 @@ const emit = defineEmits<{
   buy: []
 }>()
 
-/** isShowPay=1 显示购买与真实额度；=0 隐藏购买并展示限时不限次文案 */
+/** 接口 value=1 显示购买与真实额度；value=0 隐藏购买并展示限时不限次文案 */
 const payEnabled = computed(() => isShowPayEnabled())
 const showBuyBtn = payEnabled
-/** isShowPay=0：营销态「不限次数 / 限时福利」 */
+/** 接口 value=0：营销态「不限次数 / 限时福利」 */
 const promoUnlimited = computed(() => !payEnabled.value)
 const showMeter = computed(() => payEnabled.value && !props.unlimited)
 </script>

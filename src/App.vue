@@ -2,6 +2,7 @@
 import { onLaunch, onShow } from '@dcloudio/uni-app'
 import { scheduleMarkAppEmbeddedWebView } from '@/utils/appWebView'
 import { ensureH5RouterBasePath } from '@/utils/guoxin/h5RouterBase'
+import { refreshShowPayFromApi } from '@/utils/guoxin/showPay'
 import { fixWeixinFontsizeByWxOS } from '@/utils/weixin/font'
 
 function applyWebViewLayout() {
@@ -20,10 +21,12 @@ function initWeixinOnH5() {
 onLaunch(() => {
   applyWebViewLayout()
   initWeixinOnH5()
+  void refreshShowPayFromApi()
 })
 
 onShow(() => {
   applyWebViewLayout()
+  void refreshShowPayFromApi()
 })
 </script>
 

@@ -2,6 +2,7 @@
 withDefaults(defineProps<{
   title?: string
   showBack?: boolean
+  backLabel?: string
   showMine?: boolean
   /** 快捷查看报告入口（文案：查看报告） */
   showReports?: boolean
@@ -44,9 +45,15 @@ const emit = defineEmits<{
         <view
           v-else-if="showBack"
           class="header-back"
+          :class="{ 'has-label': backLabel }"
           @tap="emit('back')"
         >
-          ←
+          <text class="header-back-arrow">
+            {{ backLabel ? '‹' : '←' }}
+          </text>
+          <text v-if="backLabel" class="header-back-label">
+            {{ backLabel }}
+          </text>
         </view>
       </view>
       <text class="header-title">
@@ -146,8 +153,28 @@ const emit = defineEmits<{
   height: 76rpx;
   display: grid;
   place-items: center;
-  font-size: 40rpx;
   color: #3b2a1d;
+
+  &.has-label {
+    width: auto;
+    min-height: 60rpx;
+    height: auto;
+    display: flex;
+    align-items: center;
+    gap: 4rpx;
+  }
+}
+
+.header-back-arrow {
+  font-size: 40rpx;
+  line-height: 1;
+  margin-top: -2rpx;
+}
+
+.header-back-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .header-source-back {

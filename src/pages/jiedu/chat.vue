@@ -25,6 +25,7 @@ import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { clearChatMarkdownCache } from '@/utils/guoxin/chat'
+import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { isUnlimitedChatRemaining } from '@/utils/guoxin/parseCredits'
 import {
   parseQuestionBankPayload,
@@ -33,7 +34,7 @@ import {
   unwrapBizPayload,
 } from '@/utils/guoxin/parseDifyLists'
 import { buildShowBackEntryUrl, captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
-import { captureShowPayFromUrl, isShowPayEnabled } from '@/utils/guoxin/showPay'
+import { isShowPayEnabled } from '@/utils/guoxin/showPay'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 import { createStreamTypewriter } from '@/utils/guoxin/streamTypewriter'
 
@@ -68,7 +69,7 @@ const questionBankPool = ref<string[]>([])
 /** 发送时是否贴底（非流式场景）；流式输出时强制贴底，不依赖此标记 */
 const stickToBottom = ref(true)
 const showSourceBackBar = ref(isShowBackEntry())
-/** 顶栏「查看报告」与购买入口一致：isShowPay=1 才显示 */
+/** 顶栏「查看报告」与购买入口一致：接口 value=1 才显示 */
 const showReportsEntry = computed(() => isShowPayEnabled())
 /** 程序滚动中：忽略 scroll 事件，避免误改 stickToBottom */
 let programmaticScroll = false
@@ -124,7 +125,7 @@ const remaining = computed(() => {
 /**
  * 跳过前端次数拦截：
  * - questionRemaining=-1 / chatUnlimited
- * - isShowPay=0（客服入口，文案为限时不限次）
+ * - 接口 value=0（客服入口，文案为限时不限次）
  */
 const skipChatQuotaGate = computed(() =>
   chatUnlimited.value
@@ -325,7 +326,6 @@ async function loadOlderMessages() {
 
 onLoad((query) => {
   const q = query as Record<string, string | undefined>
-  captureShowPayFromUrl(q)
   captureProjectCodeFromUrl(q)
   showSourceBackBar.value = isShowBackEntry()
   void bootstrapChat()
@@ -576,6 +576,10 @@ function onSourceBack() {
   if (typeof window === 'undefined')
     return
   window.location.href = buildShowBackEntryUrl()
+}
+
+function onBack() {
+  navigateBackOrHome()
 }
 
 function onMine() {
@@ -977,8 +981,11 @@ function scrollToLatestAssistant() {
     <GxChatHeader
       immersive
       :scrolled="headerScrolled"
+      show-back
+      back-label="返回上一页"
       :show-source-back="showSourceBackBar"
       :show-reports="showReportsEntry"
+      @back="onBack"
       @source-back="onSourceBack"
       @mine="onMine"
       @reports="onViewReports"

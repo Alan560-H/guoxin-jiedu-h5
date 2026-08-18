@@ -1,9 +1,10 @@
 import { http } from 'uview-pro'
 import type { ResponseData } from '@/models/responseData'
 import type { ProfileVo } from '@/models/guoxin/profile'
-import type { WxPayCreateParam, WxPayCreateVo, WxPayMwebCreateVo } from '@/models/weixin'
+import type { WxPayCreateParam, WxPayRedirectVo } from '@/models/weixin'
 
 const BASE = '/api/yiqixue/app/guoxin'
+const SUNLAND_PAY_API = `${BASE}/pay/sunlandPay`
 
 /** 发送短信验证码 */
 export const sendSmsCode = (data: { mobile: string }): Promise<ResponseData<any>> =>
@@ -98,7 +99,7 @@ export const updateProfile = (id: number, data: any, config?: Record<string, unk
 export const deleteProfile = (id: number, config?: Record<string, unknown>): Promise<ResponseData<any>> =>
   http.delete(`${BASE}/profile/${id}`, config)
 
-/** 创建微信支付订单（JSAPI / MWEB 共用 pay/create，必传 payChannel） */
-export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayCreateVo | WxPayMwebCreateVo>> =>
+/** 创建尚德支付订单；请求字段暂按后端现有协议保留。 */
+export const createWxPayOrder = (data: WxPayCreateParam): Promise<ResponseData<WxPayRedirectVo>> =>
   // toast 交给购买流程 formatWxPayError，避免拦截器 toast 被后续通用文案覆盖
-  http.post(`${BASE}/pay/create`, data, { meta: { loading: false, toast: false } })
+  http.post(SUNLAND_PAY_API, data, { meta: { loading: false, toast: false } })

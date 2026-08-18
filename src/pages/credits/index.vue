@@ -31,7 +31,7 @@ const trial = computed(() => split.value.trial)
 const regular = computed(() => split.value.regular)
 const boost = computed(() => split.value.boost)
 const isMember = computed(() => store.chatUnlimited)
-/** 入口 ?isShowPay=1（默认）时走微信支付 */
+/** 接口 value=1 时开放在线支付。 */
 const payEnabled = computed(() => isShowPayEnabled())
 
 const displayNickname = computed(() => {
@@ -184,8 +184,8 @@ async function handlePayReturnIfNeeded() {
 }
 
 /**
- * isShowPay=1 / 默认 → 微信支付；
- * isShowPay=0 → 弹客服二维码。
+ * value=1 → 跳转第三方收银台；
+ * value=0 → 弹客服二维码。
  */
 async function purchasePlan(plan: DisplayMemberPlan) {
   if (plan.memberExclusive && !isMember.value) {
@@ -215,8 +215,8 @@ async function purchasePlan(plan: DisplayMemberPlan) {
     const result = await store.purchaseRemoteProduct(plan.productId, { silentSuccess: true })
     if (result === true)
       goPaid(plan)
-    else if (result === 'mweb_redirect')
-      uni.showToast({ title: '正在跳转微信支付', icon: 'none' })
+    else if (result === 'pay_redirect')
+      uni.showToast({ title: '正在跳转支付页面', icon: 'none' })
     else
       takePendingPaidPlan()
   }
@@ -419,7 +419,7 @@ async function handleLoginSuccess() {
           当前剩余报告次数 {{ store.displayCredits }}；问答与报告额度独立计算。
         </view>
         <view class="paywall-tip muted">
-          购买即表示同意《用户服务协议》与《隐私权政策》；{{ payEnabled ? '支付走微信网页支付。' : '当前请联系客服开通。' }}
+          购买即表示同意《用户服务协议》与《隐私权政策》；{{ payEnabled ? '支付将跳转至安全收银台。' : '当前请联系客服开通。' }}
         </view>
         <view class="safe-bottom" />
       </view>
