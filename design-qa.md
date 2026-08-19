@@ -2,52 +2,45 @@
 
 ## Comparison target
 
-- Source visual truth: `C:\Users\11075\AppData\Local\Temp\codex-clipboard-f252a78d-f85e-48c3-8f99-d208a671ab7c.png`
-- Intended implementation route: `http://10.18.166.113:9999/`
-- Source dimensions: `414 × 736` px.
-- Intended viewport: `414 × 736` CSS px at device scale factor 1.
-- State: root home page with the top-right hero badge visible.
+- Source visual truth: `C:\Users\11075\AppData\Local\Temp\codex-clipboard-4bcc2178-1f2e-4174-9e92-af11453b7190.png`
+- Implementation route: `http://10.18.166.113:9999/`
+- Implementation screenshot: `E:\www\fangtang\guoxin-jiedu-h5\homepage-avatar-layout-implementation.jpg`
+- Combined comparison: `E:\www\fangtang\guoxin-jiedu-h5\homepage-avatar-layout-comparison.jpg`
+- Source pixels: `414 × 736`.
+- Implementation pixels: `414 × 736`; CSS viewport `414 × 736`; device scale factor `1`.
+- Density normalization: none required because source and implementation dimensions match.
+- State: homepage initial state with the teacher introduction visible.
 
 ## Full-view comparison evidence
 
-- The source screenshot was opened at original resolution and confirms the badge position, rounded outline, and warm-paper styling.
-- The implementation keeps the existing badge geometry and visual styles unchanged.
-- Only the visible text and interaction contract changed: it now always reads “限时免费” and has no tap handler.
-- A fresh browser-rendered screenshot is unavailable because the Codex in-app browser previously rejected the private-network preview URL.
+- The implementation preserves the source page hierarchy, spacing, palette, typography, cards, guidance content, and fixed composer.
+- The requested teacher region is corrected without changing adjacent homepage modules.
+- The source screenshot's red annotation rectangle is review markup and is intentionally absent from the implementation.
 
 ## Focused region evidence
 
-- Target region: the top-right pill over the hero image.
-- Current source renders fixed text inside the existing `.consult-login-badge` element.
-- Login-dependent computed text, login modal, and badge tap handler were removed.
-- No focused post-change screenshot could be captured due to the local-network browser restriction.
+- Target region: `.consult-teacher-row`, containing the avatar plus the teacher name and message card.
+- The teacher name and message card both render at `x = 71.53125px`; measured left-edge delta is `0px`.
+- The message card begins below the teacher name at `y = 455.546875px`; the old negative-margin overlap is removed.
+- The new `512 × 512` avatar visibly includes the full head, neck, both shoulders, and upper chest within the circular crop.
+- The avatar renders at approximately `39.53 × 39.53px`, matching the existing compact teacher identity treatment.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: existing badge font size, spacing, truncation, and weight are unchanged.
-- Spacing and layout rhythm: badge position, width constraints, height, padding, and radius are unchanged.
-- Colors and visual tokens: border, background, text color, and shadow are unchanged.
-- Image quality and assets: hero asset and crop are unchanged.
-- Copy and content: badge now consistently displays “限时免费”.
+- Fonts and typography: existing family, sizes, weights, line heights, emphasis colors, and wrapping are preserved; only the teacher-name block spacing changed.
+- Spacing and layout rhythm: the avatar occupies a fixed left column while the teacher name and card share one right column; surrounding section rhythm is unchanged.
+- Colors and visual tokens: paper background, ink text, orange emphasis, borders, radii, and shadows remain unchanged.
+- Image quality and asset fidelity: the generated portrait matches the warm traditional-teacher art direction and remains sharp at mobile avatar size; shoulders are no longer cropped.
+- Copy and content: all homepage copy remains unchanged.
 
 ## Findings
 
-- [P2] Browser-rendered visual evidence is unavailable.
-  - Location: homepage top-right badge.
-  - Evidence: the in-app browser cannot currently open the private-network preview URL.
-  - Impact: source, lint, and build are verified, but final live typography cannot be certified automatically.
-  - Fix: manually refresh the root page and confirm the badge reads “限时免费” without responding to taps.
-
-## Verification
-
-- Targeted ESLint: passed.
-- H5 production build: passed.
-- Source search: dynamic login label and badge interaction code have been removed.
+- No actionable P0, P1, or P2 differences remain for the requested teacher region.
 
 ## Comparison history
 
-- Pass 1: identified the top-right dynamic login/account badge as the requested change surface.
-- Pass 2: replaced it with fixed, non-interactive “限时免费” text while preserving styling.
-- Pass 3: lint and H5 build passed; browser evidence remained blocked by private-network policy.
+- Pass 1: source evidence showed the name visually colliding with the message card because the card used a negative top margin; the avatar crop showed only the head and neck.
+- Fix: grouped name and card into one content column, removed the negative margin, and introduced a new shoulder-inclusive portrait asset.
+- Pass 2: the browser-rendered comparison confirms a `0px` left-edge delta between name and card and a complete bust portrait inside the avatar circle.
 
-final result: blocked
+final result: passed

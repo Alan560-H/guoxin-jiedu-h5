@@ -1,25 +1,21 @@
 <script setup lang="ts">
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
-import GxSourceBackBar from '@/components/guoxin/GxSourceBackBar.vue'
 import { ImageConfig } from '@/config/assets'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { createDailyGuidance } from '@/utils/guoxin/dailyGuidance'
 import { captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
-import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 
 const PROFESSIONAL_CHART_URL = 'https://paipan.yipuwh.com/'
 
 const store = useGuoxinStore()
-const showSourceBackBar = ref(isShowBackEntry())
 const guidance = ref(createDailyGuidance())
 let guidanceTimer: ReturnType<typeof setInterval> | null = null
 
 onLoad((query) => {
   const q = query as Record<string, string | undefined>
   captureProjectCodeFromUrl(q)
-  showSourceBackBar.value = isShowBackEntry()
   if (q.scene === 'invite') {
     const token = String(q.token || '').trim()
     const url = token
@@ -34,7 +30,6 @@ onLoad((query) => {
 
 onShow(() => {
   captureProjectCodeFromUrl()
-  showSourceBackBar.value = isShowBackEntry()
   refreshDailyGuidance()
 })
 
@@ -67,8 +62,6 @@ function openChat() {
 
 <template>
   <view class="consult-page gx-chat-page">
-    <GxSourceBackBar v-if="showSourceBackBar" />
-
     <view class="consult-content">
       <view class="consult-hero">
         <image
@@ -154,26 +147,30 @@ function openChat() {
           </text>
         </view>
 
-        <view class="consult-teacher-meta">
+        <view class="consult-teacher-row">
           <image
             class="consult-teacher-avatar"
-            :src="ImageConfig.static('teacher-avatar.png')"
+            :src="ImageConfig.static('teacher-avatar-shoulders.png')"
             mode="aspectFill"
           />
-          <text>国学老师</text>
-        </view>
-        <view class="consult-teacher-message">
-          <text>
-            你可以问我关于
-            <text class="consult-emphasis">
-              八字命盘、事业财运、感情婚姻、流年运势、环境布局、人生选择
+          <view class="consult-teacher-content">
+            <text class="consult-teacher-name">
+              国学老师
             </text>
-            等问题，也可以随时问我课程中不懂的国学知识。
-          </text>
-          <text class="consult-example-lead">
-            比如你可以这样问我：
-          </text>
-          <text>我今年的事业运怎么样？</text>
+            <view class="consult-teacher-message">
+              <text>
+                你可以问我关于
+                <text class="consult-emphasis">
+                  八字命盘、事业财运、感情婚姻、流年运势、环境布局、人生选择
+                </text>
+                等问题，也可以随时问我课程中不懂的国学知识。
+              </text>
+              <text class="consult-example-lead">
+                比如你可以这样问我：
+              </text>
+              <text>我今年的事业运怎么样？</text>
+            </view>
+          </view>
         </view>
       </scroll-view>
 
@@ -450,26 +447,39 @@ function openChat() {
   box-shadow: 0 14rpx 36rpx rgba(174, 102, 44, 0.07);
 }
 
-.consult-teacher-meta {
+.consult-teacher-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14rpx;
+}
+
+.consult-teacher-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.consult-teacher-name {
+  display: block;
+  margin: 8rpx 0 8rpx;
   color: #8c8a86;
   font-size: 20rpx;
+  line-height: 1.3;
 }
 
 .consult-teacher-avatar {
   width: 68rpx;
   height: 68rpx;
+  flex: 0 0 68rpx;
+  margin-top: 2rpx;
   border: 2rpx solid #e8d8c4;
   border-radius: 50%;
+  background: #f8ecdc;
   box-shadow: 0 8rpx 20rpx rgba(113, 70, 33, 0.08);
 }
 
 .consult-teacher-message {
   display: flex;
   flex-direction: column;
-  margin: -34rpx 0 0 86rpx;
   padding: 18rpx 22rpx 20rpx;
   border: 2rpx solid rgba(255, 255, 255, 0.88);
   border-radius: 10rpx 24rpx 24rpx;
