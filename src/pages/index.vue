@@ -9,7 +9,7 @@ import { createDailyGuidance } from '@/utils/guoxin/dailyGuidance'
 import { captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
 import { isShowBackEntry } from '@/utils/guoxin/sourceEntry'
 
-const PROFESSIONAL_CHART_URL = 'https://whhongyi.top/wm/paipan'
+const PROFESSIONAL_CHART_URL = 'https://paipan.yipuwh.com/'
 
 const store = useGuoxinStore()
 const showSourceBackBar = ref(isShowBackEntry())
