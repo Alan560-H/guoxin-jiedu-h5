@@ -301,12 +301,13 @@ function openChat() {
   align-items: center;
   padding: 0 18rpx;
   border: 2rpx solid #f2d7bb;
+  border-radius: 999rpx;
   background: rgba(255, 248, 238, 0.78);
+  box-sizing: border-box;
   color: #4e3a2b;
   font-size: 20rpx;
   font-weight: 700;
   white-space: nowrap;
-  clip-path: polygon(18rpx 0, calc(100% - 18rpx) 0, 100% 50%, calc(100% - 18rpx) 100%, 18rpx 100%, 0 50%);
 }
 
 .consult-guidance-summary {
@@ -563,7 +564,7 @@ function openChat() {
   }
 
   .consult-lunar-date {
-    padding: 0 14rpx;
+    padding: 0 18rpx;
     font-size: 18rpx;
   }
 
