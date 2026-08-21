@@ -3,12 +3,12 @@ import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxChatLoginModal from '@/components/guoxin/chat/GxChatLoginModal.vue'
-import GxCustomerServiceModal from '@/components/guoxin/GxCustomerServiceModal.vue'
 import { CHAT_CREDITS_LOCAL_FALLBACK, CHAT_PENDING_QUESTION_KEY, DAILY_QUESTION_LIMIT } from '@/constants/chatHome'
 import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { userInfoStore } from '@/stores/userInfoStore'
+import { openCustomerServiceLink } from '@/utils/guoxin/customerService'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { isShowPayEnabled } from '@/utils/guoxin/showPay'
 
@@ -16,7 +16,6 @@ const store = useGuoxinStore()
 const chatStore = useChatSessionStore()
 
 const showLogin = ref(false)
-const showService = ref(false)
 const loadingReports = ref(false)
 /** 接口 value=1 显示「我的报告」区块 */
 const showReportsSection = computed(() => isShowPayEnabled())
@@ -136,8 +135,8 @@ function onManageUsers() {
   uni.navigateTo({ url: RouterPaths.users })
 }
 
-function onService() {
-  showService.value = true
+async function onService() {
+  await openCustomerServiceLink()
 }
 
 function onContinueChat() {
@@ -382,10 +381,6 @@ function statusLabel(status?: string) {
       :show="showLogin"
       @close="showLogin = false"
       @success="afterLogin"
-    />
-    <GxCustomerServiceModal
-      :show="showService"
-      @close="showService = false"
     />
   </view>
 </template>

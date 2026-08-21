@@ -6,6 +6,15 @@ import type { WxPayCreateParam, WxPayRedirectVo } from '@/models/weixin'
 const BASE = '/api/yiqixue/app/guoxin'
 const SUNLAND_PAY_API = `${BASE}/pay/sunlandPay`
 
+export interface CustomerServiceLinkVo {
+  url?: string | null
+}
+
+/** 获取企业微信客服链接。 */
+export function getCustomerServiceLink(): Promise<ResponseData<CustomerServiceLinkVo>> {
+  return http.get(`${BASE}/kfLink`, {}, { meta: { loading: false, toast: false } })
+}
+
 /** 发送短信验证码 */
 export const sendSmsCode = (data: { mobile: string }): Promise<ResponseData<any>> =>
   http.post(`${BASE}/sendSms`, data)

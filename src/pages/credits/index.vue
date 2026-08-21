@@ -3,14 +3,13 @@ import type { DisplayMemberPlan } from '@/constants/memberPlans'
 import { onShow } from '@dcloudio/uni-app'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
-import GxCustomerServiceModal from '@/components/guoxin/GxCustomerServiceModal.vue'
-import GxLoginModal from '@/components/guoxin/GxLoginModal.vue'
+import GxChatLoginModal from '@/components/guoxin/chat/GxChatLoginModal.vue'
 import GxUserBrief from '@/components/guoxin/GxUserBrief.vue'
 import { mapProductsToPlans, splitPlansByPromotion } from '@/constants/memberPlans'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { openCustomerServiceLink } from '@/utils/guoxin/customerService'
 import { ensureH5RouterBasePath } from '@/utils/guoxin/h5RouterBase'
-import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { savePendingPaidPlan, takePendingPaidPlan } from '@/utils/guoxin/pendingPaidPlan'
 import { isShowPayEnabled } from '@/utils/guoxin/showPay'
 
@@ -19,7 +18,6 @@ const purchasingId = ref('')
 const showLogin = ref(false)
 /** 未登录走短信登录；已登录未绑手机走绑定 */
 const loginMode = ref<'smsLogin' | 'bindMobile'>('smsLogin')
-const showService = ref(false)
 const showCount = ref(0)
 const productsReady = ref(false)
 const countdownText = ref('00:00:00')
@@ -105,10 +103,6 @@ onShow(() => {
   void store.ensureOrdersLoaded(force)
 })
 
-function onBack() {
-  navigateBackOrHome()
-}
-
 function goMember() {
   uni.navigateTo({ url: RouterPaths.creditsMember })
 }
@@ -148,14 +142,20 @@ function requirePurchaseReady(): boolean {
   return true
 }
 
-function goPaid(plan: DisplayMemberPlan) {
-  const q = [
-    `sku=${encodeURIComponent(plan.sku)}`,
-    `name=${encodeURIComponent(plan.name)}`,
-    `days=${plan.days}`,
-    `reports=${plan.reports}`,
-  ].join('&')
-  uni.redirectTo({ url: `${RouterPaths.creditsPaid}?${q}` })
+async function showPurchaseSuccess() {
+  store.invalidateRemoteCache(['credits', 'orders', 'consumeRecords'])
+  await Promise.allSettled([
+    store.loadUserInfo({ skipSessionClear: true }),
+    store.ensureCreditsLoaded(true),
+    store.ensureOrdersLoaded(true),
+    store.ensureConsumeRecordsLoaded(true),
+  ])
+  uni.showModal({
+    title: '购买成功',
+    content: '购买成功，为了让轻舟云课堂同步最新权益，请退出轻舟云课堂后重新进入。如需帮助，可随时联系客服。',
+    showCancel: false,
+    confirmText: '我知道了',
+  })
 }
 
 async function handlePayReturnIfNeeded() {
@@ -168,16 +168,9 @@ async function handlePayReturnIfNeeded() {
   const next = `${url.pathname}${url.search}${url.hash}`
   window.history.replaceState({}, '', next)
 
-  await store.ensureCreditsLoaded(true)
   const pending = takePendingPaidPlan()
   if (pending) {
-    const q = [
-      `sku=${encodeURIComponent(pending.sku)}`,
-      `name=${encodeURIComponent(pending.name)}`,
-      `days=${pending.days}`,
-      `reports=${pending.reports}`,
-    ].join('&')
-    uni.redirectTo({ url: `${RouterPaths.creditsPaid}?${q}` })
+    await showPurchaseSuccess()
     return
   }
   uni.showToast({ title: '支付处理中，请稍候', icon: 'none' })
@@ -185,7 +178,7 @@ async function handlePayReturnIfNeeded() {
 
 /**
  * value=1 → 跳转第三方收银台；
- * value=0 → 弹客服二维码。
+ * value=0 → 动态获取客服链接。
  */
 async function purchasePlan(plan: DisplayMemberPlan) {
   if (plan.memberExclusive && !isMember.value) {
@@ -196,7 +189,7 @@ async function purchasePlan(plan: DisplayMemberPlan) {
     return
 
   if (!isShowPayEnabled()) {
-    showService.value = true
+    await openCustomerServiceLink()
     return
   }
 
@@ -213,12 +206,16 @@ async function purchasePlan(plan: DisplayMemberPlan) {
   })
   try {
     const result = await store.purchaseRemoteProduct(plan.productId, { silentSuccess: true })
-    if (result === true)
-      goPaid(plan)
-    else if (result === 'pay_redirect')
-      uni.showToast({ title: '正在跳转支付页面', icon: 'none' })
-    else
+    if (result === true) {
       takePendingPaidPlan()
+      await showPurchaseSuccess()
+    }
+    else if (result === 'pay_redirect') {
+      uni.showToast({ title: '正在跳转支付页面', icon: 'none' })
+    }
+    else {
+      takePendingPaidPlan()
+    }
   }
   finally {
     purchasingId.value = ''
@@ -249,9 +246,7 @@ async function handleLoginSuccess() {
   <view class="gx-chat-page paywall-page">
     <GxChatHeader
       title="解读权益"
-      show-back
       :show-mine="false"
-      @back="onBack"
     />
 
     <scroll-view scroll-y class="paywall-scroll" :show-scrollbar="false">
@@ -425,15 +420,11 @@ async function handleLoginSuccess() {
       </view>
     </scroll-view>
 
-    <GxLoginModal
+    <GxChatLoginModal
       :show="showLogin"
       :mode="loginMode"
       @close="showLogin = false"
       @success="handleLoginSuccess"
-    />
-    <GxCustomerServiceModal
-      :show="showService"
-      @close="showService = false"
     />
   </view>
 </template>

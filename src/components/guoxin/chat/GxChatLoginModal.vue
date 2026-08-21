@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { useActionLock } from '@/utils/guoxin/useActionLock'
 
 const props = defineProps<{
   show: boolean
+  /** 默认短信登录；权益购买前可复用相同视觉完成手机号绑定。 */
+  mode?: 'smsLogin' | 'bindMobile'
 }>()
 
 const emit = defineEmits<{
@@ -22,6 +24,14 @@ const code = ref('')
 const agreed = ref(false)
 const countdown = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
+
+const isBindMode = computed(() => props.mode === 'bindMobile')
+const eyebrowText = computed(() => isBindMode.value ? '完善账号信息' : '登录后开始')
+const titleText = computed(() => isBindMode.value ? '绑定手机号后继续购买' : '还差一步即可和 AI 对话聊天')
+const copyText = computed(() => isBindMode.value
+  ? '手机号用于同步购买权益、报告次数和订单信息。'
+  : '登录后保存八字用户、问答记录和报告，每天可免费问 3 次，第二天自动恢复。')
+const submitText = computed(() => isBindMode.value ? '绑定并继续' : '登录并继续')
 
 watch(
   () => props.show,
@@ -72,18 +82,21 @@ async function handleSubmit() {
   }
 
   await runSubmitLocked(async () => {
-    uni.showLoading({ title: '登录中...', mask: true })
+    uni.showLoading({ title: isBindMode.value ? '绑定中...' : '登录中...', mask: true })
     try {
-      await store.doLoginBySms(phone.value, code.value)
+      if (isBindMode.value)
+        await store.doBindMobileWithSms(phone.value, code.value)
+      else
+        await store.doLoginBySms(phone.value, code.value)
       uni.hideLoading()
-      uni.showToast({ title: '登录成功', icon: 'success' })
+      uni.showToast({ title: isBindMode.value ? '绑定成功' : '登录成功', icon: 'success' })
       emit('success')
       emit('close')
     }
     catch (e: any) {
       uni.hideLoading()
-      console.error('登录失败', e)
-      uni.showToast({ title: e?.message || '登录失败，请重试', icon: 'none' })
+      console.error(isBindMode.value ? '绑定失败' : '登录失败', e)
+      uni.showToast({ title: e?.message || `${isBindMode.value ? '绑定' : '登录'}失败，请重试`, icon: 'none' })
     }
   })
 }
@@ -104,13 +117,13 @@ function openPrivacyAgreement() {
         ×
       </view>
       <text class="eyebrow">
-        登录后开始
+        {{ eyebrowText }}
       </text>
       <text class="title">
-        还差一步即可和 AI 对话聊天
+        {{ titleText }}
       </text>
       <text class="copy">
-        登录后保存八字用户、问答记录和报告，每天可免费问 3 次，第二天自动恢复。
+        {{ copyText }}
       </text>
 
       <view class="field">
@@ -171,7 +184,7 @@ function openPrivacyAgreement() {
         :class="{ disabled: submitting }"
         @tap="submitting ? undefined : handleSubmit()"
       >
-        登录并继续
+        {{ submitText }}
       </view>
       <view class="btn secondary" @tap="emit('close')">
         暂不登录

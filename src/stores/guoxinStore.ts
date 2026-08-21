@@ -31,6 +31,7 @@ import {
 } from '@/api/guoxin'
 import { RouterPaths } from '@/routerPaths'
 import { extractApiErrorMsg, showApiErrorModal } from '@/utils/guoxin/apiError'
+import { openCustomerServiceLink } from '@/utils/guoxin/customerService'
 import { navigateToReportConfirm as goReportConfirm, navigateToHome, navigateToProfileList } from '@/utils/guoxin/navigation'
 import {
   indexServerProfiles,
@@ -450,7 +451,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     }
     await ensureCreditsLoaded()
     if (totalAvailableCount.value <= 0) {
-      uni.navigateTo({ url: RouterPaths.credits })
+      await openCustomerServiceLink()
       return false
     }
     const productId = await resolveActiveProductId()

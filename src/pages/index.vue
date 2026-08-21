@@ -10,7 +10,6 @@ import { captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
 const PROFESSIONAL_CHART_URL = 'https://paipan.yipuwh.com/'
 const PERPETUAL_CALENDAR_URL = 'https://care.yipuwh.com/#/pages/calendar2/index'
 const MATERIALS_ACCESS_URL = 'https://work.weixin.qq.com/ca/cawcdecbfd6bb047d8?customer_channel=dww_ca_2089976059170713602'
-const LIMITED_FREE_TEST_URL = 'https://work.weixin.qq.com/kfid/kfc5903daad184a46ab'
 
 const store = useGuoxinStore()
 const guidance = ref(createDailyGuidance())
@@ -46,27 +45,6 @@ function refreshDailyGuidance() {
   const next = createDailyGuidance()
   if (next.dateKey !== guidance.value.dateKey)
     guidance.value = next
-}
-
-function openLimitedFree() {
-  // #ifdef H5
-  if (typeof window !== 'undefined') {
-    uni.showModal({
-      title: '免费',
-      content: '点击确定后打开企业微信客服',
-      showCancel: false,
-      confirmText: '立即前往',
-      success: ({ confirm }) => {
-        if (!confirm)
-          return
-
-        window.location.href = LIMITED_FREE_TEST_URL
-      },
-    })
-    return
-  }
-  // #endif
-  uni.showToast({ title: '请在 H5 中打开限时免费', icon: 'none' })
 }
 
 function openProfessionalChart() {
@@ -113,12 +91,7 @@ function openMaterialsAccess() {
           :src="ImageConfig.static('daily-guidance-hero.webp')"
           mode="aspectFill"
         />
-        <view
-          class="consult-login-badge"
-          role="button"
-          aria-label="打开限时免费"
-          @tap="openLimitedFree"
-        >
+        <view class="consult-login-badge">
           限时免费
         </view>
 
@@ -339,11 +312,6 @@ function openMaterialsAccess() {
   text-overflow: ellipsis;
   white-space: nowrap;
   box-shadow: 0 4rpx 12rpx rgba(193, 116, 56, 0.08);
-  cursor: pointer;
-}
-
-.consult-login-badge:active {
-  transform: scale(0.98);
 }
 
 .consult-guidance {
