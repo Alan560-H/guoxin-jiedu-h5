@@ -8,6 +8,9 @@ import { createDailyGuidance } from '@/utils/guoxin/dailyGuidance'
 import { captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
 
 const PROFESSIONAL_CHART_URL = 'https://paipan.yipuwh.com/'
+const PERPETUAL_CALENDAR_URL = 'https://care.yipuwh.com/#/pages/calendar2/index'
+const MATERIALS_ACCESS_URL = 'https://work.weixin.qq.com/ca/cawcdecbfd6bb047d8?customer_channel=dww_ca_2089976059170713602'
+const LIMITED_FREE_TEST_URL = 'https://work.weixin.qq.com/kfid/kfc5903daad184a46ab'
 
 const store = useGuoxinStore()
 const guidance = ref(createDailyGuidance())
@@ -45,6 +48,27 @@ function refreshDailyGuidance() {
     guidance.value = next
 }
 
+function openLimitedFree() {
+  // #ifdef H5
+  if (typeof window !== 'undefined') {
+    uni.showModal({
+      title: '免费',
+      content: '点击确定后打开企业微信客服',
+      showCancel: false,
+      confirmText: '立即前往',
+      success: ({ confirm }) => {
+        if (!confirm)
+          return
+
+        window.location.href = LIMITED_FREE_TEST_URL
+      },
+    })
+    return
+  }
+  // #endif
+  uni.showToast({ title: '请在 H5 中打开限时免费', icon: 'none' })
+}
+
 function openProfessionalChart() {
   // #ifdef H5
   if (typeof window !== 'undefined') {
@@ -58,6 +82,26 @@ function openProfessionalChart() {
 function openChat() {
   uni.navigateTo({ url: RouterPaths.jieduChat })
 }
+
+function openPerpetualCalendar() {
+  // #ifdef H5
+  if (typeof window !== 'undefined') {
+    window.location.href = PERPETUAL_CALENDAR_URL
+    return
+  }
+  // #endif
+  uni.showToast({ title: '请在 H5 中打开万年历', icon: 'none' })
+}
+
+function openMaterialsAccess() {
+  // #ifdef H5
+  if (typeof window !== 'undefined') {
+    window.location.href = MATERIALS_ACCESS_URL
+    return
+  }
+  // #endif
+  uni.showToast({ title: '请在 H5 中领取资料', icon: 'none' })
+}
 </script>
 
 <template>
@@ -69,7 +113,12 @@ function openChat() {
           :src="ImageConfig.static('daily-guidance-hero.webp')"
           mode="aspectFill"
         />
-        <view class="consult-login-badge">
+        <view
+          class="consult-login-badge"
+          role="button"
+          aria-label="打开限时免费"
+          @tap="openLimitedFree"
+        >
           限时免费
         </view>
 
@@ -134,6 +183,40 @@ function openChat() {
             </text>
             <text class="consult-entry-description">
               解你疑惑，指点迷津
+            </text>
+          </view>
+          <text class="i-carbon-chevron-right consult-entry-chevron" />
+        </view>
+
+        <view class="consult-entry-card" @tap="openPerpetualCalendar">
+          <image
+            class="consult-entry-icon"
+            :src="ImageConfig.static('perpetual-calendar-icon.png')"
+            mode="aspectFit"
+          />
+          <view class="consult-entry-copy">
+            <text class="consult-entry-title">
+              万年历
+            </text>
+            <text class="consult-entry-description">
+              择日宜忌，节气尽览
+            </text>
+          </view>
+          <text class="i-carbon-chevron-right consult-entry-chevron" />
+        </view>
+
+        <view class="consult-entry-card" @tap="openMaterialsAccess">
+          <image
+            class="consult-entry-icon"
+            :src="ImageConfig.static('materials-access-icon.png')"
+            mode="aspectFit"
+          />
+          <view class="consult-entry-copy">
+            <text class="consult-entry-title">
+              资料获取
+            </text>
+            <text class="consult-entry-description">
+              添加老师，领取资料
             </text>
           </view>
           <text class="i-carbon-chevron-right consult-entry-chevron" />
@@ -256,6 +339,11 @@ function openChat() {
   text-overflow: ellipsis;
   white-space: nowrap;
   box-shadow: 0 4rpx 12rpx rgba(193, 116, 56, 0.08);
+  cursor: pointer;
+}
+
+.consult-login-badge:active {
+  transform: scale(0.98);
 }
 
 .consult-guidance {
@@ -363,8 +451,8 @@ function openChat() {
 .consult-entry-list {
   position: relative;
   z-index: 2;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   flex: 0 0 auto;
   gap: 14rpx;
   padding: 0 44rpx 12rpx;
@@ -374,7 +462,7 @@ function openChat() {
   display: flex;
   height: 120rpx;
   align-items: center;
-  padding: 0 28rpx;
+  padding: 0 18rpx;
   border: 2rpx solid rgba(255, 255, 255, 0.84);
   border-radius: 22rpx;
   background: var(--consult-card);
@@ -387,39 +475,48 @@ function openChat() {
 }
 
 .consult-entry-icon {
-  width: 62rpx;
-  height: 62rpx;
+  width: 52rpx;
+  height: 52rpx;
   flex-shrink: 0;
 }
 
 .consult-entry-copy {
   display: flex;
   min-width: 0;
-  align-items: baseline;
-  margin-left: 18rpx;
-  gap: 18rpx;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 12rpx;
+  gap: 4rpx;
 }
 
 .consult-entry-title {
+  max-width: 100%;
   flex-shrink: 0;
-  font-size: 29rpx;
+  overflow: hidden;
+  font-size: 25rpx;
   font-weight: 700;
-  letter-spacing: 2rpx;
+  letter-spacing: 1rpx;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .consult-entry-description {
+  max-width: 100%;
   overflow: hidden;
   color: #657084;
-  font-size: 17rpx;
+  font-size: 15rpx;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .consult-entry-chevron {
   flex-shrink: 0;
-  margin-left: auto;
+  margin-left: 6rpx;
   color: #ca8a55;
-  font-size: 34rpx;
+  font-size: 26rpx;
 }
 
 .consult-conversation {
