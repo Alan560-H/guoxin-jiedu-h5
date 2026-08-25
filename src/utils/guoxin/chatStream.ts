@@ -7,6 +7,8 @@ import { getSource } from '@/utils/guoxin/source'
 const STREAM_TIMEOUT_MS = 180_000
 /** 国心二期流式问答 */
 const CHAT_MESSAGES_PATH = '/api/yiqixue/app/guoxin/dify/streamChat'
+/** 后端代理 Dify 停止接口，避免在 H5 暴露 Dify API Key / user */
+const CHAT_MESSAGES_STOP_PATH = '/api/yiqixue/app/guoxin/dify/stopChat'
 
 export interface ChatStreamHandlers {
   onDelta?: (fullText: string) => void
@@ -71,12 +73,15 @@ function extractDeltaText(payload: Record<string, unknown>): string {
 }
 
 function pickSession(payload: Record<string, unknown>): ChatStreamSession | null {
+  const nestedData = payload.data && typeof payload.data === 'object'
+    ? payload.data as Record<string, unknown>
+    : null
   const conversationId = String(
     payload.conversation_id
     ?? payload.conversationId
-    ?? (payload.data && typeof payload.data === 'object'
-      ? (payload.data as Record<string, unknown>).conversation_id
-      ?? (payload.data as Record<string, unknown>).conversationId
+    ?? (nestedData
+      ? nestedData.conversation_id
+      ?? nestedData.conversationId
       : '')
     ?? '',
   ).trim()
@@ -84,19 +89,67 @@ function pickSession(payload: Record<string, unknown>): ChatStreamSession | null
     payload.message_id
     ?? payload.messageId
     ?? payload.id
-    ?? (payload.data && typeof payload.data === 'object'
-      ? (payload.data as Record<string, unknown>).message_id
-      ?? (payload.data as Record<string, unknown>).messageId
-      ?? (payload.data as Record<string, unknown>).id
+    ?? (nestedData
+      ? nestedData.message_id
+      ?? nestedData.messageId
+      ?? nestedData.id
       : '')
     ?? '',
   ).trim()
-  if (!conversationId && !messageId)
+  const taskId = String(
+    payload.task_id
+    ?? payload.taskId
+    ?? (nestedData
+      ? nestedData.task_id
+      ?? nestedData.taskId
+      : '')
+    ?? '',
+  ).trim()
+  if (!conversationId && !messageId && !taskId)
     return null
   return {
     conversationId: conversationId || '',
     messageId: messageId || undefined,
+    taskId: taskId || undefined,
   }
+}
+
+/**
+ * 停止正在生成的问答。
+ *
+ * Java 代理根据当前登录用户和 profileId 还原 Dify 的 user，再转发到
+ * `POST /chat-messages/:task_id/stop`；前端仅传任务与档案标识。
+ */
+export async function postChatMessageStop(
+  taskId: string,
+  profileId: number | string,
+): Promise<void> {
+  const id = String(taskId || '').trim()
+  if (!id)
+    return
+
+  const response = await fetch(CHAT_MESSAGES_STOP_PATH, {
+    method: 'POST',
+    headers: buildAuthHeaders(),
+    body: JSON.stringify({ taskId: id, profileId }),
+  })
+
+  let responseBody: Record<string, unknown> | null = null
+  try {
+    responseBody = await response.json() as Record<string, unknown>
+  }
+  catch {
+    // 停止成功时后端可能不返回 JSON。
+  }
+
+  if (!response.ok) {
+    const message = String(responseBody?.msg || responseBody?.message || `停止响应失败（${response.status}）`)
+    throw new Error(message)
+  }
+
+  const code = Number(responseBody?.code)
+  if (Number.isFinite(code) && !(code >= 200 && code < 300))
+    throw new Error(String(responseBody?.msg || responseBody?.message || '停止响应失败'))
 }
 
 /**

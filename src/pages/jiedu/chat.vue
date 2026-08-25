@@ -3,7 +3,7 @@ import type { ChatComposerAttachment, StreamChatFile } from '@/models/guoxin/cha
 import type { FeedbackState } from '@/stores/chatSessionStore'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { streamChatMessage } from '@/api/chat'
+import { stopChatMessage, streamChatMessage } from '@/api/chat'
 import { getDifyQuestionBank, getDifySuggested } from '@/api/dify'
 import GxBaziProfileModal from '@/components/guoxin/chat/GxBaziProfileModal.vue'
 import GxChatComposer from '@/components/guoxin/chat/GxChatComposer.vue'
@@ -61,6 +61,10 @@ const bootstrapped = ref(false)
 const pendingInvite = ref(false)
 const abortController = ref<AbortController | null>(null)
 const clearActiveTypewriter = ref<(() => void) | null>(null)
+const activeStreamTaskId = ref('')
+const activeStreamQuestion = ref('')
+const stopRequested = ref(false)
+let stopApiRequestedTaskId = ''
 const lastStreamMessageId = ref('')
 const remoteFollowups = ref<Array<{ question: string, tip: string }> | null>(null)
 /** 无历史时：question/bank 随机推荐 */
@@ -710,6 +714,36 @@ function onSubmitComposer() {
   void askQuestion(q)
 }
 
+function requestServerStop(taskId: string, profileId: string) {
+  const id = String(taskId || '').trim()
+  if (!id || stopApiRequestedTaskId === id)
+    return
+  stopApiRequestedTaskId = id
+  void stopChatMessage(id, profileId).catch((e) => {
+    console.error('停止服务端响应失败', e)
+    uni.showToast({ title: '已停止接收，服务端停止失败', icon: 'none' })
+  })
+}
+
+/** 点击停止：先回填问题并立即中断前端流，再通知服务端终止 Dify 任务。 */
+function onStopResponse() {
+  if (!asking.value || stopRequested.value)
+    return
+
+  stopRequested.value = true
+  const question = activeStreamQuestion.value.trim()
+  if (question)
+    draft.value = question
+
+  const profileId = activeId.value
+  if (profileId && activeStreamTaskId.value)
+    requestServerStop(activeStreamTaskId.value, profileId)
+
+  clearActiveTypewriter.value?.()
+  clearActiveTypewriter.value = null
+  abortController.value?.abort()
+}
+
 async function askQuestion(question: string, options?: { files?: StreamChatFile[], imageUrl?: string }) {
   const q = question.trim()
   if (!q || asking.value)
@@ -764,6 +798,10 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
     ?? ''
 
   asking.value = true
+  activeStreamQuestion.value = q
+  activeStreamTaskId.value = ''
+  stopRequested.value = false
+  stopApiRequestedTaskId = ''
   draft.value = ''
   pendingAttachment.value = null
   composerRef.value?.resetAttachment?.()
@@ -816,6 +854,11 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
           typewriter.setTarget(full)
         },
         onSession: (session) => {
+          if (session.taskId) {
+            activeStreamTaskId.value = session.taskId
+            if (stopRequested.value)
+              requestServerStop(session.taskId, profileId)
+          }
           if (session.conversationId)
             chatStore.setConversationId(profileId, session.conversationId)
           if (session.messageId)
@@ -856,11 +899,16 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
       // 用户 abort 与超时共用 AbortError：仅用户信号 aborted 时视为「已停止」
       if (controller.signal.aborted) {
         const kept = chatStore.getMessages(profileId).find(m => m.id === assistant.id)?.content?.trim()
-        chatStore.patchMessage(profileId, assistant.id, {
-          content: kept || '已停止生成',
-          streaming: false,
-          showFeedback: false,
-        })
+        if (kept) {
+          chatStore.patchMessage(profileId, assistant.id, {
+            content: kept,
+            streaming: false,
+            showFeedback: false,
+          })
+        }
+        else {
+          chatStore.removeMessage(profileId, assistant.id)
+        }
       }
       else {
         chatStore.patchMessage(profileId, assistant.id, {
@@ -898,6 +946,10 @@ async function askQuestion(question: string, options?: { files?: StreamChatFile[
   finally {
     clearActiveTypewriter.value = null
     abortController.value = null
+    activeStreamTaskId.value = ''
+    activeStreamQuestion.value = ''
+    stopRequested.value = false
+    stopApiRequestedTaskId = ''
     asking.value = false
     await refreshCreditsQuiet()
     // 小部件在消息下方重新出现；不要 pin 到底部，否则会把刚打完的回复顶出视口
@@ -1085,7 +1137,9 @@ function scrollToLatestAssistant() {
       :allow-attach="canChat"
       :placeholder="composerPlaceholder"
       :disabled="composerDisabled"
+      :streaming="asking"
       @attachment="onComposerAttachment"
+      @stop="onStopResponse"
       @submit="onSubmitComposer"
     />
 

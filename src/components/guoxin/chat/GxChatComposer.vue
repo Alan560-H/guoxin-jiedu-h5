@@ -9,6 +9,8 @@ const props = withDefaults(defineProps<{
   modelValue?: string
   placeholder?: string
   disabled?: boolean
+  /** 正在接收流式回复时，发送按钮切换为可点击的停止按钮 */
+  streaming?: boolean
   /** 是否展示选图；首页发问不带图，默认 true */
   allowAttach?: boolean
 }>(), {
@@ -18,6 +20,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   'submit': []
+  'stop': []
   'attachment': [payload: ChatComposerAttachment | null]
 }>()
 
@@ -40,7 +43,13 @@ function onInput(e: { detail?: { value?: string } }) {
   emit('update:modelValue', v)
 }
 
-function onSubmit() {
+const actionDisabled = computed(() => !props.streaming && (props.disabled || uploading.value))
+
+function onAction() {
+  if (props.streaming) {
+    emit('stop')
+    return
+  }
   if (props.disabled || uploading.value)
     return
   emit('submit')
@@ -185,14 +194,23 @@ async function uploadPicked(localPath: string) {
         :placeholder="placeholder || '输入你的问题'"
         confirm-type="send"
         @input="onInput"
-        @confirm="onSubmit"
+        @confirm="onAction"
       >
       <view
         class="composer-send"
-        :class="{ disabled: props.disabled || uploading }"
-        @tap="onSubmit"
+        :class="{ 'disabled': actionDisabled, 'is-stop': props.streaming }"
+        role="button"
+        :aria-label="props.streaming ? '停止响应' : '发送消息'"
+        @tap="onAction"
       >
-        发送
+        <view
+          v-if="props.streaming"
+          class="composer-stop-icon"
+          aria-hidden="true"
+        />
+        <text v-else>
+          发送
+        </text>
       </view>
     </view>
   </view>
@@ -297,5 +315,16 @@ async function uploadPicked(localPath: string) {
   &.disabled {
     opacity: 0.45;
   }
+
+  &.is-stop {
+    cursor: pointer;
+  }
+}
+
+.composer-stop-icon {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 4rpx;
+  background: #fffdf7;
 }
 </style>

@@ -28,6 +28,8 @@ export interface ChatMessageRequest {
 export interface ChatStreamSession {
   conversationId: string
   messageId?: string
+  /** Dify 流式任务 ID，用于调用停止响应接口 */
+  taskId?: string
 }
 
 export type ChatStreamQuotaError = Error & { code: 'QUOTA_EXCEEDED' }
