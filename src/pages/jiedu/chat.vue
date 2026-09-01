@@ -25,7 +25,7 @@ import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { clearChatMarkdownCache } from '@/utils/guoxin/chat'
-import { openCustomerServiceLink } from '@/utils/guoxin/customerService'
+import { openPurchaseEntry } from '@/utils/guoxin/customerService'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { isUnlimitedChatRemaining } from '@/utils/guoxin/parseCredits'
 import {
@@ -640,7 +640,7 @@ function onInvitePreview() {
 
 async function onBuy() {
   showLimit.value = false
-  await openCustomerServiceLink()
+  await openPurchaseEntry()
 }
 
 function onGenerateReport() {

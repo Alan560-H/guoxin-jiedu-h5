@@ -11,7 +11,7 @@ import { RouterPaths } from '@/routerPaths'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useGuoxinStore } from '@/stores/guoxinStore'
 import { formatDualBirthDayDisplay } from '@/utils/guoxin/birthDateTime'
-import { openCustomerServiceLink } from '@/utils/guoxin/customerService'
+import { openPurchaseEntry } from '@/utils/guoxin/customerService'
 import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { useActionLock } from '@/utils/guoxin/useActionLock'
 
@@ -154,7 +154,7 @@ async function onConfirm() {
     }
     await store.ensureCreditsLoaded(true)
     if (store.totalAvailableCount <= 0) {
-      await openCustomerServiceLink()
+      await openPurchaseEntry()
       return
     }
     await store.confirmJiedu(

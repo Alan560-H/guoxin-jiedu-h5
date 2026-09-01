@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { ChatMessage, FeedbackState } from '@/stores/chatSessionStore'
+import { onUnmounted, ref, watch } from 'vue'
 import { formatChatAnswerHtml } from '@/utils/guoxin/chat'
 
-defineProps<{
+const props = defineProps<{
   messages: ChatMessage[]
   userSeal: string
 }>()
@@ -11,9 +12,39 @@ const emit = defineEmits<{
   feedback: [payload: { messageId: string, feedback: FeedbackState }]
 }>()
 
+const THINKING_TEXTS = [
+  '正在思考中......',
+  '生成回答每次需要0~30秒，请耐心等待哦',
+  '国心老师正在努力生成回答，请耐心等待哦',
+] as const
+const thinkingTextIndex = ref(0)
+let thinkingTextTimer: ReturnType<typeof setInterval> | null = null
+
+function stopThinkingTextRotation() {
+  if (thinkingTextTimer)
+    clearInterval(thinkingTextTimer)
+  thinkingTextTimer = null
+  thinkingTextIndex.value = 0
+}
+
+function startThinkingTextRotation() {
+  stopThinkingTextRotation()
+  thinkingTextTimer = setInterval(() => {
+    thinkingTextIndex.value = (thinkingTextIndex.value + 1) % THINKING_TEXTS.length
+  }, 3000)
+}
+
 function isThinking(m: ChatMessage) {
   return m.role === 'assistant' && m.streaming === true && !String(m.content || '').trim()
 }
+
+watch(
+  () => props.messages.some(isThinking),
+  thinking => thinking ? startThinkingTextRotation() : stopThinkingTextRotation(),
+  { immediate: true },
+)
+
+onUnmounted(stopThinkingTextRotation)
 
 /** 已有正文且仍在流式：显示末尾光标（不切开 Markdown） */
 function isStreamingAnswer(m: ChatMessage) {
@@ -76,9 +107,13 @@ function onMarkdownClick(e: MouseEvent) {
             <view class="bar short" />
             <view class="bar mid" />
           </view>
-          <text class="thinking-text">
-            正在思考中......
-          </text>
+          <view class="thinking-text-wrap">
+            <Transition name="thinking-copy" mode="out-in">
+              <text :key="thinkingTextIndex" class="thinking-text">
+                {{ THINKING_TEXTS[thinkingTextIndex] }}
+              </text>
+            </Transition>
+          </view>
         </view>
 
         <template v-else>
@@ -466,9 +501,30 @@ function onMarkdownClick(e: MouseEvent) {
   }
 }
 
+.thinking-text-wrap {
+  min-height: 72rpx;
+}
+
 .thinking-text {
+  display: block;
   font-size: 24rpx;
+  line-height: 1.5;
   color: var(--gx-chat-muted, #755d52);
+}
+
+.thinking-copy-enter-active,
+.thinking-copy-leave-active {
+  transition: opacity 360ms ease, transform 360ms ease;
+}
+
+.thinking-copy-enter-from {
+  opacity: 0;
+  transform: translateY(4rpx);
+}
+
+.thinking-copy-leave-to {
+  opacity: 0;
+  transform: translateY(-4rpx);
 }
 
 @keyframes gx-thinking-shimmer {

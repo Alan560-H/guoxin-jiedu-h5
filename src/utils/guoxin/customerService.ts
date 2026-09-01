@@ -1,10 +1,23 @@
 import { getCustomerServiceLink } from '@/api/guoxin'
+import { RouterPaths } from '@/routerPaths'
 
 /** 企业微信客服二维码 */
 export const CUSTOMER_SERVICE_QR_URL
   = 'https://oss.yipuwh.com/img/2026/07/30/微信二维码_20260730110959A010.png'
 
 let openingPromise: Promise<boolean> | null = null
+
+/** iPhone/iPad 自带 Safari；排除微信、App WebView 和其他 iOS 浏览器。 */
+export function isAppleSafariBrowser(): boolean {
+  if (typeof navigator === 'undefined')
+    return false
+  const ua = navigator.userAgent || ''
+  const isIOS = /iPhone|iPad|iPod/i.test(ua)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  const isSafari = /WebKit/i.test(ua)
+    && !/CriOS|FxiOS|EdgiOS|OPiOS|MicroMessenger/i.test(ua)
+  return isIOS && isSafari
+}
 
 function normalizeCustomerServiceUrl(raw: unknown): string {
   if (typeof raw !== 'string' || !raw.trim())
@@ -53,4 +66,18 @@ export function openCustomerServiceLink(): Promise<boolean> {
   })()
 
   return openingPromise
+}
+
+/** 购买套餐入口：苹果 Safari 进入权益页，其他环境沿用动态客服链接。 */
+export async function openPurchaseEntry(): Promise<boolean> {
+  if (isAppleSafariBrowser()) {
+    await new Promise<void>((resolve) => {
+      uni.navigateTo({
+        url: RouterPaths.credits,
+        complete: () => resolve(),
+      })
+    })
+    return true
+  }
+  return openCustomerServiceLink()
 }

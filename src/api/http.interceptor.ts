@@ -1,9 +1,7 @@
 import type { RequestConfig, RequestInterceptor, RequestMeta } from 'uview-pro'
 import type { ResponseData } from "@/models/responseData";
 import { dev, prod } from "@/api/env";
-import { userInfoStore } from "@/stores/userInfoStore"
 import { useGuoxinStore } from '@/stores/guoxinStore'
-import { RouterPaths } from '@/routerPaths'
 import { isAppEmbeddedWebView } from '@/utils/appWebView'
 import { extractHttpResponseMsg } from '@/utils/guoxin/apiError'
 import { getSource } from '@/utils/guoxin/source'
@@ -80,8 +78,6 @@ const httpInterceptor : RequestInterceptor = {
 				uni.removeStorageSync('apph5Token')
 				useGuoxinStore().clearSession()
 				meta.toast && showToast('登录已过期，请重新登录', 'error')
-				const userInfo = userInfoStore()
-				userInfo.loginOut()
 			}
 			throw new Error(rawData)
 		}

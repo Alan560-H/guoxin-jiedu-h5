@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import { ImageConfig } from '@/config/assets'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
+import { openCustomerServiceLink } from '@/utils/guoxin/customerService'
 import { createDailyGuidance } from '@/utils/guoxin/dailyGuidance'
 import { captureProjectCodeFromUrl } from '@/utils/guoxin/projectCode'
 
@@ -14,6 +15,7 @@ const MATERIALS_ACCESS_URL = 'https://work.weixin.qq.com/ca/cawcdecbfd6bb047d8?c
 const store = useGuoxinStore()
 const guidance = ref(createDailyGuidance())
 let guidanceTimer: ReturnType<typeof setInterval> | null = null
+let limitedFreeTapTimer: ReturnType<typeof setTimeout> | null = null
 
 onLoad((query) => {
   const q = query as Record<string, string | undefined>
@@ -39,12 +41,28 @@ onUnload(() => {
   if (guidanceTimer)
     clearInterval(guidanceTimer)
   guidanceTimer = null
+  if (limitedFreeTapTimer)
+    clearTimeout(limitedFreeTapTimer)
+  limitedFreeTapTimer = null
 })
 
 function refreshDailyGuidance() {
   const next = createDailyGuidance()
   if (next.dateKey !== guidance.value.dateKey)
     guidance.value = next
+}
+
+function onLimitedFreeTap() {
+  if (limitedFreeTapTimer) {
+    clearTimeout(limitedFreeTapTimer)
+    limitedFreeTapTimer = null
+    void openCustomerServiceLink()
+    return
+  }
+
+  limitedFreeTapTimer = setTimeout(() => {
+    limitedFreeTapTimer = null
+  }, 400)
 }
 
 function openProfessionalChart() {
@@ -91,7 +109,7 @@ function openMaterialsAccess() {
           :src="ImageConfig.static('daily-guidance-hero.webp')"
           mode="aspectFill"
         />
-        <view class="consult-login-badge">
+        <view class="consult-login-badge" @tap="onLimitedFreeTap">
           限时免费
         </view>
 
@@ -310,6 +328,8 @@ function openMaterialsAccess() {
   font-size: 22rpx;
   letter-spacing: 2rpx;
   text-overflow: ellipsis;
+  touch-action: manipulation;
+  user-select: none;
   white-space: nowrap;
   box-shadow: 0 4rpx 12rpx rgba(193, 116, 56, 0.08);
 }
