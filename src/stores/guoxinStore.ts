@@ -498,7 +498,7 @@ export const useGuoxinStore = defineStore('guoxin', () => {
     return true
   }
 
-  /** 远程购买：创建订单后跳转尚德第三方收银台。 */
+  /** 远程购买：微信内走 JSAPI，其他浏览器走 MWEB 收银台。 */
   async function purchaseRemoteProduct(
     productId: number,
     opts?: { silentSuccess?: boolean },

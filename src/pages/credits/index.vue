@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { DisplayMemberPlan } from '@/constants/memberPlans'
 import { onShow } from '@dcloudio/uni-app'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import GxChatHeader from '@/components/guoxin/chat/GxChatHeader.vue'
 import GxChatLoginModal from '@/components/guoxin/chat/GxChatLoginModal.vue'
 import GxUserBrief from '@/components/guoxin/GxUserBrief.vue'
 import { mapProductsToPlans, splitPlansByPromotion } from '@/constants/memberPlans'
 import { RouterPaths } from '@/routerPaths'
 import { useGuoxinStore } from '@/stores/guoxinStore'
-import { openCustomerServiceLink } from '@/utils/guoxin/customerService'
+import { isAppleSafariBrowser } from '@/utils/guoxin/customerService'
 import { ensureH5RouterBasePath } from '@/utils/guoxin/h5RouterBase'
+import { navigateBackOrHome } from '@/utils/guoxin/navigation'
 import { savePendingPaidPlan, takePendingPaidPlan } from '@/utils/guoxin/pendingPaidPlan'
-import { isShowPayEnabled } from '@/utils/guoxin/showPay'
 
 const store = useGuoxinStore()
 const purchasingId = ref('')
@@ -21,6 +21,7 @@ const loginMode = ref<'smsLogin' | 'bindMobile'>('smsLogin')
 const showCount = ref(0)
 const productsReady = ref(false)
 const countdownText = ref('00:00:00')
+const showBack = ref(false)
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 const plans = computed(() => mapProductsToPlans(store.serverProducts))
@@ -29,8 +30,6 @@ const trial = computed(() => split.value.trial)
 const regular = computed(() => split.value.regular)
 const boost = computed(() => split.value.boost)
 const isMember = computed(() => store.chatUnlimited)
-/** 接口 value=1 时开放在线支付。 */
-const payEnabled = computed(() => isShowPayEnabled())
 
 const displayNickname = computed(() => {
   if (!store.isLoggedIn)
@@ -55,7 +54,7 @@ function maskMobile(mobile: string) {
 }
 
 async function loadCreditsPageData(force = false) {
-  await Promise.all([
+  await Promise.allSettled([
     store.loadUserInfo({ skipSessionClear: true }),
     store.ensureProductsLoaded(force),
     store.ensureCreditsLoaded(force),
@@ -64,8 +63,22 @@ async function loadCreditsPageData(force = false) {
   productsReady.value = true
 }
 
+watch(
+  () => store.isLoggedIn,
+  (loggedIn) => {
+    // 会话过期只切换为登录态，不离开当前产品页。
+    if (!loggedIn) {
+      loginMode.value = 'smsLogin'
+      showLogin.value = true
+    }
+  },
+)
+
 onMounted(async () => {
   startCountdown()
+  // #ifdef H5
+  showBack.value = isAppleSafariBrowser()
+  // #endif
   // 未登录也可看套餐；登录弹窗挡住购买，登录后留在本页
   if (!store.isLoggedIn) {
     loginMode.value = 'smsLogin'
@@ -105,6 +118,10 @@ onShow(() => {
 
 function goMember() {
   uni.navigateTo({ url: RouterPaths.creditsMember })
+}
+
+function onBack() {
+  navigateBackOrHome()
 }
 
 function startCountdown() {
@@ -176,10 +193,6 @@ async function handlePayReturnIfNeeded() {
   uni.showToast({ title: '支付处理中，请稍候', icon: 'none' })
 }
 
-/**
- * value=1 → 跳转第三方收银台；
- * value=0 → 动态获取客服链接。
- */
 async function purchasePlan(plan: DisplayMemberPlan) {
   if (plan.memberExclusive && !isMember.value) {
     uni.showToast({ title: '该套餐仅限有效会员购买', icon: 'none' })
@@ -187,11 +200,6 @@ async function purchasePlan(plan: DisplayMemberPlan) {
   }
   if (!requirePurchaseReady())
     return
-
-  if (!isShowPayEnabled()) {
-    await openCustomerServiceLink()
-    return
-  }
 
   if (purchasingId.value)
     return
@@ -228,13 +236,13 @@ function buyLabel(plan: DisplayMemberPlan) {
   if (plan.promotionSort === 1) {
     if (plan.memberExclusive && !isMember.value)
       return '会员可购'
-    return payEnabled.value ? '购买' : '咨询'
+    return '购买'
   }
   if (plan.memberExclusive && !isMember.value)
     return '会员可购'
   if (plan.promotionSort === 2)
-    return payEnabled.value ? `¥${plan.price} 立即购买` : `¥${plan.price} 咨询购买`
-  return payEnabled.value ? '购买' : '咨询'
+    return `¥${plan.price} 立即购买`
+  return '购买'
 }
 
 async function handleLoginSuccess() {
@@ -247,6 +255,8 @@ async function handleLoginSuccess() {
     <GxChatHeader
       title="解读权益"
       :show-mine="false"
+      :show-back="showBack"
+      @back="onBack"
     />
 
     <scroll-view scroll-y class="paywall-scroll" :show-scrollbar="false">
@@ -414,7 +424,7 @@ async function handleLoginSuccess() {
           当前剩余报告次数 {{ store.displayCredits }}；问答与报告额度独立计算。
         </view>
         <view class="paywall-tip muted">
-          购买即表示同意《用户服务协议》与《隐私权政策》；{{ payEnabled ? '支付将跳转至安全收银台。' : '当前请联系客服开通。' }}
+          购买即表示同意《用户服务协议》与《隐私权政策》；支付将跳转至安全收银台。
         </view>
         <view class="safe-bottom" />
       </view>

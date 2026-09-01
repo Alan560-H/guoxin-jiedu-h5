@@ -11,7 +11,7 @@ import UniPlatform from '@uni-helper/vite-plugin-uni-platform'
 import UniPlatformModifier from '@uni-helper/vite-plugin-uni-platform-modifier'
 import UniRoot from '@uni-ku/root'
 import UnoCSS from 'unocss/vite'
-import { guoxinDevProxyTarget, sunlandPayDevProxyTarget } from './src/api/devProxy'
+import { guoxinDevProxyTarget } from './src/api/devProxy'
 import { PROD_WX_APP_ID } from './src/constants/weixin'
 import { defineConfig, loadEnv } from 'vite'
 
@@ -47,11 +47,6 @@ export default defineConfig(({ mode }) => {
       port: 9999, // 端口（保留）
       host: '0.0.0.0', // 替代 disableHostCheck: true，允许外部访问
       proxy: {
-        '/api/yiqixue/app/guoxin/pay/sunlandPay': {
-          target: sunlandPayDevProxyTarget,
-          changeOrigin: true,
-          secure: true,
-        },
         '/api/yiqixue/app/guoxin': {
           target: guoxinDevProxyTarget,
           changeOrigin: true,

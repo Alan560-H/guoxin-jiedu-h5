@@ -9,19 +9,19 @@ export interface WxPayOrderInput {
   productId: number
 }
 
-/** sunlandPay 请求渠道 */
+/** pay/create 请求渠道 */
 export type WxPayChannel = 'jsapi' | 'mweb'
 
 /** MWEB 场景（后端字段名 h5ScenceType） */
 export type H5ScenceType = 'Wap' | 'iOS' | 'Android'
 
-/** 创建支付订单请求（sunlandPay）；openid 由后端从登录态获取 */
+/** 创建支付订单请求（pay/create）；openid 由后端从登录态获取 */
 export type WxPayCreateParam = WxPayOrderInput & (
   | { payChannel: 'jsapi' }
   | { payChannel: 'mweb', h5ScenceType: H5ScenceType, redirectUrl?: string }
 )
 
-/** sunlandPay 响应 data（Java 统一下单后返回） */
+/** pay/create 响应 data（Java 统一下单后返回） */
 export interface WxPayCreateVo {
   timeStamp: string
   nonceStr: string
@@ -32,13 +32,6 @@ export interface WxPayCreateVo {
   prepay_id?: string
   prepayId?: string
   package?: string
-}
-
-/** sunlandPay 第三方收银台跳转响应；字段名 getOpenIdUrl 由后端约定。 */
-export interface WxPayRedirectVo {
-  actionType: 'REDIRECT' | string
-  orderNumber?: string
-  getOpenIdUrl: string
 }
 
 /** WeixinJSBridge.getBrandWCPayRequest 入参（由 WxPayCreateVo 归一化） */
@@ -59,7 +52,7 @@ export interface WxPayMwebSceneInfo {
   }
 }
 
-/** sunlandPay MWEB 时后端返回的 req_data（微信下单体） */
+/** pay/create MWEB 时后端返回的 req_data（微信下单体） */
 export interface WxPayMwebReqData {
   mchid?: string
   out_trade_no?: string
@@ -73,7 +66,7 @@ export interface WxPayMwebReqData {
   scene_info?: WxPayMwebSceneInfo
 }
 
-/** 微信 H5 支付（MWEB）sunlandPay 响应 data */
+/** 微信 H5 支付（MWEB）pay/create 响应 data */
 export interface WxPayMwebCreateVo {
   req_data?: WxPayMwebReqData
   reqData?: WxPayMwebReqData

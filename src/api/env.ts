@@ -30,7 +30,7 @@ const appConfig: AppConfig = {
     wxOAuthScope: 'snsapi_userinfo',
     wxOAuthLoginPath: '/app/wx/oauth/login',
     /** @deprecated 请用 guoxin.ts createWxPayOrder */
-    wxPayCreatePath: '/api/yiqixue/app/guoxin/pay/sunlandPay',
+    wxPayCreatePath: '/api/yiqixue/app/guoxin/pay/create',
     domain: {
         baseUrl: 'https://test.yipuwenhua.com/app-api',
     },
@@ -52,4 +52,4 @@ export const {
     prod,
 } = appConfig
 
-export { guoxinDevProxyTarget, sunlandPayDevProxyTarget } from './devProxy'
+export { guoxinDevProxyTarget } from './devProxy'
